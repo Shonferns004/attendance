@@ -234,9 +234,14 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final timeStr = DateFormat('hh:mm:ss').format(now);
+    final timeStr = DateFormat('hh:mm').format(now);
     final ampm = DateFormat('a').format(now);
     final dayStr = DateFormat('EEE, dd MMM yyyy').format(now);
+    String liveWork = '';
+    if (_piDt != null && _punchOutTime == '—') {
+      final dur = now.difference(_piDt!);
+      liveWork = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
+    }
 
     if (_loading) {
       return SafeArea(
@@ -277,7 +282,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 24),
                     _punchInfo('Punched Out', _punchOutTime),
                     const SizedBox(width: 24),
-                    _punchInfo('Work Hours', _workHours),
+                    _punchInfo('Worked', liveWork.isNotEmpty ? liveWork : _workHours),
                   ],
                 ),
               ],
