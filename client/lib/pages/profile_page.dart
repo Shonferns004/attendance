@@ -167,7 +167,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('$_lateUsed / 180 min', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: _lateUsed > 150 ? const Color(0xFFC0392B) : const Color(0xFF2355D4))),
+                          Text('$_lateUsed / 180 min', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: _lateUsed > 150 ? const Color(0xFFC0392B) : const Color(0xFF2355D4))),
                           const SizedBox(height: 4),
                           Text('Used this month', style: const TextStyle(fontSize: 12, color: Color(0xFF72706B))),
                         ],

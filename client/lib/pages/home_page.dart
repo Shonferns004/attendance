@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _workHours = '${mins ~/ 1}h ${((mins % 1) * 60).round()}m';
         _isSuccess = true;
         _resultTitle = 'Punch Out Successful!';
-        _resultSub = 'Worked: $workHours';
+        _resultSub = 'Worked: $_workHours';
         _showResult = true;
       });
     } catch (e) {
