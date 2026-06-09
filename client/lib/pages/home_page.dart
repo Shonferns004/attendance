@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
     }
     final t = DateTime.tryParse(s);
     if (t == null) return '—';
-    return DateFormat('hh:mm a').format(t);
+    return DateFormat('hh:mm a').format(t.toLocal());
   }
 
   @override
@@ -73,13 +73,13 @@ class _HomePageState extends State<HomePage> {
         if (_punchOutTime != '—') _isPunchedIn = false;
         if (_punchInTime != '—') {
           final ts = (att['punch_in_time'] ?? '').toString();
-          _piDt = DateTime.tryParse(ts.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(ts) ? ts : '${ts}Z');
+          _piDt = DateTime.tryParse(ts.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(ts) ? ts : '${ts}Z')?.toLocal();
         }
         if (_punchInTime != '—' && _punchOutTime != '—') {
           final piTs = att['punch_in_time'].toString();
           final poTs = att['punch_out_time'].toString();
-          final pi = DateTime.tryParse(piTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(piTs) ? piTs : '${piTs}Z');
-          final po = DateTime.tryParse(poTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(poTs) ? poTs : '${poTs}Z');
+          final pi = DateTime.tryParse(piTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(piTs) ? piTs : '${piTs}Z')?.toLocal();
+          final po = DateTime.tryParse(poTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(poTs) ? poTs : '${poTs}Z')?.toLocal();
           if (pi != null && po != null) {
             final dur = po.difference(pi);
             _workHours = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';

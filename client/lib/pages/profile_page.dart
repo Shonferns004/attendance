@@ -24,7 +24,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     final t = DateTime.tryParse(s);
     if (t == null) return '—';
-    return DateFormat('hh:mm a').format(t);
+    return DateFormat('hh:mm a').format(t.toLocal());
   }
 
   int _present = 0, _absent = 0, _late = 0, _leave = 0, _lateUsed = 0;
