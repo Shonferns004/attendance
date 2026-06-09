@@ -81,8 +81,8 @@ class _HomePageState extends State<HomePage> {
           final pi = DateTime.tryParse(piTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(piTs) ? piTs : '${piTs}Z');
           final po = DateTime.tryParse(poTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(poTs) ? poTs : '${poTs}Z');
           if (pi != null && po != null) {
-            final mins = po.difference(pi).inMinutes;
-            _workHours = '${mins ~/ 60}h ${mins % 60}m';
+            final dur = po.difference(pi);
+            _workHours = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
           }
         }
       }
@@ -179,8 +179,8 @@ class _HomePageState extends State<HomePage> {
         _isPunchedIn = false;
         _punchOutTime = DateFormat('hh:mm a').format(now);
         if (_piDt != null) {
-          final mins = now.difference(_piDt!).inMinutes;
-          _workHours = '${mins ~/ 60}h ${mins % 60}m';
+          final dur = now.difference(_piDt!);
+          _workHours = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
         }
         _isSuccess = true;
         _resultTitle = 'Punch Out Successful!';
