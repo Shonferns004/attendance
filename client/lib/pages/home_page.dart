@@ -34,9 +34,18 @@ class _HomePageState extends State<HomePage> {
 
   String _parseTime(dynamic ts) {
     if (ts == null) return '—';
-    final t = DateTime.tryParse(ts.toString());
+    final t = _parseDt(ts);
     if (t == null) return '—';
     return DateFormat('hh:mm a').format(t);
+  }
+
+  DateTime? _parseDt(dynamic ts) {
+    if (ts == null) return null;
+    String s = ts.toString();
+    if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+      s += 'Z';
+    }
+    return DateTime.tryParse(s);
   }
 
   @override
@@ -62,19 +71,13 @@ class _HomePageState extends State<HomePage> {
       final data = await ApiService.getTodayStatus();
       final att = data['attendance'];
       if (att != null) {
-        final piStr = _parseTime(att['punch_in_time']);
-        final poStr = _parseTime(att['punch_out_time']);
-        if (piStr != '—') {
-          _punchInTime = piStr;
-          _isPunchedIn = true;
-        }
-        if (poStr != '—') {
-          _punchOutTime = poStr;
-          _isPunchedIn = false;
-        }
-        if (piStr != '—' && poStr != '—') {
-          final pi = DateTime.parse(att['punch_in_time'].toString());
-          final po = DateTime.parse(att['punch_out_time'].toString());
+        _punchInTime = _parseTime(att['punch_in_time']);
+        _punchOutTime = _parseTime(att['punch_out_time']);
+        if (_punchInTime != '—') _isPunchedIn = true;
+        if (_punchOutTime != '—') _isPunchedIn = false;
+        final pi = _parseDt(att['punch_in_time']);
+        final po = _parseDt(att['punch_out_time']);
+        if (pi != null && po != null) {
           final mins = po.difference(pi).inMinutes;
           _workHours = '${mins ~/ 60}h ${mins % 60}m';
         }
@@ -168,8 +171,8 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _isPunchedIn = false;
         _punchOutTime = _parseTime(data['attendance']?['punch_out_time']);
-        final pi = DateTime.tryParse((data['attendance']?['punch_in_time'] ?? '').toString());
-        final po = DateTime.tryParse((data['attendance']?['punch_out_time'] ?? '').toString());
+        final pi = _parseDt(data['attendance']?['punch_in_time']);
+        final po = _parseDt(data['attendance']?['punch_out_time']);
         if (pi != null && po != null) {
           final mins = po.difference(pi).inMinutes;
           _workHours = '${mins ~/ 60}h ${mins % 60}m';

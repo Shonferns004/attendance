@@ -16,6 +16,17 @@ class _ProfilePageState extends State<ProfilePage> {
   List<dynamic> _history = [];
   bool _loading = true;
 
+  String _fmtTime(dynamic ts) {
+    if (ts == null) return '—';
+    String s = ts.toString();
+    if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+      s += 'Z';
+    }
+    final t = DateTime.tryParse(s);
+    if (t == null) return '—';
+    return DateFormat('hh:mm a').format(t);
+  }
+
   int _present = 0, _absent = 0, _late = 0, _leave = 0, _lateUsed = 0;
   Map<String, String> _statusByDate = {};
   final Map<int, Map<String, int>> _monthlyStats = {};
@@ -442,8 +453,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final d = DateTime.tryParse(date);
     final label = d != null ? DateFormat('dd MMM').format(d) : date;
     final day = d != null ? DateFormat('E').format(d) : '';
-    final punchIn = rec['punch_in_time'] != null ? DateFormat('hh:mm a').format(DateTime.parse(rec['punch_in_time'])) : '—';
-    final punchOut = rec['punch_out_time'] != null ? DateFormat('hh:mm a').format(DateTime.parse(rec['punch_out_time'])) : '—';
+    final punchIn = _fmtTime(rec['punch_in_time']);
+    final punchOut = _fmtTime(rec['punch_out_time']);
     final status = rec['status'] ?? 'present';
 
     Color chipColor;
