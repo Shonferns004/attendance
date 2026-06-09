@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
+import 'scanner_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,9 +12,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  final MobileScannerController _scannerController = MobileScannerController();
-  bool _scannerActive = false;
+class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   String _punchInTime = '—';
@@ -36,15 +33,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _startClock();
     _fetchStatus();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _scannerController.dispose();
     _clockTimer?.cancel();
     _resultTimer?.cancel();
     super.dispose();
@@ -91,17 +85,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     LocationPermission perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied) {
-        _showError('Location permission is required to mark attendance.');
-        return;
-      }
     }
-    if (perm == LocationPermission.deniedForever) {
-      _showError('Location permissions are permanently denied. Enable from settings.');
+    if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      _showError('Location permission is required to mark attendance.');
       return;
     }
-    setState(() => _scannerActive = true);
-    _scannerController.start();
+
+    if (!mounted) return;
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const ScannerPage()),
+    );
+    if (result == null || !mounted) return;
+
+    final code = result['code']?.toString();
+    final lat = result['lat'];
+    final lng = result['lng'];
+
+    if (code == null || lat == null || lng == null) return;
+
+    try {
+      final data = await ApiService.punchIn(code, lat, lng);
+      setState(() {
+        _isPunchedIn = true;
+        _punchInTime = DateFormat('hh:mm a').format(DateTime.now());
+        _punchOutTime = '—';
+        final lateMins = (data['lateMinutes'] ?? 0) as int;
+        _lateUsed = lateMins;
+        _lateRemaining = _lateRemaining - lateMins;
+        _isSuccess = true;
+        _resultTitle = 'Punch In Successful!';
+        _resultSub = data['lateMinutes'] > 0
+            ? 'Late by ${data['lateMinutes']} min'
+            : 'On time';
+        _showResult = true;
+        _fetchStatus();
+      });
+    } catch (e) {
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    }
+
+    _resultTimer?.cancel();
+    _resultTimer = Timer(const Duration(seconds: 4), () {
+      setState(() => _showResult = false);
+    });
   }
 
   Future<void> _handlePunchOut() async {
@@ -148,13 +175,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
   }
 
-  void _stopScanner() {
-    if (_scannerActive) {
-      _scannerActive = false;
-      _scannerController.stop();
-    }
-  }
-
   void _showError(String msg) {
     setState(() {
       _isSuccess = false;
@@ -162,71 +182,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _resultSub = msg;
       _showResult = true;
     });
-    _resultTimer?.cancel();
-    _resultTimer = Timer(const Duration(seconds: 4), () {
-      setState(() => _showResult = false);
-    });
-  }
-
-  Future<void> _onScan(BarcodeCapture capture) async {
-    if (capture.barcodes.isEmpty || _showResult) return;
-    _stopScanner();
-
-    final qrData = capture.barcodes.first.rawValue ?? '';
-    Map<String, dynamic> qrMap;
-    try {
-      qrMap = Map<String, dynamic>.from(
-        jsonDecode(qrData),
-      );
-    } catch (_) {
-      _showError('Invalid QR code format');
-      return;
-    }
-
-    final code = qrMap['code']?.toString();
-    if (code == null) {
-      _showError('Invalid QR code data');
-      return;
-    }
-
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-
-      if (_isPunchedIn) {
-        final data = await ApiService.punchOut(pos.latitude, pos.longitude);
-        setState(() {
-          _isPunchedIn = false;
-          _punchOutTime = DateFormat('hh:mm a').format(DateTime.now());
-          _workHours = '${data['hoursWorked'] ?? '0'}h';
-          _isSuccess = true;
-          _resultTitle = 'Punch Out Successful!';
-          _resultSub = 'Worked: ${data['hoursWorked'] ?? '0'} hours';
-          _showResult = true;
-        });
-      } else {
-        final data = await ApiService.punchIn(code, pos.latitude, pos.longitude);
-        setState(() {
-          _isPunchedIn = true;
-          _punchInTime = DateFormat('hh:mm a').format(DateTime.now());
-          _punchOutTime = '—';
-          final lateMins = (data['lateMinutes'] ?? 0) as int;
-          _lateUsed = lateMins;
-          _lateRemaining = _lateRemaining - lateMins;
-          _isSuccess = true;
-          _resultTitle = 'Punch In Successful!';
-          _resultSub = data['lateMinutes'] > 0
-              ? 'Late by ${data['lateMinutes']} min'
-              : 'On time';
-          _showResult = true;
-          _fetchStatus();
-        });
-      }
-    } catch (e) {
-      _showError(e.toString().replaceFirst('Exception: ', ''));
-    }
-
     _resultTimer?.cancel();
     _resultTimer = Timer(const Duration(seconds: 4), () {
       setState(() => _showResult = false);
@@ -352,40 +307,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ),
             ],
           ),
-          if (_scannerActive) ...[
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0x17000000)),
-                ),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 240,
-                      child: MobileScanner(
-                        controller: _scannerController,
-                        onDetect: _onScan,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.qr_code_scanner, size: 16, color: Color(0xFF72706B)),
-                          SizedBox(width: 8),
-                          Text('Point the camera at the office QR code', style: TextStyle(fontSize: 13, color: Color(0xFF72706B))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          const SizedBox(height: 12),
         ],
       ),
     );
