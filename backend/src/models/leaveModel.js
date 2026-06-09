@@ -59,3 +59,27 @@ export const getLeaveById = async (id) => {
   if (error) throw error;
   return data;
 };
+
+export const getApprovedLeaves = async (workerId) => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('worker_id', workerId)
+    .eq('status', 'approved')
+    .order('applied_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const getApprovedHalfDayLeave = async (workerId, date) => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('worker_id', workerId)
+    .eq('type', 'half_day')
+    .eq('status', 'approved')
+    .eq('leave_date', date)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};

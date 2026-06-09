@@ -7,6 +7,8 @@ import {
 } from '../models/attendanceModel.js';
 import { getQRByCode } from '../models/qrModel.js';
 import { getSetting } from '../models/settingsModel.js';
+import { getApprovedHalfDayLeave, getApprovedLeaves } from '../models/leaveModel.js';
+import { getAllAttendance } from '../models/attendanceModel.js';
 
 const MAX_LATE_MINUTES = 180;
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -67,12 +69,20 @@ export const punchIn = async (req, res) => {
       return res.status(400).json({ message: 'Already punched in today' });
     }
 
-    const officeStart = await getOfficeStart();
     const now = new Date();
-    const h = getIstTime(now).getUTCHours();
-    const m = getIstTime(now).getUTCMinutes();
-    const lateMinutes = (h > officeStart.hour || (h === officeStart.hour && m > officeStart.minute))
-      ? (h - officeStart.hour) * 60 + m - officeStart.minute
+    const ist = getIstTime(now);
+    const h = ist.getUTCHours();
+    const m = ist.getUTCMinutes();
+
+    let effectiveStart = await getOfficeStart();
+    const todayHalfDay = await getApprovedHalfDayLeave(req.user.id, istDateStr(now));
+    if (todayHalfDay && todayHalfDay.half_start_time) {
+      const [hd, hm] = todayHalfDay.half_start_time.split(':').map(Number);
+      effectiveStart = { hour: hd, minute: hm };
+    }
+
+    const lateMinutes = (h > effectiveStart.hour || (h === effectiveStart.hour && m > effectiveStart.minute))
+      ? (h - effectiveStart.hour) * 60 + m - effectiveStart.minute
       : 0;
 
     if (lateMinutes > 0) {
@@ -158,9 +168,85 @@ export const todayStatus = async (req, res) => {
   }
 };
 
+function expandLeaveDates(leave) {
+  const dates = [];
+  if (leave.type === 'full_day' && leave.leave_date) {
+    dates.push(leave.leave_date);
+  } else if (leave.type === 'vacational' && leave.start_date && leave.end_date) {
+    const start = new Date(leave.start_date + 'T00:00:00+05:30');
+    const end = new Date(leave.end_date + 'T00:00:00+05:30');
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${day}`);
+    }
+  }
+  return dates;
+}
+
+export const listAll = async (req, res) => {
+  try {
+    const records = await getAllAttendance();
+    for (const r of records) {
+      if (r.punch_in_time && r.punch_out_time) {
+        const pi = new Date(r.punch_in_time).getTime();
+        const po = new Date(r.punch_out_time).getTime();
+        const diffMs = po - pi;
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        r.hours_worked = `${hours}h ${minutes}m`;
+      } else {
+        r.hours_worked = null;
+      }
+    }
+    return res.json(records);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const myHistory = async (req, res) => {
   try {
     const records = await getAttendanceHistory(req.user.id);
+    const approvedLeaves = await getApprovedLeaves(req.user.id);
+
+    if (approvedLeaves.length === 0) return res.json(records);
+
+    const leaveByDate = {};
+    for (const leave of approvedLeaves) {
+      if (leave.type === 'half_day') continue;
+      for (const date of expandLeaveDates(leave)) {
+        leaveByDate[date] = true;
+      }
+    }
+
+    const recordDates = new Set(records.map((r) => r.date));
+    for (const [date, _] of Object.entries(leaveByDate)) {
+      if (!recordDates.has(date)) {
+        records.push({ date, status: 'leave', late_minutes: 0, hours_worked: null });
+      }
+    }
+
+    for (const r of records) {
+      if (r.punch_in_time && r.punch_out_time) {
+        const pi = new Date(r.punch_in_time).getTime();
+        const po = new Date(r.punch_out_time).getTime();
+        const diffMs = po - pi;
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        r.hours_worked = `${hours}h ${minutes}m`;
+      } else {
+        r.hours_worked = null;
+      }
+    }
+
+    records.sort((a, b) => {
+      if (a.date > b.date) return -1;
+      if (a.date < b.date) return 1;
+      return 0;
+    });
+
     return res.json(records);
   } catch (error) {
     return res.status(500).json({ message: error.message });

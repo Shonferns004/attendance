@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
+import '../main.dart';
 import 'scanner_page.dart';
 import 'leave_page.dart';
 
@@ -16,40 +17,29 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
-  bool _loading = true;
-  bool _buttonLoading = false;
-
-  String _punchInTime = '—';
-  String _punchOutTime = '—';
-  String _workHours = '0h 0m';
-  int _lateUsed = 0;
-  int _lateRemaining = 180;
-  bool _isPunchedIn = false;
-  DateTime? _piDt;
-
-  String _resultTitle = '';
-  String _resultSub = '';
-  bool _showResult = false;
-  bool _isSuccess = true;
-
   Timer? _clockTimer;
-  Timer? _resultTimer;
-
-  String _fmtTime(dynamic ts) {
-    if (ts == null) return '—';
-    String s = ts.toString();
-    if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
-      s += 'Z';
-    }
-    final t = DateTime.tryParse(s);
-    if (t == null) return '—';
-    return DateFormat('hh:mm a').format(t.toLocal());
-  }
+  DateTime _now = DateTime.now();
+  DateTime? _punchInTime;
+  DateTime? _punchOutTime;
+  String _workedDisplay = '00:00:00';
+  bool _isPunchedIn = false;
+  bool _isPunchedOut = false;
+  bool _loading = true;
+  int _lateUsed = 0;
+  int _present = 0, _absent = 0, _late = 0, _leave = 0;
+  String _workerName = '';
+  String _errorMsg = '';
+  String _successMsg = '';
 
   @override
   void initState() {
     super.initState();
-    _startClock();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _now = DateTime.now());
+      if (_isPunchedIn && !_isPunchedOut) {
+        _updateWorked();
+      }
+    });
     _fetchStatus();
   }
 
@@ -65,163 +55,150 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _clockTimer?.cancel();
-    _resultTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _startClock() {
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  void _updateWorked() {
+    if (_punchInTime == null) return;
+    final end = _punchOutTime ?? DateTime.now();
+    final diff = end.difference(_punchInTime!);
+    final h = diff.inHours.toString().padLeft(2, '0');
+    final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+    _workedDisplay = '$h:$m:$s';
   }
 
   Future<void> _fetchStatus() async {
     try {
-      final data = await ApiService.getTodayStatus();
-      final att = data['attendance'];
-      if (att != null) {
-        _punchInTime = _fmtTime(att['punch_in_time']);
-        _punchOutTime = _fmtTime(att['punch_out_time']);
-        if (_punchInTime != '—') _isPunchedIn = true;
-        if (_punchOutTime != '—') _isPunchedIn = false;
-        if (_punchInTime != '—') {
-          final ts = (att['punch_in_time'] ?? '').toString();
-          _piDt = DateTime.tryParse(ts.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(ts) ? ts : '${ts}Z')?.toLocal();
-        }
-        if (_punchInTime != '—' && _punchOutTime != '—') {
-          final piTs = att['punch_in_time'].toString();
-          final poTs = att['punch_out_time'].toString();
-          final pi = DateTime.tryParse(piTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(piTs) ? piTs : '${piTs}Z')?.toLocal();
-          final po = DateTime.tryParse(poTs.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(poTs) ? poTs : '${poTs}Z')?.toLocal();
-          if (pi != null && po != null) {
-            final dur = po.difference(pi);
-            _workHours = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
+      final worker = await ApiService.getWorkerData();
+      final today = await ApiService.getTodayStatus();
+      final history = await ApiService.getHistory();
+
+      final att = today['attendance'];
+      setState(() {
+        _workerName = worker?['name'] ?? '';
+        _lateUsed = today['lateUsed'] ?? 0;
+        if (att != null) {
+          _isPunchedIn = att['punch_in_time'] != null;
+          _isPunchedOut = att['punch_out_time'] != null;
+          _punchInTime = att['punch_in_time'] != null
+              ? DateTime.tryParse(att['punch_in_time'].toString())
+              : null;
+          _punchOutTime = att['punch_out_time'] != null
+              ? DateTime.tryParse(att['punch_out_time'].toString())
+              : null;
+          if (_isPunchedIn && !_isPunchedOut) _updateWorked();
+          if (_isPunchedOut && _punchInTime != null && _punchOutTime != null) {
+            final diff = _punchOutTime!.difference(_punchInTime!);
+            final h = diff.inHours.toString().padLeft(2, '0');
+            final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+            final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+            _workedDisplay = '$h:$m:$s';
           }
         }
-      }
-      _lateUsed = data['lateUsed'] ?? 0;
-      _lateRemaining = data['lateRemaining'] ?? 180;
-    } catch (_) {}
-    setState(() => _loading = false);
+        int p = 0, a = 0, l = 0, lv = 0;
+        for (final rec in history) {
+          final s = rec['status']?.toString() ?? '';
+          if (s == 'present') p++;
+          else if (s == 'absent') a++;
+          else if (s == 'late') l++;
+          else if (s == 'leave') lv++;
+        }
+        _present = p; _absent = a; _late = l; _leave = lv;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
   }
 
-  Future<void> _startScanner() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _showError('Location services are disabled. Please enable GPS.');
-      return;
-    }
-    LocationPermission perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-    }
-    if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-      _showError('Location permission is required to mark attendance.');
+  Future<void> _punchIn() async {
+    Position? pos;
+    try {
+      bool service = await Geolocator.isLocationServiceEnabled();
+      if (!service) { _showError('GPS is disabled'); return; }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) { _showError('Location permission denied'); return; }
+      }
+      if (perm == LocationPermission.deniedForever) { _showError('Location permission permanently denied'); return; }
+      pos = await Geolocator.getCurrentPosition();
+    } catch (e) {
+      _showError('Failed to get location: $e');
       return;
     }
 
-    if (!mounted) return;
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(builder: (_) => const ScannerPage()),
     );
     if (result == null || !mounted) return;
 
-    final code = result['code']?.toString();
-    final lat = result['lat'];
-    final lng = result['lng'];
-    if (code == null || lat == null || lng == null) return;
-
-    setState(() => _buttonLoading = true);
     try {
-      final data = await ApiService.punchIn(code, lat, lng);
-      final lateMins = (data['lateMinutes'] ?? 0) as int;
-      final now = DateTime.now();
+      final data = await ApiService.punchIn(result['code'], result['lat'], result['lng']);
       setState(() {
         _isPunchedIn = true;
-        _punchInTime = DateFormat('hh:mm a').format(now);
-        _piDt = now;
-        _punchOutTime = '—';
-        _lateUsed += lateMins;
-        _lateRemaining -= lateMins;
-        _isSuccess = true;
-        _resultTitle = 'Punch In Successful!';
-        _resultSub = lateMins > 0
-            ? 'Late by $lateMins min'
-            : 'On time';
-        _showResult = true;
-        _buttonLoading = false;
+        _punchInTime = DateTime.now();
+        _isPunchedOut = false;
+        _punchOutTime = null;
+        _updateWorked();
+        _successMsg = 'Punched in successfully';
+        _errorMsg = '';
       });
+      _clearMessages();
+      _fetchStatus();
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
-      setState(() => _buttonLoading = false);
     }
-
-    _resultTimer?.cancel();
-    _resultTimer = Timer(const Duration(seconds: 4), () {
-      setState(() => _showResult = false);
-    });
   }
 
-  Future<void> _handlePunchOut() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _showError('Location services are disabled. Please enable GPS.');
-      return;
-    }
-    LocationPermission perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied) {
-        _showError('Location permission is required to mark attendance.');
-        return;
-      }
-    }
-    if (perm == LocationPermission.deniedForever) {
-      _showError('Location permissions are permanently denied. Enable from settings.');
-      return;
-    }
-    setState(() => _buttonLoading = true);
+  Future<void> _punchOut() async {
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      bool service = await Geolocator.isLocationServiceEnabled();
+      if (!service) { _showError('GPS is disabled'); return; }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) { _showError('Location permission denied'); return; }
+      }
+      if (perm == LocationPermission.deniedForever) { _showError('Location permission permanently denied'); return; }
+      final pos = await Geolocator.getCurrentPosition();
       final data = await ApiService.punchOut(pos.latitude, pos.longitude);
-      final now = DateTime.now();
       setState(() {
-        _isPunchedIn = false;
-        _punchOutTime = DateFormat('hh:mm a').format(now);
-        if (_piDt != null) {
-          final dur = now.difference(_piDt!);
-          _workHours = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
-        }
-        _isSuccess = true;
-        _resultTitle = 'Punch Out Successful!';
-        _resultSub = 'Worked: $_workHours';
-        _showResult = true;
-        _buttonLoading = false;
+        _isPunchedOut = true;
+        _punchOutTime = DateTime.now();
+        _updateWorked();
+        _successMsg = 'Punched out successfully';
+        _errorMsg = '';
       });
+      _clearMessages();
+      _fetchStatus();
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
-      setState(() => _buttonLoading = false);
     }
-    _resultTimer?.cancel();
-    _resultTimer = Timer(const Duration(seconds: 4), () {
-      setState(() => _showResult = false);
-    });
   }
 
   void _showError(String msg) {
-    setState(() {
-      _isSuccess = false;
-      _resultTitle = 'Error';
-      _resultSub = msg;
-      _showResult = true;
+    setState(() { _errorMsg = msg; _successMsg = ''; });
+    _clearMessages();
+  }
+
+  void _clearMessages() {
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() { _errorMsg = ''; _successMsg = ''; });
     });
-    _resultTimer?.cancel();
-    _resultTimer = Timer(const Duration(seconds: 4), () {
-      setState(() => _showResult = false);
-    });
+  }
+
+  String _fmtTime(dynamic ts) {
+    if (ts == null) return '—';
+    String s = ts.toString();
+    if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) s += 'Z';
+    final t = DateTime.tryParse(s);
+    if (t == null) return '—';
+    return DateFormat('hh:mm a').format(t.toLocal());
   }
 
   void _openLeaveSheet() {
@@ -230,180 +207,296 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.92,
+        initialChildSize: 0.85,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, scrollCtrl) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFF5F4F0),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          builder: (_, scrollController) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFf9f9f9),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: LeavePage(scrollController: scrollController),
           ),
-          child: LeavePage(),
+      ),
+    );
+  }
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  double get _attendanceRate {
+    final total = _present + _absent + _late + _leave;
+    if (total == 0) return 0;
+    return (_present + _late) / total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    if (_loading) {
+      return Scaffold(
+        backgroundColor: scheme.surface,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final clockStr = DateFormat('hh:mm a').format(_now);
+    final firstName = _workerName.split(' ').first;
+    final initials = _workerName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join().toUpperCase();
+
+    return Scaffold(
+      backgroundColor: scheme.surface,
+      body: SafeArea(
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.menu, color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 16),
+                        Text('Attendance', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.notifications_outlined, color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: colors.primaryFixed,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scheme.primaryContainer, width: 2),
+                          ),
+                          child: Center(child: Text(initials.isNotEmpty ? initials[0] : '?',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.primary))),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_greeting.toUpperCase(), style: textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant, letterSpacing: 1.2)),
+                    Text(firstName.isNotEmpty ? firstName : 'there', style: textTheme.headlineMedium?.copyWith(color: scheme.onSurface)),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.15), blurRadius: 20)],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Opacity(
+                            opacity: 0.06,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                                  colors: [Colors.white, Colors.black.withValues(alpha: 0.3)],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Column(
+                              children: [
+                                Text(clockStr, style: textTheme.headlineLarge?.copyWith(color: scheme.onPrimaryContainer)),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: scheme.onPrimaryContainer.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.schedule, size: 16, color: scheme.onPrimaryContainer),
+                                      const SizedBox(width: 4),
+                                      Text('Worked: $_workedDisplay',
+                                        style: textTheme.labelMedium?.copyWith(color: scheme.onPrimaryContainer)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            if (_isPunchedOut)
+                              Column(
+                                children: [
+                                  Icon(Icons.check_circle, size: 48, color: Colors.white),
+                                  const SizedBox(height: 8),
+                                  Text('Today completed', style: textTheme.bodyLarge?.copyWith(color: Colors.white)),
+                                ],
+                              )
+                            else
+                              GestureDetector(
+                                onTap: _isPunchedIn ? _punchOut : _punchIn,
+                                child: Container(
+                                  width: 120, height: 120,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.3), blurRadius: 20)],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.fingerprint, size: 48,
+                                        color: _isPunchedIn ? scheme.error : scheme.primary.withValues(alpha: 0.8)),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _isPunchedIn ? 'Punch Out' : 'Punch In',
+                                        style: TextStyle(
+                                          fontSize: 13, fontWeight: FontWeight.w600,
+                                          color: _isPunchedIn ? scheme.error : scheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.only(top: 16),
+                              decoration: BoxDecoration(
+                                border: Border(top: BorderSide(color: scheme.onPrimaryContainer.withValues(alpha: 0.15))),
+                              ),
+                                child: Row(
+                                  children: [
+                                    Expanded(child: _shiftTime(textTheme, 'Punch In', _fmtTime(_punchInTime), scheme.onPrimaryContainer)),
+                                    Expanded(child: _shiftTime(textTheme, 'Punch Out', _fmtTime(_punchOutTime), scheme.onPrimaryContainer)),
+                                  ],
+                                ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(child: _statBento(context, colors, textTheme, scheme,
+                      Icons.event_available, 'Attendance', '${(_attendanceRate * 100).toStringAsFixed(0)}%',
+                      _attendanceRate, scheme.primary)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _statBento(context, colors, textTheme, scheme,
+                      Icons.warning_amber_rounded, 'Late Balance', '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
+                      (_lateUsed / 180).clamp(0, 1), colors.tertiary)),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 80),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 12),
+                      child:                       Text('QUICK ACTIONS', style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant, letterSpacing: 1.2)),
+                    ),
+                    _actionItem(context, colors, textTheme, scheme,
+                      Icons.calendar_today, 'Apply for Leave', 'Vacation, Sick or Casual leave',
+                      _openLeaveSheet, colors.secondaryContainer, colors.onSecondaryContainer),
+                    const SizedBox(height: 8),
+                    _actionItem(context, colors, textTheme, scheme,
+                      Icons.history, 'View Attendance History', 'Check previous punch records',
+                      null, colors.surfaceContainerHigh, scheme.onSurface),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final timeStr = DateFormat('hh:mm').format(now);
-    final ampm = DateFormat('a').format(now);
-    final dayStr = DateFormat('EEE, dd MMM yyyy').format(now);
-    String liveWork = '';
-    if (_piDt != null && _punchOutTime == '—') {
-      final dur = now.difference(_piDt!);
-      liveWork = '${dur.inHours}h ${dur.inMinutes.remainder(60)}m ${dur.inSeconds.remainder(60)}s';
-    }
+  Widget _shiftTime(TextTheme tt, String label, String time, Color color) {
+    return Column(
+      children: [
+        Text(label, style: tt.labelSmall?.copyWith(color: color.withValues(alpha: 0.7))),
+        const SizedBox(height: 2),
+        Text(time, style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: color)),
+      ],
+    );
+  }
 
-    if (_loading) {
-      return SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _skeletonBox(height: 160),
-            const SizedBox(height: 12),
-            _skeletonBox(height: 44),
-            const SizedBox(height: 16),
-            _skeletonBox(height: 100),
-          ],
-        ),
-      );
-    }
-
-    return SafeArea(
-      child: ListView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(20),
+  Widget _statBento(BuildContext context, AppColors colors, TextTheme tt, ColorScheme scheme,
+      IconData icon, String label, String value, double progress, Color barColor) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.surfaceContainerHighest),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
+            width: 40, height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0x17000000)),
+              color: colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(10),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            child: Column(
-              children: [
-                Text(timeStr, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w700, color: Color(0xFF2355D4), letterSpacing: -2)),
-                const SizedBox(height: 4),
-                Text('$ampm — $dayStr', style: const TextStyle(fontSize: 13, color: Color(0xFF72706B))),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _punchInfo('Punched In', _punchInTime),
-                    const SizedBox(width: 24),
-                    _punchInfo('Punched Out', _punchOutTime),
-                    const SizedBox(width: 24),
-                    _punchInfo('Worked', liveWork.isNotEmpty ? liveWork : _workHours),
-                  ],
-                ),
-              ],
-            ),
+            child: Icon(icon, size: 20, color: barColor),
           ),
           const SizedBox(height: 12),
-          if (_lateUsed > 150)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFDEAEA),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF5B7B0)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber, size: 18, color: Color(0xFFC0392B)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Late balance: $_lateUsed / 180 min used — $_lateRemaining min remaining',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFC0392B)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 16),
-          if (_showResult)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _isSuccess ? const Color(0xFFE6F6ED) : const Color(0xFFFDEAEA),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _isSuccess ? const Color(0xFFA8DFC0) : const Color(0xFFF5B7B0)),
-              ),
-              child: Column(
-                children: [
-                  Icon(_isSuccess ? Icons.check_circle : Icons.error, size: 48,
-                      color: _isSuccess ? const Color(0xFF1D7A4F) : const Color(0xFFC0392B)),
-                  const SizedBox(height: 8),
-                  Text(_resultTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(_resultSub, style: const TextStyle(fontSize: 14, color: Color(0xFF72706B))),
-                ],
-              ),
-            ),
-          _punchInTime != '—' && _punchOutTime != '—'
-              ? Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6F6ED),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFA8DFC0)),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.task_alt, size: 48, color: Color(0xFF1D7A4F)),
-                      SizedBox(height: 8),
-                      Text("Today's attendance is done",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0D5535))),
-                    ],
-                  ),
-                )
-              : _ActionCard(
-                  icon: _buttonLoading ? Icons.hourglass_top : Icons.qr_code_scanner,
-                  label: _isPunchedIn ? 'Punch Out' : 'Punch In',
-                  color: _isPunchedIn ? const Color(0xFFC0392B) : const Color(0xFF2355D4),
-                  loading: _buttonLoading,
-                  onTap: (!_buttonLoading) ? (_isPunchedIn ? _handlePunchOut : _startScanner) : null,
-                ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x17000000)),
-            ),
-            child: InkWell(
-              onTap: _openLeaveSheet,
-              borderRadius: BorderRadius.circular(12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FD),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.event_note, color: Color(0xFF2355D4), size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Apply for Leave', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                        SizedBox(height: 2),
-                        Text('Submit a leave application for review', style: TextStyle(fontSize: 12, color: Color(0xFF72706B))),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Color(0xFFA8A69F)),
-                ],
-              ),
+          Text(label, style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(value, style: tt.headlineSmall?.copyWith(color: scheme.onSurface)),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: progress, minHeight: 6,
+              backgroundColor: colors.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(barColor),
             ),
           ),
         ],
@@ -411,72 +504,40 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _skeletonBox({double height = 100}) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8E8E4),
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
-  }
-
-  Widget _punchInfo(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF72706B))),
-      ],
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool loading;
-  final VoidCallback? onTap;
-
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.loading = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _actionItem(BuildContext context, AppColors colors, TextTheme tt, ColorScheme scheme,
+      IconData icon, String title, String subtitle, VoidCallback? onTap, Color iconBg, Color iconColor) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedOpacity(
-        opacity: loading ? 0.7 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            children: [
-              if (loading)
-                const SizedBox(
-                  width: 28, height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
-                )
-              else ...[
-                Icon(icon, size: 36, color: Colors.white),
-                const SizedBox(height: 8),
-              ],
-              Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
-            ],
-          ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.surfaceContainerHighest),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 24, color: iconColor),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                  Text(subtitle, style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: colors.outline),
+          ],
         ),
       ),
     );

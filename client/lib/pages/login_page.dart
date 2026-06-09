@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../main.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onLogin;
@@ -38,13 +39,17 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A3D99), Color(0xFF0D5535)],
+            colors: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
           ),
         ),
         child: SafeArea(
@@ -57,21 +62,23 @@ class _LoginPageState extends State<LoginPage> {
                   Container(
                     width: 80, height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: const Icon(Icons.qr_code_scanner, size: 40, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Worker Login', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text('Worker Login', style: tt.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 4),
-                  Text('Sign in to mark attendance', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.7))),
+                  Text('Sign in to mark attendance',
+                    style: tt.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7))),
                   const SizedBox(height: 40),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      color: colors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       children: [
@@ -79,7 +86,9 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _loginCtrl,
                           decoration: InputDecoration(
                             labelText: 'Login ID',
-                            prefixIcon: const Icon(Icons.person_outline),
+                            prefixIcon: Icon(Icons.person_outline, color: scheme.onSurfaceVariant),
+                            filled: true,
+                            fillColor: scheme.surface,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
@@ -89,13 +98,15 @@ class _LoginPageState extends State<LoginPage> {
                           obscureText: true,
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon: Icon(Icons.lock_outline, color: scheme.onSurfaceVariant),
+                            filled: true,
+                            fillColor: scheme.surface,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!, style: const TextStyle(color: Color(0xFFC0392B), fontSize: 13)),
+                          Text(_error!, style: TextStyle(fontSize: 13, color: scheme.error)),
                         ],
                         const SizedBox(height: 20),
                         SizedBox(
@@ -103,14 +114,14 @@ class _LoginPageState extends State<LoginPage> {
                           child: ElevatedButton(
                             onPressed: _loading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2355D4),
+                              backgroundColor: scheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: _loading
                                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                : Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],

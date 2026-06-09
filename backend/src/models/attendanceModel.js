@@ -73,3 +73,12 @@ export const getAttendanceHistory = async (worker_id) => {
   if (error) throw error;
   return data;
 };
+
+export const getAllAttendance = async () => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*, workers(name, login_id, email)')
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return data;
+};
