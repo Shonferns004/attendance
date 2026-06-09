@@ -11,45 +11,23 @@ class ScannerPage extends StatefulWidget {
   State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
-  final MobileScannerController _controller = MobileScannerController();
+class _ScannerPageState extends State<ScannerPage> {
+  MobileScannerController? _controller;
   bool _detected = false;
-  bool _cameraReady = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initCamera();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _controller.start();
-    } else if (state == AppLifecycleState.paused) {
-      _controller.stop();
-    }
-  }
-
-  Future<void> _initCamera() async {
-    try {
-      await _controller.start();
-      if (mounted) setState(() => _cameraReady = true);
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Camera error: $e')),
-        );
-      }
-    }
+    _controller = MobileScannerController(
+      autoStart: true,
+      torchEnabled: false,
+      facing: CameraFacing.back,
+    );
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -57,7 +35,9 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
     if (_detected || capture.barcodes.isEmpty) return;
     _detected = true;
 
-    await _controller.stop();
+    try {
+      await _controller?.stop();
+    } catch (_) {}
 
     final raw = capture.barcodes.first.rawValue ?? '';
     Map<String, dynamic> map;
@@ -65,24 +45,22 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
       map = Map<String, dynamic>.from(jsonDecode(raw));
     } catch (_) {
       if (mounted) {
+        _detected = false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid QR code format')),
         );
       }
-      _detected = false;
-      _controller.start();
       return;
     }
 
     final code = map['code']?.toString();
     if (code == null) {
       if (mounted) {
+        _detected = false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid QR code data')),
         );
       }
-      _detected = false;
-      _controller.start();
       return;
     }
 
@@ -100,7 +78,7 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
     } catch (e) {
       if (mounted) {
         _detected = false;
-        _controller.start();
+        try { await _controller?.start(); } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('GPS error: $e')),
         );
@@ -121,40 +99,30 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
-          if (!_cameraReady)
-            const Center(
+      body: ClipRRect(
+        borderRadius: BorderRadius.circular(0),
+        child: MobileScanner(
+          controller: _controller,
+          onDetect: _onDetect,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, child) {
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: Colors.white),
-                  SizedBox(height: 16),
-                  Text('Starting camera...', style: TextStyle(color: Colors.white70)),
+                  const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                  const SizedBox(height: 16),
+                  Text('Camera error: $error', style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Go Back'),
+                  ),
                 ],
               ),
-            ),
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                Icon(Icons.qr_code_scanner, size: 32, color: Colors.white.withValues(alpha: 0.6)),
-                const SizedBox(height: 8),
-                Text(
-                  'Point the camera at the office QR code',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
