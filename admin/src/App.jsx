@@ -10,6 +10,7 @@ import MyTasks from './pages/MyTasks';
 import History from './pages/History';
 import GenerateQR from './pages/GenerateQR';
 import Sidebar from './components/Sidebar';
+import TopNavBar from './components/TopNavBar';
 import WorkerNav from './components/WorkerNav';
 
 function App() {
@@ -53,8 +54,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
@@ -65,25 +66,28 @@ function App() {
 
   if (user.role === 'admin') {
     return (
-      <div className="flex h-screen bg-gray-100">
+      <div className="min-h-screen bg-background">
         <Sidebar onLogout={handleLogout} />
-        <div className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/add-worker" element={<AddWorker />} />
-            <Route path="/assign-task" element={<AssignTask />} />
-            <Route path="/workers" element={<ViewWorkers />} />
-            <Route path="/tasks" element={<ViewTasks />} />
-            <Route path="/generate-qr" element={<GenerateQR />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </div>
+        <TopNavBar />
+        <main className="ml-[260px] pt-16 min-h-screen">
+          <div className="p-margin-page max-w-container-max-width mx-auto">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/add-worker" element={<AddWorker />} />
+              <Route path="/assign-task" element={<AssignTask />} />
+              <Route path="/workers" element={<ViewWorkers />} />
+              <Route path="/tasks" element={<ViewTasks />} />
+              <Route path="/generate-qr" element={<GenerateQR />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30">
+    <div className="min-h-screen bg-background">
       <WorkerNav worker={user.worker} onLogout={handleLogout} />
       <div className="max-w-5xl mx-auto p-6">
         <Routes>

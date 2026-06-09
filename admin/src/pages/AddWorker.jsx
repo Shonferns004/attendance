@@ -26,58 +26,129 @@ function AddWorker() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Add Worker</h1>
-      <div className="bg-white rounded-xl shadow-md p-6 max-w-lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Worker Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="Enter worker name"
-              required
-            />
+    <div>
+      <div className="grid grid-cols-12 gap-gutter">
+        <div className="col-span-12 lg:col-span-4">
+          <div className="sticky top-24">
+            <h1 className="text-headline-lg text-primary mb-stack-md">Add New Worker</h1>
+            <p className="text-body-lg text-on-surface-variant mb-stack-lg leading-relaxed">
+              Expand your workforce by adding a new team member. Ensure all details are accurate to facilitate seamless task assignment and tracking.
+            </p>
+            <div className="bg-surface-container p-gutter rounded-xl border border-outline-variant mb-stack-lg">
+              <h3 className="text-headline-sm text-primary mb-stack-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">info</span>
+                Quick Tips
+              </h3>
+              <ul className="space-y-3 text-body-md text-on-surface-variant">
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-sm mt-1">check_circle</span>
+                  <span>Login credentials will be generated automatically.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-sm mt-1">check_circle</span>
+                  <span>Default password is 123456 — worker can change after first login.</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="Enter email address"
-              required
-            />
+        </div>
+
+        <div className="col-span-12 lg:col-span-8">
+          <div className="bg-white p-gutter rounded-xl border border-outline-variant shadow-sm">
+            <form onSubmit={handleSubmit} className="space-y-stack-lg">
+              <div className="space-y-gutter">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                  <div className="space-y-stack-sm">
+                    <label className="text-label-md text-on-surface-variant block uppercase" htmlFor="worker-name">Full Name</label>
+                    <input
+                      id="worker-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                      placeholder="e.g. Johnathan Smith"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-stack-sm">
+                    <label className="text-label-md text-on-surface-variant block uppercase" htmlFor="worker-email">Email Address</label>
+                    <input
+                      id="worker-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                      placeholder="john.smith@company.com"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-error-container border border-error/30 text-on-error-container px-4 py-3 rounded-lg text-sm">{error}</div>
+              )}
+
+              <div className="pt-stack-lg flex flex-col md:flex-row items-center justify-between gap-gutter border-t border-outline-variant">
+                <p className="text-body-sm text-on-surface-variant max-w-xs">
+                  By adding this worker, you agree to our standard employment tracking protocols.
+                </p>
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setName(''); setEmail(''); setError(''); setResult(null); }}
+                    className="flex-1 md:flex-none px-8 py-3 text-label-md text-primary border border-outline-variant rounded-lg hover:bg-surface-container transition-all active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 md:flex-none px-12 py-3 text-label-md text-white bg-primary rounded-lg hover:bg-primary-container transition-all active:scale-95 shadow-md disabled:opacity-50"
+                  >
+                    {loading ? 'Adding...' : 'Add Worker'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-              {error}
+
+          {result && (
+            <div className="mt-gutter bg-white p-gutter rounded-xl border border-outline-variant shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-secondary">check_circle</span>
+                <h3 className="text-headline-sm text-primary">Worker Added Successfully!</h3>
+              </div>
+              <div className="bg-surface-container rounded-lg p-4 space-y-2 text-body-md text-primary">
+                <p><span className="text-label-md text-on-surface-variant">Name:</span> {result.name}</p>
+                <p><span className="text-label-md text-on-surface-variant">Email:</span> {result.email}</p>
+                <p><span className="text-label-md text-on-surface-variant">Login ID:</span> <span className="font-mono bg-primary-container text-on-primary px-2 py-0.5 rounded ml-1">{result.login_id}</span></p>
+                <p><span className="text-label-md text-on-surface-variant">Password:</span> <span className="font-mono bg-primary-container text-on-primary px-2 py-0.5 rounded ml-1">{result.generated_password}</span></p>
+              </div>
+              <p className="text-body-sm text-on-surface-variant mt-3">Share these credentials with the worker.</p>
             </div>
           )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Adding...' : 'Add Worker'}
-          </button>
-        </form>
 
-        {result && (
-          <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-semibold text-green-800 mb-2">Worker Added Successfully!</h3>
-            <div className="text-sm text-green-700 space-y-1">
-              <p><strong>Name:</strong> {result.name}</p>
-              <p><strong>Email:</strong> {result.email}</p>
-              <p><strong>Login ID:</strong> <span className="font-mono bg-green-100 px-2 py-0.5 rounded">{result.login_id}</span></p>
-              <p><strong>Password:</strong> <span className="font-mono bg-green-100 px-2 py-0.5 rounded">{result.generated_password}</span></p>
+          <div className="mt-gutter grid grid-cols-1 md:grid-cols-3 gap-gutter">
+            <div className="bg-white p-6 rounded-xl border border-outline-variant shadow-sm text-center">
+              <p className="text-label-md text-on-surface-variant uppercase mb-2">Total Workers</p>
+              <p className="text-headline-lg text-primary">{result ? 'Updated' : '—'}</p>
             </div>
-            <p className="text-xs text-green-600 mt-2">Share these credentials with the worker.</p>
+            <div className="bg-white p-6 rounded-xl border border-outline-variant shadow-sm text-center">
+              <p className="text-label-md text-on-surface-variant uppercase mb-2">Status</p>
+              <p className="text-headline-lg text-secondary">Active</p>
+            </div>
+            <div className="bg-primary p-6 rounded-xl border border-outline-variant shadow-sm text-center relative overflow-hidden">
+              <div className="relative z-10">
+                <p className="text-label-md text-on-primary-container uppercase mb-2">Welcome</p>
+                <p className="text-body-md text-on-primary font-bold">{result ? result.name : 'Awaiting entry'}</p>
+              </div>
+              <div className="absolute -right-4 -bottom-4 opacity-10">
+                <span className="material-symbols-outlined text-white text-8xl" style={{ fontSize: '100px' }}>person</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

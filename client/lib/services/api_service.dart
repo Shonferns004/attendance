@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config.dart';
+
 class ApiService {
-  // Change this to your server's IP for real device testing
-  static const String baseUrl = 'http://10.0.2.2:5000/api';
+  static String get baseUrl => Config.apiBaseUrl;
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
