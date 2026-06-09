@@ -8,9 +8,31 @@ function GenerateQR() {
   const [longitude, setLongitude] = useState('');
   const [radius, setRadius] = useState('100');
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const canvasRef = useRef(null);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by this browser.');
+      return;
+    }
+    setLocating(true);
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude.toFixed(6));
+        setLongitude(pos.coords.longitude.toFixed(6));
+        setLocating(false);
+      },
+      (err) => {
+        setError(`Location error: ${err.message}`);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,29 +101,50 @@ function GenerateQR() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-label-md text-on-surface-variant block uppercase mb-1">Latitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  className="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-body-md"
-                  placeholder="19.0760"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="any"
+                    value={latitude}
+                    onChange={(e) => setLatitude(e.target.value)}
+                    className="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-body-md pr-10"
+                    placeholder="19.0760"
+                    required
+                  />
+                  {latitude && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-xs font-mono">N</span>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-label-md text-on-surface-variant block uppercase mb-1">Longitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  className="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-body-md"
-                  placeholder="72.8777"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="any"
+                    value={longitude}
+                    onChange={(e) => setLongitude(e.target.value)}
+                    className="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-body-md pr-10"
+                    placeholder="72.8777"
+                    required
+                  />
+                  {longitude && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-xs font-mono">E</span>
+                  )}
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={getCurrentLocation}
+              disabled={locating}
+              className="w-full flex items-center justify-center gap-2 bg-surface-container text-on-surface py-3 rounded-lg text-label-md border border-outline-variant hover:bg-surface-container-high transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-lg">
+                {locating ? 'location_searching' : 'my_location'}
+              </span>
+              {locating ? 'Detecting location…' : 'Get Current Location'}
+            </button>
             <div>
               <label className="text-label-md text-on-surface-variant block uppercase mb-1">
                 Geo-fence Radius (meters) <span className="text-on-surface-variant/60 font-normal normal-case">— default 100m</span>
