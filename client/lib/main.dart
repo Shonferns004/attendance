@@ -95,13 +95,18 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  int _tabChangeVersion = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _currentIndex == 0
-          ? const HomePage()
-          : ProfilePage(onLogout: widget.onLogout),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          HomePage(tabChangeVersion: _tabChangeVersion),
+          ProfilePage(onLogout: widget.onLogout, tabChangeVersion: _tabChangeVersion),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: const Color(0x17000000))),
@@ -112,8 +117,8 @@ class _MainShellState extends State<MainShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
-                _NavItem(index: 0, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', isActive: _currentIndex == 0, onTap: () => setState(() => _currentIndex = 0)),
-                _NavItem(index: 1, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', isActive: _currentIndex == 1, onTap: () => setState(() => _currentIndex = 1)),
+                _NavItem(index: 0, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', isActive: _currentIndex == 0, onTap: () { if (_currentIndex != 0) { _tabChangeVersion++; setState(() => _currentIndex = 0); } }),
+                _NavItem(index: 1, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', isActive: _currentIndex == 1, onTap: () { if (_currentIndex != 1) { _tabChangeVersion++; setState(() => _currentIndex = 1); } }),
               ],
             ),
           ),

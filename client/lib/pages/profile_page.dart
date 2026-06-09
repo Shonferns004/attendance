@@ -5,13 +5,15 @@ import '../widgets/mini_calendar.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLogout;
-  const ProfilePage({super.key, this.onLogout});
+  final int tabChangeVersion;
+  const ProfilePage({super.key, this.onLogout, required this.tabChangeVersion});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final ScrollController _scrollController = ScrollController();
   Map<String, dynamic>? _worker;
   List<dynamic> _history = [];
   bool _loading = true;
@@ -35,6 +37,22 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tabChangeVersion != oldWidget.tabChangeVersion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) _scrollController.jumpTo(0);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -118,6 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return SafeArea(
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(20),
         children: [
           _profileCard(name, initials, loginId, email),

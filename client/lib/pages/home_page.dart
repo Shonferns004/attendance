@@ -7,13 +7,15 @@ import 'scanner_page.dart';
 import 'leave_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int tabChangeVersion;
+  const HomePage({super.key, required this.tabChangeVersion});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  final ScrollController _scrollController = ScrollController();
   bool _loading = true;
   bool _buttonLoading = false;
 
@@ -52,7 +54,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tabChangeVersion != oldWidget.tabChangeVersion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) _scrollController.jumpTo(0);
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.dispose();
     _clockTimer?.cancel();
     _resultTimer?.cancel();
     super.dispose();
@@ -260,6 +273,7 @@ class _HomePageState extends State<HomePage> {
 
     return SafeArea(
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(20),
         children: [
           Container(
