@@ -6,10 +6,18 @@ import {
   getAttendanceHistory,
 } from '../models/attendanceModel.js';
 import { getQRByCode } from '../models/qrModel.js';
+import { getSetting } from '../models/settingsModel.js';
 
 const MAX_LATE_MINUTES = 180;
-const OFFICE_START_HOUR = 9;
-const OFFICE_START_MINUTE = 10;
+
+async function getOfficeStart() {
+  const val = await getSetting('office_start_time');
+  if (val) {
+    const [h, m] = val.split(':').map(Number);
+    return { hour: h, minute: m };
+  }
+  return { hour: 10, minute: 0 };
+}
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -46,9 +54,10 @@ export const punchIn = async (req, res) => {
       return res.status(400).json({ message: 'Already punched in today' });
     }
 
+    const officeStart = await getOfficeStart();
     const now = new Date();
-    const lateMinutes = (now.getHours() > OFFICE_START_HOUR || (now.getHours() === OFFICE_START_HOUR && now.getMinutes() > OFFICE_START_MINUTE))
-      ? (now.getHours() - OFFICE_START_HOUR) * 60 + now.getMinutes() - OFFICE_START_MINUTE
+    const lateMinutes = (now.getHours() > officeStart.hour || (now.getHours() === officeStart.hour && now.getMinutes() > officeStart.minute))
+      ? (now.getHours() - officeStart.hour) * 60 + now.getMinutes() - officeStart.minute
       : 0;
 
     if (lateMinutes > 0) {

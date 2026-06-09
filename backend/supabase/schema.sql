@@ -1,9 +1,14 @@
+-- Full schema for attendance system
+-- Run this in Supabase SQL Editor
+
 CREATE TABLE workers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   login_id TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
+  gender TEXT,
+  dob DATE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -42,6 +47,14 @@ CREATE TABLE attendance (
   status TEXT DEFAULT 'present' CHECK (status IN ('present', 'late', 'absent')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00') ON CONFLICT (key) DO NOTHING;
 
 CREATE INDEX idx_tasks_worker_id ON tasks(worker_id);
 CREATE INDEX idx_tasks_status ON tasks(status);

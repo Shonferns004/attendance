@@ -36,10 +36,19 @@ function Sidebar({ onLogout }) {
         ))}
       </nav>
       <div className="mt-auto border-t border-white/10 pt-4 space-y-1">
-        <a className="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container/50 transition-colors cursor-pointer">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 text-label-md transition-all duration-200 ${
+              isActive
+                ? 'border-l-4 border-secondary-fixed text-on-primary font-bold bg-primary-container'
+                : 'text-on-primary-container hover:bg-primary-container/50 hover:text-on-primary border-l-4 border-transparent'
+            }`
+          }
+        >
           <span className="material-symbols-outlined">settings</span>
           <span className="text-label-md">Settings</span>
-        </a>
+        </NavLink>
         <button
           onClick={onLogout}
           className="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container/50 transition-colors w-full text-left"

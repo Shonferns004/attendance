@@ -1,4 +1,11 @@
-CREATE TABLE IF NOT EXISTS workers (
+-- Reset & recreate full schema
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS qr_codes CASCADE;
+DROP TABLE IF EXISTS settings CASCADE;
+DROP TABLE IF EXISTS workers CASCADE;
+
+CREATE TABLE workers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
@@ -9,7 +16,7 @@ CREATE TABLE IF NOT EXISTS workers (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+CREATE TABLE tasks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   worker_id UUID REFERENCES workers(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -20,7 +27,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS qr_codes (
+CREATE TABLE qr_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
   label TEXT NOT NULL,
@@ -30,7 +37,7 @@ CREATE TABLE IF NOT EXISTS qr_codes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS attendance (
+CREATE TABLE attendance (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   worker_id UUID REFERENCES workers(id) ON DELETE CASCADE,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -45,17 +52,17 @@ CREATE TABLE IF NOT EXISTS attendance (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS settings (
+CREATE TABLE settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 
-INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00') ON CONFLICT (key) DO NOTHING;
-INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00');
+INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00');
 
-CREATE INDEX IF NOT EXISTS idx_tasks_worker_id ON tasks(worker_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-CREATE INDEX IF NOT EXISTS idx_workers_login_id ON workers(login_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_id, date);
-CREATE INDEX IF NOT EXISTS idx_attendance_month ON attendance(worker_id, date);
-CREATE INDEX IF NOT EXISTS idx_qr_codes_code ON qr_codes(code);
+CREATE INDEX idx_tasks_worker_id ON tasks(worker_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_workers_login_id ON workers(login_id);
+CREATE INDEX idx_attendance_worker_date ON attendance(worker_id, date);
+CREATE INDEX idx_attendance_month ON attendance(worker_id, date);
+CREATE INDEX idx_qr_codes_code ON qr_codes(code);

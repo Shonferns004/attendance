@@ -97,7 +97,9 @@ function ViewWorkers() {
             <thead className="bg-surface">
               <tr>
                 <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">Worker Details</th>
-                <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">Email Address</th>
+                <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">Email</th>
+                <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">Gender</th>
+                <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">DOB</th>
                 <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -105,7 +107,7 @@ function ViewWorkers() {
             <tbody className="divide-y divide-outline-variant">
               {workers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-body-md text-on-surface-variant">
+                  <td colSpan={6} className="px-6 py-12 text-center text-body-md text-on-surface-variant">
                     No workers added yet.
                   </td>
                 </tr>
@@ -126,6 +128,8 @@ function ViewWorkers() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-body-md text-on-surface-variant">{w.email}</td>
+                      <td className="px-6 py-4 text-body-md text-on-surface-variant">{w.gender || '—'}</td>
+                      <td className="px-6 py-4 text-body-md text-on-surface-variant">{w.dob ? new Date(w.dob).toLocaleDateString() : '—'}</td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-secondary-container text-on-secondary-container">
                           Active

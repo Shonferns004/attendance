@@ -4,6 +4,8 @@ import { addWorker } from '../api/workers';
 function AddWorker() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [gender, setGender] = useState('');
+  const [dob, setDob] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -14,10 +16,12 @@ function AddWorker() {
     setResult(null);
     setLoading(true);
     try {
-      const data = await addWorker(name, email);
+      const data = await addWorker(name, email, gender, dob);
       setResult(data.worker);
       setName('');
       setEmail('');
+      setGender('');
+      setDob('');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -80,6 +84,30 @@ function AddWorker() {
                       className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
                       placeholder="john.smith@company.com"
                       required
+                    />
+                  </div>
+                  <div className="space-y-stack-sm">
+                    <label className="text-label-md text-on-surface-variant block uppercase" htmlFor="worker-gender">Gender</label>
+                    <select
+                      id="worker-gender"
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                    >
+                      <option value="">Select</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-stack-sm">
+                    <label className="text-label-md text-on-surface-variant block uppercase" htmlFor="worker-dob">Date of Birth</label>
+                    <input
+                      id="worker-dob"
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
                     />
                   </div>
                 </div>

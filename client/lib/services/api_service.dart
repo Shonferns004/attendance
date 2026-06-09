@@ -87,4 +87,14 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to get status');
     return body;
   }
+
+  static Future<List<dynamic>> getHistory() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/attendance/history'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get history');
+    return body is List ? body : [];
+  }
 }

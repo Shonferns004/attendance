@@ -104,6 +104,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _scannerController.start();
   }
 
+  Future<void> _handlePunchOut() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showError('Location services are disabled. Please enable GPS.');
+      return;
+    }
+    LocationPermission perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied) {
+        _showError('Location permission is required to mark attendance.');
+        return;
+      }
+    }
+    if (perm == LocationPermission.deniedForever) {
+      _showError('Location permissions are permanently denied. Enable from settings.');
+      return;
+    }
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      final data = await ApiService.punchOut(pos.latitude, pos.longitude);
+      setState(() {
+        _isPunchedIn = false;
+        _punchOutTime = DateFormat('hh:mm a').format(DateTime.now());
+        final mins = data['hoursWorked'] is String
+            ? double.tryParse(data['hoursWorked'] ?? '0') ?? 0
+            : (data['hoursWorked'] ?? 0).toDouble();
+        _workHours = '${mins ~/ 1}h ${((mins % 1) * 60).round()}m';
+        _isSuccess = true;
+        _resultTitle = 'Punch Out Successful!';
+        _resultSub = 'Worked: $workHours';
+        _showResult = true;
+      });
+    } catch (e) {
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    }
+    _resultTimer?.cancel();
+    _resultTimer = Timer(const Duration(seconds: 4), () {
+      setState(() => _showResult = false);
+    });
+  }
+
   void _stopScanner() {
     if (_scannerActive) {
       _scannerActive = false;
@@ -280,7 +324,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   icon: Icons.qr_code_scanner,
                   label: _isPunchedIn ? 'Punch Out' : 'Punch In',
                   color: _isPunchedIn ? const Color(0xFFC0392B) : const Color(0xFF2355D4),
-                  onTap: _startScanner,
+                  onTap: _isPunchedIn ? _handlePunchOut : _startScanner,
                 ),
               ),
               const SizedBox(width: 12),

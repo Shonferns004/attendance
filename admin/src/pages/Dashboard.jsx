@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react';
-import { getWorkers } from '../api/workers';
+import { getWorkers, getBirthdays } from '../api/workers';
 import { getTasks } from '../api/tasks';
 
 function Dashboard() {
   const [stats, setStats] = useState({ workers: 0, tasks: 0, pending: 0, completed: 0 });
+  const [birthdays, setBirthdays] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [workers, tasks] = await Promise.all([getWorkers(), getTasks()]);
+        const [workers, tasks, bdays] = await Promise.all([getWorkers(), getTasks(), getBirthdays()]);
         setStats({
           workers: workers.length,
           tasks: tasks.length,
           pending: tasks.filter((t) => t.status === 'pending').length,
           completed: tasks.filter((t) => t.status === 'completed').length,
         });
+        setBirthdays(bdays);
       } catch (err) {
         console.error(err);
       } finally {
@@ -150,16 +152,33 @@ function Dashboard() {
             )}
           </div>
 
-          <div className="bg-surface-container-low p-6 rounded-xl border-2 border-dashed border-outline-variant">
-            <h4 className="text-label-md text-on-surface-variant mb-4">SYSTEM NOTICES</h4>
-            <div className="flex items-start gap-3 opacity-60">
-              <span className="material-symbols-outlined text-primary text-lg">info</span>
-              <p className="text-body-sm text-on-surface-variant italic">
-                {stats.workers === 0
-                  ? 'No workers registered. Add workers to get started.'
-                  : 'Configuration complete. System is ready.'}
-              </p>
-            </div>
+          <div className="bg-white p-6 border border-outline-variant rounded-xl shadow-sm">
+            <h4 className="text-label-md text-primary uppercase tracking-widest mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-secondary">celebration</span>
+              Upcoming Birthdays
+            </h4>
+            {birthdays.length === 0 ? (
+              <div className="flex items-start gap-3 opacity-60">
+                <span className="material-symbols-outlined text-primary text-lg">info</span>
+                <p className="text-body-sm text-on-surface-variant italic">No upcoming birthdays in the next 30 days.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {birthdays.map((b) => (
+                  <div key={b.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-white font-bold text-xs">
+                      {b.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-sm font-medium text-primary truncate">{b.name}</p>
+                      <p className="text-[11px] text-on-surface-variant">
+                        {b.birthdayInDays === 0 ? 'Today!' : `In ${b.birthdayInDays} day${b.birthdayInDays > 1 ? 's' : ''}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

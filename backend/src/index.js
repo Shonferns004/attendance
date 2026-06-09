@@ -6,6 +6,7 @@ import workerRoutes from './routes/workerRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import qrRoutes from './routes/qrRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });

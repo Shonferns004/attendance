@@ -34,7 +34,7 @@ async function generateLoginId(name) {
 
 export const addWorker = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, gender, dob } = req.body;
     if (!name || !email) {
       return res.status(400).json({ message: 'Name and email are required' });
     }
@@ -47,6 +47,8 @@ export const addWorker = async (req, res) => {
       email,
       login_id,
       password: hashedPassword,
+      gender: gender || null,
+      dob: dob || null,
     });
 
     return res.status(201).json({
@@ -56,6 +58,8 @@ export const addWorker = async (req, res) => {
         name: worker.name,
         email: worker.email,
         login_id: worker.login_id,
+        gender: worker.gender,
+        dob: worker.dob,
         generated_password: DEFAULT_PASSWORD,
       },
     });
@@ -72,6 +76,8 @@ export const getWorkers = async (req, res) => {
       name: w.name,
       email: w.email,
       login_id: w.login_id,
+      gender: w.gender,
+      dob: w.dob,
       created_at: w.created_at,
     }));
     return res.json(safeWorkers);
@@ -91,6 +97,8 @@ export const getWorker = async (req, res) => {
       name: worker.name,
       email: worker.email,
       login_id: worker.login_id,
+      gender: worker.gender,
+      dob: worker.dob,
       created_at: worker.created_at,
     });
   } catch (error) {
@@ -100,12 +108,40 @@ export const getWorker = async (req, res) => {
 
 export const editWorker = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, gender, dob } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (email) updates.email = email;
+    if (gender !== undefined) updates.gender = gender;
+    if (dob !== undefined) updates.dob = dob;
     const worker = await updateWorker(req.params.id, updates);
     return res.json({ message: 'Worker updated successfully', worker });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getBirthdays = async (req, res) => {
+  try {
+    const workers = await getAllWorkers();
+    const today = new Date();
+    const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const upcoming = workers
+      .filter((w) => w.dob)
+      .map((w) => {
+        const dob = new Date(w.dob);
+        const md = `${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
+        const diffDays = (new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) - today) / 86400000;
+        return { ...w, _md: md, _diff: diffDays >= 0 ? diffDays : diffDays + 365 };
+      })
+      .filter((w) => w._diff <= 30)
+      .sort((a, b) => a._diff - b._diff)
+      .slice(0, 10)
+      .map(({ password, _md, _diff, ...rest }) => ({
+        ...rest,
+        birthdayInDays: Math.round(_diff),
+      }));
+    return res.json(upcoming);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

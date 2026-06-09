@@ -44,7 +44,7 @@ export const workerLogin = async (req, res) => {
     return res.json({
       token,
       role: 'worker',
-      worker: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id },
+      worker: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, gender: worker.gender, dob: worker.dob },
       message: 'Login successful',
     });
   } catch (error) {
