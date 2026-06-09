@@ -234,7 +234,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final timeStr = DateFormat('hh:mm').format(now);
+    final timeStr = DateFormat('hh:mm:ss').format(now);
     final ampm = DateFormat('a').format(now);
     final dayStr = DateFormat('EEE, dd MMM yyyy').format(now);
 
@@ -284,27 +284,27 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: _lateRemaining < 30 ? const Color(0xFFFDEAEA) : const Color(0xFFEEF2FD),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _lateRemaining < 30 ? const Color(0xFFF5B7B0) : const Color(0x17000000)),
-            ),
-            child: Row(
-              children: [
-                Icon(_lateRemaining < 30 ? Icons.warning_amber : Icons.access_time, size: 18,
-                    color: _lateRemaining < 30 ? const Color(0xFFC0392B) : const Color(0xFF2355D4)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Late balance: $_lateUsed / 180 min used — $_lateRemaining min remaining this month',
-                    style: TextStyle(fontSize: 12, color: _lateRemaining < 30 ? const Color(0xFFC0392B) : const Color(0xFF2355D4)),
+          if (_lateUsed > 150)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFDEAEA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF5B7B0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber, size: 18, color: Color(0xFFC0392B)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Late balance: $_lateUsed / 180 min used — $_lateRemaining min remaining',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFC0392B)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           if (_showResult)
             Container(
@@ -326,40 +326,30 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-          Row(
-            children: [
-              Expanded(
-                child: _ActionCard(
+          _punchInTime != '—' && _punchOutTime != '—'
+              ? Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE6F6ED),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFA8DFC0)),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.task_alt, size: 48, color: Color(0xFF1D7A4F)),
+                      SizedBox(height: 8),
+                      Text("Today's attendance is done",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0D5535))),
+                    ],
+                  ),
+                )
+              : _ActionCard(
                   icon: _buttonLoading ? Icons.hourglass_top : Icons.qr_code_scanner,
                   label: _isPunchedIn ? 'Punch Out' : 'Punch In',
                   color: _isPunchedIn ? const Color(0xFFC0392B) : const Color(0xFF2355D4),
                   loading: _buttonLoading,
                   onTap: (!_buttonLoading) ? (_isPunchedIn ? _handlePunchOut : _startScanner) : null,
                 ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: _openLeaveSheet,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1D7A4F),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: const Color(0xFF1D7A4F).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(_lateRemaining.toString(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white)),
-                      const SizedBox(height: 4),
-                      const Text('Min Left', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
