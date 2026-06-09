@@ -97,4 +97,25 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to get history');
     return body is List ? body : [];
   }
+
+  static Future<Map<String, dynamic>> applyLeave(Map<String, dynamic> data) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/leaves/apply'),
+      headers: await _headers(),
+      body: jsonEncode(data),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 201) throw Exception(body['message'] ?? 'Failed to apply leave');
+    return body;
+  }
+
+  static Future<List<dynamic>> getMyLeaves() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/leaves/my'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get leaves');
+    return body is List ? body : [];
+  }
 }

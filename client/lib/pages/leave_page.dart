@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../data/mock_data.dart' as data;
-import '../models/leave_record.dart';
+import '../services/api_service.dart';
 
 class LeavePage extends StatefulWidget {
   const LeavePage({super.key});
@@ -11,62 +10,183 @@ class LeavePage extends StatefulWidget {
 }
 
 class _LeavePageState extends State<LeavePage> {
-  final _typeCtrl = TextEditingController();
-  final _fromCtrl = TextEditingController();
-  final _toCtrl = TextEditingController();
+  String? _selectedType;
+  final _leaveDateCtrl = TextEditingController();
+  final _startDateCtrl = TextEditingController();
+  final _endDateCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
-  final _contactCtrl = TextEditingController();
-  String _selectedType = '';
+  TimeOfDay? _halfStartTime;
+  TimeOfDay? _halfEndTime;
   bool _showSuccess = false;
+  bool _submitting = false;
   int _formKey = 0;
+  List<dynamic> _leaves = [];
+  bool _loadingLeaves = true;
 
-  final Map<String, Color> _balanceColors = {
-    'Casual Leave': const Color(0xFF1D7A4F),
-    'Sick Leave': const Color(0xFFB06A00),
-    'Earned Leave': const Color(0xFF2355D4),
+  final Map<String, String> _typeLabels = {
+    'full_day': 'Full Day',
+    'half_day': 'Half Day',
+    'vacational': 'Vacational',
   };
 
   @override
+  void initState() {
+    super.initState();
+    _fetchLeaves();
+  }
+
+  @override
   void dispose() {
-    _typeCtrl.dispose();
-    _fromCtrl.dispose();
-    _toCtrl.dispose();
+    _leaveDateCtrl.dispose();
+    _startDateCtrl.dispose();
+    _endDateCtrl.dispose();
     _reasonCtrl.dispose();
-    _contactCtrl.dispose();
     super.dispose();
   }
 
-  void _submitLeave() {
-    if (_selectedType.isEmpty || _fromCtrl.text.isEmpty || _toCtrl.text.isEmpty || _reasonCtrl.text.trim().isEmpty) {
+  Future<void> _fetchLeaves() async {
+    try {
+      final leaves = await ApiService.getMyLeaves();
+      setState(() {
+        _leaves = leaves;
+        _loadingLeaves = false;
+      });
+    } catch (_) {
+      setState(() => _loadingLeaves = false);
+    }
+  }
+
+  int _daysFromNow(DateTime date) {
+    final now = DateTime.now();
+    final target = DateTime(date.year, date.month, date.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return target.difference(today).inDays;
+  }
+
+  String? _validateForm() {
+    if (_selectedType == null) return 'Please select a leave type';
+
+    final now = DateTime.now();
+
+    if (_selectedType == 'full_day') {
+      if (_leaveDateCtrl.text.isEmpty) return 'Please select a leave date';
+      final date = DateTime.tryParse(_leaveDateCtrl.text);
+      if (date == null) return 'Invalid date';
+      if (_daysFromNow(date) < 2) return 'Full day leave must be applied at least 2 days prior';
+      if (now.hour < 12) return 'Full day leave can only be applied after 12 PM';
+    } else if (_selectedType == 'half_day') {
+      if (_leaveDateCtrl.text.isEmpty) return 'Please select a leave date';
+      if (_halfStartTime == null) return 'Please select start time';
+      if (_halfEndTime == null) return 'Please select end time';
+      final date = DateTime.tryParse(_leaveDateCtrl.text);
+      if (date == null) return 'Invalid date';
+      if (_daysFromNow(date) < 1) return 'Half day leave must be applied at least 1 day prior';
+    } else if (_selectedType == 'vacational') {
+      if (_startDateCtrl.text.isEmpty) return 'Please select start date';
+      if (_endDateCtrl.text.isEmpty) return 'Please select end date';
+      final sd = DateTime.tryParse(_startDateCtrl.text);
+      final ed = DateTime.tryParse(_endDateCtrl.text);
+      if (sd == null || ed == null) return 'Invalid dates';
+      if (ed.isBefore(sd)) return 'End date must be on or after start date';
+      if (_daysFromNow(sd) < 30) return 'Vacational leave must be applied at least 1 month prior';
+    }
+
+    if (_reasonCtrl.text.trim().isEmpty) return 'Please provide a reason';
+    return null;
+  }
+
+  Future<void> _submitLeave() async {
+    final error = _validateForm();
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields.'), backgroundColor: Color(0xFFC0392B)),
+        SnackBar(content: Text(error), backgroundColor: const Color(0xFFC0392B)),
       );
       return;
     }
-    setState(() => _showSuccess = true);
-    final fromDate = DateTime.parse(_fromCtrl.text);
-    final toDate = DateTime.parse(_toCtrl.text);
-    final days = toDate.difference(fromDate).inDays + 1;
-    data.leaveHistory.insert(0, LeaveRecord(
-      type: _selectedType,
-      from: DateFormat('dd MMM yyyy').format(fromDate),
-      to: DateFormat('dd MMM yyyy').format(toDate),
-      days: days,
-      status: 'pending',
-      reason: _reasonCtrl.text.trim(),
-    ));
+
+    setState(() => _submitting = true);
+
+    try {
+      final data = <String, dynamic>{
+        'type': _selectedType,
+        'reason': _reasonCtrl.text.trim(),
+      };
+
+      if (_selectedType == 'full_day') {
+        data['leave_date'] = _leaveDateCtrl.text;
+      } else if (_selectedType == 'half_day') {
+        data['leave_date'] = _leaveDateCtrl.text;
+        data['half_start_time'] =
+            '${_halfStartTime!.hour.toString().padLeft(2, '0')}:${_halfStartTime!.minute.toString().padLeft(2, '0')}';
+        data['half_end_time'] =
+            '${_halfEndTime!.hour.toString().padLeft(2, '0')}:${_halfEndTime!.minute.toString().padLeft(2, '0')}';
+      } else if (_selectedType == 'vacational') {
+        data['start_date'] = _startDateCtrl.text;
+        data['end_date'] = _endDateCtrl.text;
+      }
+
+      await ApiService.applyLeave(data);
+      if (!mounted) return;
+      setState(() {
+        _showSuccess = true;
+        _submitting = false;
+      });
+      _fetchLeaves();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: const Color(0xFFC0392B)),
+      );
+    }
   }
 
   void _resetForm() {
     setState(() {
       _showSuccess = false;
-      _selectedType = '';
+      _selectedType = null;
       _formKey++;
-      _fromCtrl.clear();
-      _toCtrl.clear();
+      _leaveDateCtrl.clear();
+      _startDateCtrl.clear();
+      _endDateCtrl.clear();
       _reasonCtrl.clear();
-      _contactCtrl.clear();
+      _halfStartTime = null;
+      _halfEndTime = null;
     });
+  }
+
+  DateTime _minDateForType() {
+    final now = DateTime.now();
+    if (_selectedType == 'full_day') return now.add(const Duration(days: 2));
+    if (_selectedType == 'half_day') return now.add(const Duration(days: 1));
+    if (_selectedType == 'vacational') return now.add(const Duration(days: 30));
+    return now;
+  }
+
+  Future<void> _pickDate(BuildContext context, TextEditingController ctrl) async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _minDateForType(),
+      firstDate: _minDateForType(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (d != null) ctrl.text = DateFormat('yyyy-MM-dd').format(d);
+  }
+
+  Future<void> _pickTime(TimeOfDay? current, bool isStart) async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: current ?? const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (t != null) {
+      setState(() {
+        if (isStart) {
+          _halfStartTime = t;
+        } else {
+          _halfEndTime = t;
+        }
+      });
+    }
   }
 
   Color _statusColor(String status) {
@@ -85,10 +205,28 @@ class _LeavePageState extends State<LeavePage> {
     }
   }
 
+  String _formatDate(dynamic d) {
+    if (d == null) return '';
+    final dt = DateTime.tryParse(d.toString());
+    if (dt == null) return d.toString();
+    return DateFormat('dd MMM yyyy').format(dt);
+  }
+
+  String _leaveDates(dynamic l) {
+    final type = l['type'] ?? '';
+    if (type == 'vacational') {
+      return '${_formatDate(l['start_date'])} – ${_formatDate(l['end_date'])}';
+    }
+    if (type == 'half_day') {
+      final st = l['half_start_time']?.toString().substring(0, 5) ?? '';
+      final et = l['half_end_time']?.toString().substring(0, 5) ?? '';
+      return '${_formatDate(l['leave_date'])} · $st – $et';
+    }
+    return _formatDate(l['leave_date']);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -109,28 +247,126 @@ class _LeavePageState extends State<LeavePage> {
                   const SizedBox(height: 16),
                   _label('Leave type'),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedType.isEmpty ? null : _selectedType,
+                    // ignore: deprecated_member_use
+                    value: _selectedType,
                     decoration: _inputDecoration(),
                     hint: const Text('Select type…', style: TextStyle(fontSize: 14)),
-                    items: ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Unpaid Leave'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 14)))).toList(),
-                    onChanged: (v) => setState(() => _selectedType = v ?? ''),
+                    items: ['full_day', 'half_day', 'vacational'].map((t) => DropdownMenuItem(
+                      value: t,
+                      child: Text(_typeLabels[t]!, style: const TextStyle(fontSize: 14)),
+                    )).toList(),
+                    onChanged: (v) => setState(() {
+                      _selectedType = v;
+                      _leaveDateCtrl.clear();
+                      _startDateCtrl.clear();
+                      _endDateCtrl.clear();
+                      _halfStartTime = null;
+                      _halfEndTime = null;
+                    }),
                   ),
-                  const SizedBox(height: 14),
-                  _label('From date'),
-                  TextField(
-                    controller: _fromCtrl,
-                    readOnly: true,
-                    decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
-                    onTap: () => _pickDate(context, _fromCtrl, today),
-                  ),
-                  const SizedBox(height: 14),
-                  _label('To date'),
-                  TextField(
-                    controller: _toCtrl,
-                    readOnly: true,
-                    decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
-                    onTap: () => _pickDate(context, _toCtrl, today),
-                  ),
+                  if (_selectedType == 'full_day') ...[
+                    const SizedBox(height: 14),
+                    _label('Leave date'),
+                    TextField(
+                      controller: _leaveDateCtrl,
+                      readOnly: true,
+                      decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
+                      onTap: () => _pickDate(context, _leaveDateCtrl),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Must be 2 days prior and applied after 12 PM',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF72706B))),
+                  ],
+                  if (_selectedType == 'half_day') ...[
+                    const SizedBox(height: 14),
+                    _label('Leave date'),
+                    TextField(
+                      controller: _leaveDateCtrl,
+                      readOnly: true,
+                      decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
+                      onTap: () => _pickDate(context, _leaveDateCtrl),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Must be at least 1 day prior',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF72706B))),
+                    const SizedBox(height: 14),
+                    _label('Start time'),
+                    GestureDetector(
+                      onTap: () => _pickTime(_halfStartTime, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F4F0),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0x2E000000)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 18, color: Color(0xFF72706B)),
+                            const SizedBox(width: 8),
+                            Text(
+                              _halfStartTime != null
+                                  ? _halfStartTime!.format(context)
+                                  : 'Select start time',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _halfStartTime != null ? Colors.black : const Color(0xFF72706B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _label('End time'),
+                    GestureDetector(
+                      onTap: () => _pickTime(_halfEndTime, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F4F0),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0x2E000000)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 18, color: Color(0xFF72706B)),
+                            const SizedBox(width: 8),
+                            Text(
+                              _halfEndTime != null
+                                  ? _halfEndTime!.format(context)
+                                  : 'Select end time',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _halfEndTime != null ? Colors.black : const Color(0xFF72706B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (_selectedType == 'vacational') ...[
+                    const SizedBox(height: 14),
+                    _label('From date'),
+                    TextField(
+                      controller: _startDateCtrl,
+                      readOnly: true,
+                      decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
+                      onTap: () => _pickDate(context, _startDateCtrl),
+                    ),
+                    const SizedBox(height: 14),
+                    _label('To date'),
+                    TextField(
+                      controller: _endDateCtrl,
+                      readOnly: true,
+                      decoration: _inputDecoration(suffixIcon: Icons.calendar_today),
+                      onTap: () => _pickDate(context, _endDateCtrl),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Must be applied at least 1 month prior',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF72706B))),
+                  ],
                   const SizedBox(height: 14),
                   _label('Reason'),
                   TextField(
@@ -139,23 +375,19 @@ class _LeavePageState extends State<LeavePage> {
                     decoration: _inputDecoration(hint: 'Briefly describe the reason for your leave…'),
                   ),
                   const SizedBox(height: 14),
-                  _label('Contact during leave'),
-                  TextField(
-                    controller: _contactCtrl,
-                    decoration: _inputDecoration(hint: '+91 98765 43210 / email'),
-                  ),
-                  const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _submitLeave,
+                      onPressed: _submitting ? null : _submitLeave,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2355D4),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Submit Application', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      child: _submitting
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Submit Application', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                     ),
                   ),
                 ],
@@ -175,7 +407,7 @@ class _LeavePageState extends State<LeavePage> {
                   const SizedBox(height: 8),
                   const Text('Application Submitted', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0D5535))),
                   const SizedBox(height: 4),
-                  const Text('Your manager will review and respond within 24 hours.', style: TextStyle(fontSize: 14, color: Color(0xFF72706B))),
+                  const Text('Your manager will review and respond.', style: TextStyle(fontSize: 14, color: Color(0xFF72706B))),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: _resetForm,
@@ -202,28 +434,18 @@ class _LeavePageState extends State<LeavePage> {
               children: [
                 const Text('Leave history', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF72706B), letterSpacing: 0.6)),
                 const SizedBox(height: 12),
-                ...data.leaveHistory.map((l) => _leaveItem(l)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x17000000)),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Leave balance', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF72706B), letterSpacing: 0.6)),
-                const SizedBox(height: 12),
-                _balanceRow('Casual Leave', 4, 12),
-                const SizedBox(height: 12),
-                _balanceRow('Sick Leave', 3, 6),
-                const SizedBox(height: 12),
-                _balanceRow('Earned Leave', 0, 15),
+                if (_loadingLeaves)
+                  const Center(child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ))
+                else if (_leaves.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: Text('No leave applications yet', style: TextStyle(fontSize: 13, color: Color(0xFF72706B)))),
+                  )
+                else
+                  ...(_leaves.take(20).toList()).map((l) => _leaveItem(l)),
               ],
             ),
           ),
@@ -261,36 +483,33 @@ class _LeavePageState extends State<LeavePage> {
     );
   }
 
-  Future<void> _pickDate(BuildContext context, TextEditingController ctrl, String min) async {
-    final d = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (d != null) ctrl.text = DateFormat('yyyy-MM-dd').format(d);
-  }
+  Widget _leaveItem(dynamic l) {
+    final type = l['type'] ?? '';
+    final typeLabel = _typeLabels[type] ?? type;
+    final status = l['status'] ?? 'pending';
+    final days = l['days'] ?? 0;
+    final reason = l['reason'] ?? '';
 
-  Widget _leaveItem(LeaveRecord l) {
-    Map<String, IconData> icons = {
-      'Earned Leave': Icons.event,
-      'Casual Leave': Icons.beach_access,
-      'Sick Leave': Icons.favorite_border,
-    };
-    Map<String, Color> iconColors = {
-      'Earned Leave': const Color(0xFF2355D4),
-      'Casual Leave': const Color(0xFF2355D4),
-      'Sick Leave': const Color(0xFFC0392B),
-    };
-    Map<String, Color> iconBgs = {
-      'Earned Leave': const Color(0xFFEEF2FD),
-      'Casual Leave': const Color(0xFFEEF2FD),
-      'Sick Leave': const Color(0xFFFDEAEA),
-    };
-    final ic = icons[l.type] ?? Icons.calendar_today;
-    final icColor = iconColors[l.type] ?? const Color(0xFF2355D4);
-    final icBg = iconBgs[l.type] ?? const Color(0xFFEEF2FD);
-    final dateStr = l.from == l.to ? l.from : '${l.from} – ${l.to}';
+    IconData icon;
+    Color iconColor;
+    Color iconBg;
+
+    switch (type) {
+      case 'vacational':
+        icon = Icons.flight;
+        iconColor = const Color(0xFF2355D4);
+        iconBg = const Color(0xFFEEF2FD);
+        break;
+      case 'half_day':
+        icon = Icons.access_time;
+        iconColor = const Color(0xFFB06A00);
+        iconBg = const Color(0xFFFFF3E0);
+        break;
+      default:
+        icon = Icons.event;
+        iconColor = const Color(0xFF2355D4);
+        iconBg = const Color(0xFFEEF2FD);
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -300,57 +519,31 @@ class _LeavePageState extends State<LeavePage> {
         children: [
           Container(
             width: 36, height: 36,
-            decoration: BoxDecoration(color: icBg, borderRadius: BorderRadius.circular(10)),
-            child: Icon(ic, size: 18, color: icColor),
+            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(typeLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text('$dateStr · ${l.days} day${l.days > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12, color: Color(0xFF72706B))),
-                const SizedBox(height: 2),
-                Text(l.reason, style: const TextStyle(fontSize: 12, color: Color(0xFF72706B))),
+                Text('${_leaveDates(l)} · $days day${days > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12, color: Color(0xFF72706B))),
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(reason, style: const TextStyle(fontSize: 12, color: Color(0xFF72706B))),
+                ],
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: _statusBg(l.status), borderRadius: BorderRadius.circular(20)),
-            child: Text('${l.status[0].toUpperCase()}${l.status.substring(1)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _statusColor(l.status))),
+            decoration: BoxDecoration(color: _statusBg(status), borderRadius: BorderRadius.circular(20)),
+            child: Text('${status[0].toUpperCase()}${status.substring(1)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _statusColor(status))),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _balanceRow(String label, int used, int total) {
-    final remaining = total - used;
-    final pct = remaining / total;
-    final color = _balanceColors[label] ?? const Color(0xFF2355D4);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 13)),
-            Text('$remaining / $total remaining', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(99),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 8,
-            backgroundColor: const Color(0xFFF0EFE9),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -147,8 +147,6 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           _calendarCard(now),
           const SizedBox(height: 16),
-          _leaveBalanceCard(),
-          const SizedBox(height: 16),
           if (_monthlyStats.isNotEmpty) _monthlyBreakdownCard(),
           const SizedBox(height: 16),
           _activityCard(),
@@ -352,29 +350,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _leaveBalanceCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x17000000)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Leave balance', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF72706B), letterSpacing: 0.6)),
-          const SizedBox(height: 12),
-          _leaveBalance('Casual Leave', 4, 12, const Color(0xFF1D7A4F)),
-          const SizedBox(height: 14),
-          _leaveBalance('Sick Leave', 3, 6, const Color(0xFFB06A00)),
-          const SizedBox(height: 14),
-          _leaveBalance('Earned Leave', 0, 15, const Color(0xFF2355D4)),
-        ],
-      ),
-    );
-  }
-
   Widget _monthlyBreakdownCard() {
     final sortedMonths = _monthlyStats.entries.toList()
       ..sort((a, b) => b.key.compareTo(a.key));
@@ -522,33 +497,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _leaveBalance(String label, int used, int total, Color color) {
-    final remaining = total - used;
-    final pct = remaining / total;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 13)),
-            Text('$remaining / $total remaining', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(99),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 8,
-            backgroundColor: const Color(0xFFF0EFE9),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
     );
   }
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:attendance_app/main.dart';
+import 'package:ufs_attendance/main.dart';
 
 void main() {
   testWidgets('App renders', (WidgetTester tester) async {

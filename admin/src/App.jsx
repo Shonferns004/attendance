@@ -10,6 +10,7 @@ import MyTasks from './pages/MyTasks';
 import History from './pages/History';
 import GenerateQR from './pages/GenerateQR';
 import Settings from './pages/Settings';
+import Leaves from './pages/Leaves';
 import Sidebar from './components/Sidebar';
 import TopNavBar from './components/TopNavBar';
 import WorkerNav from './components/WorkerNav';
@@ -80,6 +81,7 @@ function App() {
               <Route path="/tasks" element={<ViewTasks />} />
               <Route path="/generate-qr" element={<GenerateQR />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/leaves" element={<Leaves />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

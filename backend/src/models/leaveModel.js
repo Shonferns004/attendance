@@ -1,0 +1,61 @@
+import supabase from '../config/supabase.js';
+
+export const applyLeave = async (data) => {
+  const { data: result, error } = await supabase
+    .from('leaves')
+    .insert([data])
+    .select()
+    .single();
+  if (error) throw error;
+  return result;
+};
+
+export const getWorkerLeaves = async (workerId) => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('applied_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const getAllLeaves = async () => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*, workers(name, login_id, email)')
+    .order('applied_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const getPendingLeaves = async () => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*, workers(name, login_id, email)')
+    .eq('status', 'pending')
+    .order('applied_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const updateLeaveStatus = async (id, status, adminRemark) => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .update({ status, admin_remark: adminRemark, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const getLeaveById = async (id) => {
+  const { data, error } = await supabase
+    .from('leaves')
+    .select('*, workers(name, login_id, email)')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+};

@@ -7,6 +7,7 @@ const navItems = [
   { path: '/assign-task', label: 'Assign Tasks', icon: 'assignment_turned_in' },
   { path: '/tasks', label: 'View Tasks', icon: 'list_alt' },
   { path: '/generate-qr', label: 'Generate QR', icon: 'qr_code' },
+  { path: '/leaves', label: 'Leaves', icon: 'event_note' },
 ];
 
 function Sidebar({ onLogout }) {
