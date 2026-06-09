@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import 'scanner_page.dart';
+import 'leave_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,6 +15,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _loading = true;
+  bool _buttonLoading = false;
 
   String _punchInTime = '—';
   String _punchOutTime = '—';
@@ -101,9 +103,9 @@ class _HomePageState extends State<HomePage> {
     final code = result['code']?.toString();
     final lat = result['lat'];
     final lng = result['lng'];
-
     if (code == null || lat == null || lng == null) return;
 
+    setState(() => _buttonLoading = true);
     try {
       final data = await ApiService.punchIn(code, lat, lng);
       setState(() {
@@ -119,10 +121,12 @@ class _HomePageState extends State<HomePage> {
             ? 'Late by ${data['lateMinutes']} min'
             : 'On time';
         _showResult = true;
+        _buttonLoading = false;
         _fetchStatus();
       });
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _buttonLoading = false);
     }
 
     _resultTimer?.cancel();
@@ -149,6 +153,7 @@ class _HomePageState extends State<HomePage> {
       _showError('Location permissions are permanently denied. Enable from settings.');
       return;
     }
+    setState(() => _buttonLoading = true);
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
@@ -165,9 +170,11 @@ class _HomePageState extends State<HomePage> {
         _resultTitle = 'Punch Out Successful!';
         _resultSub = 'Worked: $_workHours';
         _showResult = true;
+        _buttonLoading = false;
       });
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _buttonLoading = false);
     }
     _resultTimer?.cancel();
     _resultTimer = Timer(const Duration(seconds: 4), () {
@@ -188,6 +195,26 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _openLeaveSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollCtrl) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF5F4F0),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: LeavePage(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -196,7 +223,18 @@ class _HomePageState extends State<HomePage> {
     final dayStr = DateFormat('EEE, dd MMM yyyy').format(now);
 
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            _skeletonBox(height: 160),
+            const SizedBox(height: 12),
+            _skeletonBox(height: 44),
+            const SizedBox(height: 16),
+            _skeletonBox(height: 100),
+          ],
+        ),
+      );
     }
 
     return SafeArea(
@@ -276,39 +314,84 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 child: _ActionCard(
-                  icon: Icons.qr_code_scanner,
+                  icon: _buttonLoading ? Icons.hourglass_top : Icons.qr_code_scanner,
                   label: _isPunchedIn ? 'Punch Out' : 'Punch In',
                   color: _isPunchedIn ? const Color(0xFFC0392B) : const Color(0xFF2355D4),
-                  onTap: _isPunchedIn ? _handlePunchOut : _startScanner,
+                  loading: _buttonLoading,
+                  onTap: (!_buttonLoading) ? (_isPunchedIn ? _handlePunchOut : _startScanner) : null,
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1D7A4F),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: const Color(0xFF1D7A4F).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(_lateRemaining.toString(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white)),
-                        const SizedBox(height: 4),
-                        const Text('Min Left', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70)),
-                      ],
-                    ),
+              GestureDetector(
+                onTap: _openLeaveSheet,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1D7A4F),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFF1D7A4F).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(_lateRemaining.toString(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white)),
+                      const SizedBox(height: 4),
+                      const Text('Min Left', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70)),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0x17000000)),
+            ),
+            child: InkWell(
+              onTap: _openLeaveSheet,
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FD),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.event_note, color: Color(0xFF2355D4), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Apply for Leave', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 2),
+                        Text('Submit a leave application for review', style: TextStyle(fontSize: 12, color: Color(0xFF72706B))),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFFA8A69F)),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _skeletonBox({double height = 100}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8E8E4),
+        borderRadius: BorderRadius.circular(12),
       ),
     );
   }
@@ -328,29 +411,47 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final bool loading;
+  final VoidCallback? onTap;
 
-  const _ActionCard({required this.icon, required this.label, required this.color, required this.onTap});
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.loading = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 36, color: Colors.white),
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
-          ],
+      child: AnimatedOpacity(
+        opacity: loading ? 0.7 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            children: [
+              if (loading)
+                const SizedBox(
+                  width: 28, height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                )
+              else ...[
+                Icon(icon, size: 36, color: Colors.white),
+                const SizedBox(height: 8),
+              ],
+              Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+            ],
+          ),
         ),
       ),
     );

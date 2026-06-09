@@ -57,8 +57,8 @@ CREATE TABLE settings (
   value TEXT NOT NULL
 );
 
-INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00');
-INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00');
+INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00') ON CONFLICT (key) DO NOTHING;
 
 CREATE INDEX idx_tasks_worker_id ON tasks(worker_id);
 CREATE INDEX idx_tasks_status ON tasks(status);

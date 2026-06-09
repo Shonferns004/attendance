@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
-import '../models/attendance_record.dart';
 
 class MiniCalendar extends StatelessWidget {
-  final Map<String, AttendanceRecord> data;
+  final int year;
+  final int month;
+  final Map<String, String> statusByDate;
+  final int? today;
 
-  const MiniCalendar({super.key, required this.data});
+  const MiniCalendar({
+    super.key,
+    required this.year,
+    required this.month,
+    this.statusByDate = const {},
+    this.today,
+  });
 
   @override
   Widget build(BuildContext context) {
     final days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    final firstDay = DateTime(2025, 6, 1).weekday % 7;
-    final monthDays = 30;
-    final today = 9;
+    final firstDay = DateTime(year, month, 1).weekday % 7;
+    final monthDays = DateTime(year, month + 1, 0).day;
+    final now = DateTime.now();
+    final isCurrentMonth = now.year == year && now.month == month;
 
     return Column(
       children: [
@@ -23,24 +32,24 @@ class MiniCalendar extends StatelessWidget {
           )).toList(),
         ),
         const SizedBox(height: 4),
-        ...List.generate(5, (row) {
+        ...List.generate((firstDay + monthDays + 6) ~/ 7, (row) {
           return Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: List.generate(7, (col) {
                 final dayNum = row * 7 + col - firstDay + 1;
                 if (dayNum < 1 || dayNum > monthDays) return const Expanded(child: SizedBox());
-                final key = '2025-06-${dayNum.toString().padLeft(2, '0')}';
-                final rec = data[key];
-                final wd = DateTime(2025, 6, dayNum).weekday;
+                final key = '${year}-${month.toString().padLeft(2, '0')}-${dayNum.toString().padLeft(2, '0')}';
+                final status = statusByDate[key];
+                final wd = DateTime(year, month, dayNum).weekday;
                 final isWeekend = wd == DateTime.saturday || wd == DateTime.sunday;
-                final isToday = dayNum == today;
-                final isFuture = dayNum > 20;
+                final isToday = isCurrentMonth && dayNum == now.day;
+                final isFuture = isCurrentMonth && dayNum > now.day || (year == now.year && month > now.month) || year > now.year;
 
                 Color? bg;
                 Color? fg;
-                if (rec != null) {
-                  switch (rec.status) {
+                if (status != null) {
+                  switch (status) {
                     case 'present': bg = const Color(0xFFE6F6ED); fg = const Color(0xFF0D5535); break;
                     case 'absent': bg = const Color(0xFFFDEAEA); fg = const Color(0xFF8B1A12); break;
                     case 'late': bg = const Color(0xFFFFF3E0); fg = const Color(0xFF7A4900); break;
