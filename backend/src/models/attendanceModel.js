@@ -1,7 +1,16 @@
 import supabase from '../config/supabase.js';
 
+function istDateStr(date = new Date()) {
+  const offset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(date.getTime() + offset);
+  const y = ist.getUTCFullYear();
+  const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(ist.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export const getTodayAttendance = async (worker_id) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = istDateStr();
   const { data, error } = await supabase
     .from('attendance')
     .select('*')
@@ -34,9 +43,15 @@ export const updateAttendance = async (id, updates) => {
 };
 
 export const getMonthlyLateMinutes = async (worker_id) => {
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const istNow = new Date(now.getTime() + IST_OFFSET);
+  const y = istNow.getUTCFullYear();
+  const m = istNow.getUTCMonth();
+  const startIst = new Date(Date.UTC(y, m, 1));
+  const endIst = new Date(Date.UTC(y, m + 1, 0));
+  const startOfMonth = `${startIst.getUTCFullYear()}-${String(startIst.getUTCMonth() + 1).padStart(2, '0')}-${String(startIst.getUTCDate()).padStart(2, '0')}`;
+  const endOfMonth = `${endIst.getUTCFullYear()}-${String(endIst.getUTCMonth() + 1).padStart(2, '0')}-${String(endIst.getUTCDate()).padStart(2, '0')}`;
 
   const { data, error } = await supabase
     .from('attendance')

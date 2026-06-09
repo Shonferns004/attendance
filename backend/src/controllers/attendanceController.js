@@ -9,6 +9,19 @@ import { getQRByCode } from '../models/qrModel.js';
 import { getSetting } from '../models/settingsModel.js';
 
 const MAX_LATE_MINUTES = 180;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function getIstTime(date = new Date()) {
+  return new Date(date.getTime() + IST_OFFSET_MS);
+}
+
+function istDateStr(date = new Date()) {
+  const ist = getIstTime(date);
+  const y = ist.getUTCFullYear();
+  const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(ist.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 async function getOfficeStart() {
   const val = await getSetting('office_start_time');
@@ -56,8 +69,10 @@ export const punchIn = async (req, res) => {
 
     const officeStart = await getOfficeStart();
     const now = new Date();
-    const lateMinutes = (now.getHours() > officeStart.hour || (now.getHours() === officeStart.hour && now.getMinutes() > officeStart.minute))
-      ? (now.getHours() - officeStart.hour) * 60 + now.getMinutes() - officeStart.minute
+    const h = getIstTime(now).getUTCHours();
+    const m = getIstTime(now).getUTCMinutes();
+    const lateMinutes = (h > officeStart.hour || (h === officeStart.hour && m > officeStart.minute))
+      ? (h - officeStart.hour) * 60 + m - officeStart.minute
       : 0;
 
     if (lateMinutes > 0) {
@@ -84,7 +99,7 @@ export const punchIn = async (req, res) => {
 
     const attendance = await createAttendance({
       worker_id: req.user.id,
-      date: now.toISOString().split('T')[0],
+      date: istDateStr(now),
       punch_in_time: now.toISOString(),
       punch_in_lat: latitude,
       punch_in_lng: longitude,

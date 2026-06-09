@@ -32,6 +32,13 @@ class _HomePageState extends State<HomePage> {
   Timer? _clockTimer;
   Timer? _resultTimer;
 
+  String _parseTime(dynamic ts) {
+    if (ts == null) return '—';
+    final t = DateTime.tryParse(ts.toString());
+    if (t == null) return '—';
+    return DateFormat('hh:mm a').format(t);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,19 +62,19 @@ class _HomePageState extends State<HomePage> {
       final data = await ApiService.getTodayStatus();
       final att = data['attendance'];
       if (att != null) {
-        if (att['punch_in_time'] != null) {
-          final t = DateTime.parse(att['punch_in_time']);
-          _punchInTime = DateFormat('hh:mm a').format(t);
+        final piStr = _parseTime(att['punch_in_time']);
+        final poStr = _parseTime(att['punch_out_time']);
+        if (piStr != '—') {
+          _punchInTime = piStr;
           _isPunchedIn = true;
         }
-        if (att['punch_out_time'] != null) {
-          final t = DateTime.parse(att['punch_out_time']);
-          _punchOutTime = DateFormat('hh:mm a').format(t);
+        if (poStr != '—') {
+          _punchOutTime = poStr;
           _isPunchedIn = false;
         }
-        if (att['punch_in_time'] != null && att['punch_out_time'] != null) {
-          final pi = DateTime.parse(att['punch_in_time']);
-          final po = DateTime.parse(att['punch_out_time']);
+        if (piStr != '—' && poStr != '—') {
+          final pi = DateTime.parse(att['punch_in_time'].toString());
+          final po = DateTime.parse(att['punch_out_time'].toString());
           final mins = po.difference(pi).inMinutes;
           _workHours = '${mins ~/ 60}h ${mins % 60}m';
         }
@@ -108,21 +115,20 @@ class _HomePageState extends State<HomePage> {
     setState(() => _buttonLoading = true);
     try {
       final data = await ApiService.punchIn(code, lat, lng);
+      final lateMins = (data['lateMinutes'] ?? 0) as int;
       setState(() {
         _isPunchedIn = true;
-        _punchInTime = DateFormat('hh:mm a').format(DateTime.now());
+        _punchInTime = _parseTime(data['attendance']?['punch_in_time']);
         _punchOutTime = '—';
-        final lateMins = (data['lateMinutes'] ?? 0) as int;
-        _lateUsed = lateMins;
-        _lateRemaining = _lateRemaining - lateMins;
+        _lateUsed += lateMins;
+        _lateRemaining -= lateMins;
         _isSuccess = true;
         _resultTitle = 'Punch In Successful!';
-        _resultSub = data['lateMinutes'] > 0
-            ? 'Late by ${data['lateMinutes']} min'
+        _resultSub = lateMins > 0
+            ? 'Late by $lateMins min'
             : 'On time';
         _showResult = true;
         _buttonLoading = false;
-        _fetchStatus();
       });
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
@@ -161,11 +167,13 @@ class _HomePageState extends State<HomePage> {
       final data = await ApiService.punchOut(pos.latitude, pos.longitude);
       setState(() {
         _isPunchedIn = false;
-        _punchOutTime = DateFormat('hh:mm a').format(DateTime.now());
-        final mins = data['hoursWorked'] is String
-            ? double.tryParse(data['hoursWorked'] ?? '0') ?? 0
-            : (data['hoursWorked'] ?? 0).toDouble();
-        _workHours = '${mins ~/ 1}h ${((mins % 1) * 60).round()}m';
+        _punchOutTime = _parseTime(data['attendance']?['punch_out_time']);
+        final pi = DateTime.tryParse((data['attendance']?['punch_in_time'] ?? '').toString());
+        final po = DateTime.tryParse((data['attendance']?['punch_out_time'] ?? '').toString());
+        if (pi != null && po != null) {
+          final mins = po.difference(pi).inMinutes;
+          _workHours = '${mins ~/ 60}h ${mins % 60}m';
+        }
         _isSuccess = true;
         _resultTitle = 'Punch Out Successful!';
         _resultSub = 'Worked: $_workHours';
