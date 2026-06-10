@@ -319,6 +319,30 @@ class _HomePageState extends State<HomePage> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final notifications = <Map<String, dynamic>>[
+      {
+        'icon': Icons.check_circle,
+        'title': 'Punch In Successful',
+        'subtitle': 'You punched in at ${_fmtTime(_now)}',
+        'color': Colors.green,
+        'read': false,
+      },
+      {
+        'icon': Icons.info_outline,
+        'title': 'Office Hours Reminder',
+        'subtitle': 'Office timing: $_officeStartTime – $_officeEndTime',
+        'color': scheme.primary,
+        'read': false,
+      },
+      {
+        'icon': Icons.event_available,
+        'title': 'Attendance Summary',
+        'subtitle': 'Present: $_present  |  Absent: $_absent  |  Late: $_late  |  Leaves: $_leave',
+        'color': Colors.orange,
+        'read': false,
+      },
+    ];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -327,64 +351,109 @@ class _HomePageState extends State<HomePage> {
         initialChildSize: 0.6,
         minChildSize: 0.3,
         maxChildSize: 0.9,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFf9f9f9),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Icon(Icons.notifications, color: scheme.onSurface),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Notifications',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface,
+        builder: (_, scrollController) => StatefulBuilder(
+          builder: (context, setSheetState) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFf9f9f9),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _notificationItem(
-                scheme, textTheme,
-                Icons.check_circle,
-                'Punch In Successful',
-                'You punched in at ${_fmtTime(_now)}',
-                Colors.green,
-              ),
-              const Divider(height: 24),
-              _notificationItem(
-                scheme, textTheme,
-                Icons.info_outline,
-                'Office Hours Reminder',
-                'Office timing: $_officeStartTime – $_officeEndTime',
-                scheme.primary,
-              ),
-              const Divider(height: 24),
-              _notificationItem(
-                scheme, textTheme,
-                Icons.event_available,
-                'Attendance Summary',
-                'Present: $_present  |  Absent: $_absent  |  Late: $_late  |  Leaves: $_leave',
-                Colors.orange,
-              ),
-            ],
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.notifications, color: scheme.onSurface),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Notifications',
+                      style: textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (notifications.isNotEmpty)
+                      Text(
+                        '${notifications.length}',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ...notifications.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final n = entry.value;
+                  final isLast = i == notifications.length - 1;
+                  return Column(
+                    children: [
+                      Dismissible(
+                        key: ValueKey('notif_$i'),
+                        direction: DismissDirection.horizontal,
+                        background: Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.done_all, color: Colors.white, size: 22),
+                              SizedBox(width: 8),
+                              Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        secondaryBackground: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                              SizedBox(width: 8),
+                              Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                            ],
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.startToEnd) {
+                            setSheetState(() => n['read'] = true);
+                            return false;
+                          } else {
+                            setSheetState(() => notifications.removeAt(i));
+                            return true;
+                          }
+                        },
+                        child: Opacity(
+                          opacity: n['read'] == true ? 0.5 : 1,
+                          child: _notificationItem(scheme, textTheme, n['icon'], n['title'], n['subtitle'], n['color']),
+                        ),
+                      ),
+                      if (!isLast) const Divider(height: 24),
+                    ],
+                  );
+                }),
+              ],
+            ),
           ),
         ),
       ),
