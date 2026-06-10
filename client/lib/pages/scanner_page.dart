@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -12,31 +11,15 @@ class ScannerPage extends StatefulWidget {
 }
 
 class _ScannerPageState extends State<ScannerPage> {
-  MobileScannerController? _controller;
+  final MobileScannerController _controller = MobileScannerController();
   bool _detected = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = MobileScannerController(
-      autoStart: true,
-      torchEnabled: false,
-      facing: CameraFacing.back,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_detected || capture.barcodes.isEmpty) return;
     _detected = true;
 
     try {
-      await _controller?.stop();
+      await _controller.stop();
     } catch (_) {}
 
     final raw = capture.barcodes.first.rawValue ?? '';
@@ -78,12 +61,18 @@ class _ScannerPageState extends State<ScannerPage> {
     } catch (e) {
       if (mounted) {
         _detected = false;
-        try { await _controller?.start(); } catch (_) {}
+        try { await _controller.start(); } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('GPS error: $e')),
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -99,30 +88,27 @@ class _ScannerPageState extends State<ScannerPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ClipRRect(
-        borderRadius: BorderRadius.circular(0),
-        child: MobileScanner(
-          controller: _controller,
-          onDetect: _onDetect,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, child) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white, size: 48),
-                  const SizedBox(height: 16),
-                  Text('Camera error: $error', style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Go Back'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+      body: MobileScanner(
+        controller: _controller,
+        onDetect: _onDetect,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, child) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                const SizedBox(height: 16),
+                Text('Camera error: $error', style: const TextStyle(color: Colors.white70)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
