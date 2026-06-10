@@ -9,7 +9,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'https://attendance-roan-zeta.vercel.app',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },
