@@ -1,4 +1,5 @@
--- Reset & recreate full schema
+-- Run this in Supabase SQL Editor
+DROP TABLE IF EXISTS leaves CASCADE;
 DROP TABLE IF EXISTS attendance CASCADE;
 DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS qr_codes CASCADE;
@@ -57,12 +58,31 @@ CREATE TABLE settings (
   value TEXT NOT NULL
 );
 
+CREATE TABLE leaves (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('full_day', 'half_day', 'vacational')),
+  leave_date DATE,
+  start_date DATE,
+  end_date DATE,
+  half_start_time TIME,
+  half_end_time TIME,
+  days NUMERIC(4,1) NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  admin_remark TEXT,
+  applied_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 INSERT INTO settings (key, value) VALUES ('office_start_time', '10:00') ON CONFLICT (key) DO NOTHING;
 INSERT INTO settings (key, value) VALUES ('office_end_time', '19:00') ON CONFLICT (key) DO NOTHING;
 
-CREATE INDEX idx_tasks_worker_id ON tasks(worker_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_workers_login_id ON workers(login_id);
-CREATE INDEX idx_attendance_worker_date ON attendance(worker_id, date);
-CREATE INDEX idx_attendance_month ON attendance(worker_id, date);
-CREATE INDEX idx_qr_codes_code ON qr_codes(code);
+CREATE INDEX IF NOT EXISTS idx_tasks_worker_id ON tasks(worker_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_workers_login_id ON workers(login_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_worker_date ON attendance(worker_id, date);
+CREATE INDEX IF NOT EXISTS idx_attendance_month ON attendance(worker_id, date);
+CREATE INDEX IF NOT EXISTS idx_qr_codes_code ON qr_codes(code);
+CREATE INDEX IF NOT EXISTS idx_leaves_worker_id ON leaves(worker_id);
+CREATE INDEX IF NOT EXISTS idx_leaves_status ON leaves(status);
