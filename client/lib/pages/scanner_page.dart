@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,9 +13,13 @@ class ScannerPage extends StatefulWidget {
 
 class _ScannerPageState extends State<ScannerPage> {
   bool _detected = false;
+  bool _hasError = false;
+  int _scannerKey = 0;
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
 
   void _onDetect(BarcodeCapture capture) {
-    if (_detected || capture.barcodes.isEmpty) return;
+    if (_detected || _hasError || capture.barcodes.isEmpty) return;
     _detected = true;
 
     final raw = capture.barcodes.first.rawValue ?? '';
@@ -67,6 +72,29 @@ class _ScannerPageState extends State<ScannerPage> {
     }
   }
 
+  void _onScannerError(Object error) {
+    if (!mounted || _retryCount >= _maxRetries) return;
+    setState(() {
+      _hasError = true;
+      _retryCount++;
+    });
+    Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() {
+        _scannerKey++;
+        _hasError = false;
+      });
+    });
+  }
+
+  void _retryManual() {
+    setState(() {
+      _retryCount = 0;
+      _scannerKey++;
+      _hasError = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,27 +108,83 @@ class _ScannerPageState extends State<ScannerPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: MobileScanner(
-        onDetect: _onDetect,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, child) {
-          return Center(
-            child: Column(
+      body: _hasError ? _buildErrorUi() : _buildScanner(),
+    );
+  }
+
+  Widget _buildScanner() {
+    return MobileScanner(
+      key: ValueKey('scanner_$_scannerKey'),
+      onDetect: _onDetect,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _onScannerError(error);
+        });
+        return const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 32, height: 32,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Starting camera...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorUi() {
+    final isFinal = _retryCount >= _maxRetries;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isFinal ? Icons.camera_alt_outlined : Icons.refresh,
+              color: Colors.white54, size: 56,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isFinal
+                  ? 'Could not open camera.\nTap Retry or go back.'
+                  : 'Camera error — retrying...',
+              style: const TextStyle(color: Colors.white70, fontSize: 15),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 48),
-                const SizedBox(height: 16),
-                Text('$error', style: const TextStyle(color: Colors.white70, fontSize: 13), textAlign: TextAlign.center),
-                const SizedBox(height: 24),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('Go Back'),
+                  label: const Text('Back'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white12,
+                    foregroundColor: Colors.white70,
+                  ),
                 ),
+                if (isFinal) const SizedBox(width: 16),
+                if (isFinal)
+                  ElevatedButton.icon(
+                    onPressed: _retryManual,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                  ),
               ],
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
