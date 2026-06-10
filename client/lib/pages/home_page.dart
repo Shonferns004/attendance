@@ -110,16 +110,23 @@ class _HomePageState extends State<HomePage> {
       });
       for (final rec in history) {
         final s = rec['status']?.toString() ?? '';
-        if (s == 'present') p++;
-        else if (s == 'absent') a++;
-        else if (s == 'late') l++;
-        else if (s == 'leave') lv++;
+        if (s == 'present')
+          p++;
+        else if (s == 'absent')
+          a++;
+        else if (s == 'late')
+          l++;
+        else if (s == 'leave')
+          lv++;
       }
     } catch (_) {
       // API calls failed — still show worker name
     }
     setState(() {
-      _present = p; _absent = a; _late = l; _leave = lv;
+      _present = p;
+      _absent = a;
+      _late = l;
+      _leave = lv;
       _loading = false;
     });
   }
@@ -128,24 +135,48 @@ class _HomePageState extends State<HomePage> {
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
       if (!service) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('GPS is disabled'), backgroundColor: Colors.red.shade700));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('GPS is disabled'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
         return;
       }
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
         if (perm == LocationPermission.denied) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission denied'), backgroundColor: Colors.red.shade700));
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Location permission denied'),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
           return;
         }
       }
       if (perm == LocationPermission.deniedForever) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission permanently denied'), backgroundColor: Colors.red.shade700));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Location permission permanently denied'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
         return;
       }
       await Geolocator.getCurrentPosition();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to get location: $e'), backgroundColor: Colors.red.shade700));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to get location: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
       return;
     }
 
@@ -156,7 +187,11 @@ class _HomePageState extends State<HomePage> {
     if (result == null || !mounted) return;
 
     try {
-      final data = await ApiService.punchIn(result['code'], result['lat'], result['lng']);
+      final data = await ApiService.punchIn(
+        result['code'],
+        result['lat'],
+        result['lng'],
+      );
       final lm = (data['lateMinutes'] ?? 0) as int;
       setState(() {
         _isPunchedIn = true;
@@ -168,13 +203,19 @@ class _HomePageState extends State<HomePage> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Punched in successfully'), backgroundColor: const Color(0xFF10b981)),
+          SnackBar(
+            content: Text('Punched in successfully'),
+            backgroundColor: const Color(0xFF10b981),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception:', '').trim()), backgroundColor: Colors.red.shade700),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception:', '').trim()),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
     }
@@ -184,19 +225,37 @@ class _HomePageState extends State<HomePage> {
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
       if (!service) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('GPS is disabled'), backgroundColor: Colors.red.shade700));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('GPS is disabled'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
         return;
       }
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
         if (perm == LocationPermission.denied) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission denied'), backgroundColor: Colors.red.shade700));
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Location permission denied'),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
           return;
         }
       }
       if (perm == LocationPermission.deniedForever) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission permanently denied'), backgroundColor: Colors.red.shade700));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Location permission permanently denied'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
         return;
       }
       final pos = await Geolocator.getCurrentPosition();
@@ -208,13 +267,19 @@ class _HomePageState extends State<HomePage> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Punched out successfully'), backgroundColor: const Color(0xFF10b981)),
+          SnackBar(
+            content: Text('Punched out successfully'),
+            backgroundColor: const Color(0xFF10b981),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception:', '').trim()), backgroundColor: Colors.red.shade700),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception:', '').trim()),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
     }
@@ -239,13 +304,13 @@ class _HomePageState extends State<HomePage> {
         initialChildSize: 0.85,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-          builder: (_, scrollController) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFf9f9f9),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: LeavePage(scrollController: scrollController),
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFf9f9f9),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
+          child: LeavePage(scrollController: scrollController),
+        ),
       ),
     );
   }
@@ -278,7 +343,11 @@ class _HomePageState extends State<HomePage> {
 
     final clockStr = DateFormat('hh:mm a').format(_now);
     final firstName = _workerName.split(' ').first;
-    final initials = _workerName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join().toUpperCase();
+    final initials = _workerName
+        .split(' ')
+        .map((n) => n.isNotEmpty ? n[0] : '')
+        .join()
+        .toUpperCase();
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -288,7 +357,10 @@ class _HomePageState extends State<HomePage> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -296,22 +368,43 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Icon(Icons.menu, color: scheme.onSurfaceVariant),
                         const SizedBox(width: 16),
-                        Text('Attendance', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
+                        Text(
+                          'Attendance',
+                          style: textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: scheme.primary,
+                          ),
+                        ),
                       ],
                     ),
                     Row(
                       children: [
-                        Icon(Icons.notifications_outlined, color: scheme.onSurfaceVariant),
+                        Icon(
+                          Icons.notifications_outlined,
+                          color: scheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 12),
                         Container(
-                          width: 32, height: 32,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: colors.primaryFixed,
                             shape: BoxShape.circle,
-                            border: Border.all(color: scheme.primaryContainer, width: 2),
+                            border: Border.all(
+                              color: scheme.primaryContainer,
+                              width: 2,
+                            ),
                           ),
-                          child: Center(child: Text(initials.isNotEmpty ? initials[0] : '?',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.primary))),
+                          child: Center(
+                            child: Text(
+                              initials.isNotEmpty ? initials[0] : '?',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -325,8 +418,19 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_greeting.toUpperCase(), style: textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant, letterSpacing: 1.2)),
-                    Text(firstName.isNotEmpty ? firstName : 'there', style: textTheme.headlineMedium?.copyWith(color: scheme.onSurface)),
+                    Text(
+                      _greeting.toUpperCase(),
+                      style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    Text(
+                      firstName.isNotEmpty ? firstName : 'there',
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: scheme.onSurface,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -338,7 +442,12 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: scheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.15), blurRadius: 20)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: scheme.primary.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                      ),
+                    ],
                   ),
                   child: Stack(
                     children: [
@@ -350,8 +459,12 @@ class _HomePageState extends State<HomePage> {
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                                  colors: [Colors.white, Colors.black.withValues(alpha: 0.3)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white,
+                                    Colors.black.withValues(alpha: 0.3),
+                                  ],
                                 ),
                               ),
                             ),
@@ -364,21 +477,39 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Column(
                               children: [
-                                Text(clockStr, style: textTheme.headlineLarge?.copyWith(color: scheme.onPrimaryContainer)),
+                                Text(
+                                  clockStr,
+                                  style: textTheme.headlineLarge?.copyWith(
+                                    color: scheme.onPrimaryContainer,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: scheme.onPrimaryContainer.withValues(alpha: 0.15),
+                                    color: scheme.onPrimaryContainer.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.schedule, size: 16, color: scheme.onPrimaryContainer),
+                                      Icon(
+                                        Icons.schedule,
+                                        size: 16,
+                                        color: scheme.onPrimaryContainer,
+                                      ),
                                       const SizedBox(width: 4),
-                                      Text('Worked: $_workedDisplay',
-                                        style: textTheme.labelMedium?.copyWith(color: scheme.onPrimaryContainer)),
+                                      Text(
+                                        'Worked: $_workedDisplay',
+                                        style: textTheme.labelMedium?.copyWith(
+                                          color: scheme.onPrimaryContainer,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -388,32 +519,59 @@ class _HomePageState extends State<HomePage> {
                             if (_isPunchedOut)
                               Column(
                                 children: [
-                                  Icon(Icons.check_circle, size: 48, color: Colors.white),
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 48,
+                                    color: Colors.white,
+                                  ),
                                   const SizedBox(height: 8),
-                                  Text('Today completed', style: textTheme.bodyLarge?.copyWith(color: Colors.white)),
+                                  Text(
+                                    'Today completed',
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ],
                               )
                             else
                               GestureDetector(
                                 onTap: _isPunchedIn ? _punchOut : _punchIn,
                                 child: Container(
-                                  width: 120, height: 120,
+                                  width: 120,
+                                  height: 120,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.3), blurRadius: 20)],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: scheme.primary.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 20,
+                                      ),
+                                    ],
                                   ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.fingerprint, size: 48,
-                                        color: _isPunchedIn ? scheme.error : scheme.primary.withValues(alpha: 0.8)),
+                                      Icon(
+                                        Icons.fingerprint,
+                                        size: 48,
+                                        color: _isPunchedIn
+                                            ? scheme.error
+                                            : scheme.primary.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                      ),
                                       const SizedBox(height: 4),
                                       Text(
                                         _isPunchedIn ? 'Punch Out' : 'Punch In',
                                         style: TextStyle(
-                                          fontSize: 13, fontWeight: FontWeight.w600,
-                                          color: _isPunchedIn ? scheme.error : scheme.primary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: _isPunchedIn
+                                              ? scheme.error
+                                              : scheme.primary,
                                         ),
                                       ),
                                     ],
@@ -424,23 +582,55 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               padding: const EdgeInsets.only(top: 16),
                               decoration: BoxDecoration(
-                                border: Border(top: BorderSide(color: scheme.onPrimaryContainer.withValues(alpha: 0.15))),
-                              ),
-                                child: Row(
-                                  children: [
-                                    Expanded(child: _shiftTime(textTheme, 'Punch In', _fmtTime(_punchInTime), scheme.onPrimaryContainer)),
-                                    Expanded(child: _shiftTime(textTheme, 'Punch Out', _fmtTime(_punchOutTime), scheme.onPrimaryContainer)),
-                                  ],
+                                border: Border(
+                                  top: BorderSide(
+                                    color: scheme.onPrimaryContainer.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                  ),
                                 ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _shiftTime(
+                                      textTheme,
+                                      'Punch In',
+                                      _fmtTime(_punchInTime),
+                                      scheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _shiftTime(
+                                      textTheme,
+                                      'Punch Out',
+                                      _fmtTime(_punchOutTime),
+                                      scheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 12),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.access_time, size: 14, color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
+                                Icon(
+                                  Icons.access_time,
+                                  size: 14,
+                                  color: scheme.onPrimaryContainer.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                                 const SizedBox(width: 4),
-                                Text('Office: $_officeStartTime – $_officeEndTime',
-                                  style: textTheme.labelSmall?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
+                                Text(
+                                  'Office: $_officeStartTime – $_officeEndTime',
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: scheme.onPrimaryContainer.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -456,13 +646,33 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Expanded(child: _statBento(context, colors, textTheme, scheme,
-                      Icons.event_available, 'Attendance', '${(_attendanceRate * 100).toStringAsFixed(0)}%',
-                      _attendanceRate, scheme.primary)),
+                    Expanded(
+                      child: _statBento(
+                        context,
+                        colors,
+                        textTheme,
+                        scheme,
+                        Icons.event_available,
+                        'Attendance',
+                        '${(_attendanceRate * 100).toStringAsFixed(0)}%',
+                        _attendanceRate,
+                        scheme.primary,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _statBento(context, colors, textTheme, scheme,
-                      Icons.warning_amber_rounded, 'Late Balance', '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
-                      (_lateUsed / 180).clamp(0, 1), colors.tertiary)),
+                    Expanded(
+                      child: _statBento(
+                        context,
+                        colors,
+                        textTheme,
+                        scheme,
+                        Icons.warning_amber_rounded,
+                        'Late Balance',
+                        '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
+                        (_lateUsed / 180).clamp(0, 1),
+                        colors.tertiary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -475,16 +685,39 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(left: 4, bottom: 12),
-                      child:                       Text('QUICK ACTIONS', style: textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant, letterSpacing: 1.2)),
+                      child: Text(
+                        'QUICK ACTIONS',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                     ),
-                    _actionItem(context, colors, textTheme, scheme,
-                      Icons.calendar_today, 'Apply for Leave', 'Vacation, Sick or Casual leave',
-                      _openLeaveSheet, colors.secondaryContainer, colors.onSecondaryContainer),
+                    _actionItem(
+                      context,
+                      colors,
+                      textTheme,
+                      scheme,
+                      Icons.calendar_today,
+                      'Apply for Leave',
+                      'Vacation, Sick or Casual leave',
+                      _openLeaveSheet,
+                      colors.secondaryContainer,
+                      colors.onSecondaryContainer,
+                    ),
                     const SizedBox(height: 8),
-                    _actionItem(context, colors, textTheme, scheme,
-                      Icons.history, 'View Attendance History', 'Check previous punch records',
-                      null, colors.surfaceContainerHigh, scheme.onSurface),
+                    _actionItem(
+                      context,
+                      colors,
+                      textTheme,
+                      scheme,
+                      Icons.history,
+                      'View Attendance History',
+                      'Check previous punch records',
+                      null,
+                      colors.surfaceContainerHigh,
+                      scheme.onSurface,
+                    ),
                   ],
                 ),
               ),
@@ -498,28 +731,53 @@ class _HomePageState extends State<HomePage> {
   Widget _shiftTime(TextTheme tt, String label, String time, Color color) {
     return Column(
       children: [
-        Text(label, style: tt.labelSmall?.copyWith(color: color.withValues(alpha: 0.7))),
+        Text(
+          label,
+          style: tt.labelSmall?.copyWith(color: color.withValues(alpha: 0.7)),
+        ),
         const SizedBox(height: 2),
-        Text(time, style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: color)),
+        Text(
+          time,
+          style: tt.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _statBento(BuildContext context, AppColors colors, TextTheme tt, ColorScheme scheme,
-      IconData icon, String label, String value, double progress, Color barColor) {
+  Widget _statBento(
+    BuildContext context,
+    AppColors colors,
+    TextTheme tt,
+    ColorScheme scheme,
+    IconData icon,
+    String label,
+    String value,
+    double progress,
+    Color barColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colors.surfaceContainerHighest),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(10),
@@ -527,13 +785,20 @@ class _HomePageState extends State<HomePage> {
             child: Icon(icon, size: 20, color: barColor),
           ),
           const SizedBox(height: 12),
-          Text(label, style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
-          Text(value, style: tt.headlineSmall?.copyWith(color: scheme.onSurface)),
+          Text(
+            label,
+            style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          Text(
+            value,
+            style: tt.headlineSmall?.copyWith(color: scheme.onSurface),
+          ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
-              value: progress, minHeight: 6,
+              value: progress,
+              minHeight: 6,
               backgroundColor: colors.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(barColor),
             ),
@@ -543,8 +808,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _actionItem(BuildContext context, AppColors colors, TextTheme tt, ColorScheme scheme,
-      IconData icon, String title, String subtitle, VoidCallback? onTap, Color iconBg, Color iconColor) {
+  Widget _actionItem(
+    BuildContext context,
+    AppColors colors,
+    TextTheme tt,
+    ColorScheme scheme,
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback? onTap,
+    Color iconBg,
+    Color iconColor,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -553,12 +828,19 @@ class _HomePageState extends State<HomePage> {
           color: colors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: colors.surfaceContainerHighest),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 48, height: 48,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: iconBg,
                 borderRadius: BorderRadius.circular(12),
@@ -570,8 +852,19 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
-                  Text(subtitle, style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text(
+                    title,
+                    style: tt.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: tt.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
