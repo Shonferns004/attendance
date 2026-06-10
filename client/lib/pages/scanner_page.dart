@@ -11,16 +11,11 @@ class ScannerPage extends StatefulWidget {
 }
 
 class _ScannerPageState extends State<ScannerPage> {
-  final MobileScannerController _controller = MobileScannerController();
   bool _detected = false;
 
-  Future<void> _onDetect(BarcodeCapture capture) async {
+  void _onDetect(BarcodeCapture capture) {
     if (_detected || capture.barcodes.isEmpty) return;
     _detected = true;
-
-    try {
-      await _controller.stop();
-    } catch (_) {}
 
     final raw = capture.barcodes.first.rawValue ?? '';
     Map<String, dynamic> map;
@@ -47,6 +42,10 @@ class _ScannerPageState extends State<ScannerPage> {
       return;
     }
 
+    _getLocationAndReturn(code);
+  }
+
+  Future<void> _getLocationAndReturn(String code) async {
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
@@ -61,18 +60,11 @@ class _ScannerPageState extends State<ScannerPage> {
     } catch (e) {
       if (mounted) {
         _detected = false;
-        try { await _controller.start(); } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('GPS error: $e')),
         );
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -89,7 +81,6 @@ class _ScannerPageState extends State<ScannerPage> {
         ),
       ),
       body: MobileScanner(
-        controller: _controller,
         onDetect: _onDetect,
         fit: BoxFit.cover,
         errorBuilder: (context, error, child) {
@@ -99,11 +90,12 @@ class _ScannerPageState extends State<ScannerPage> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white, size: 48),
                 const SizedBox(height: 16),
-                Text('Camera error: $error', style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 16),
-                ElevatedButton(
+                Text('$error', style: const TextStyle(color: Colors.white70, fontSize: 13), textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Go Back'),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Go Back'),
                 ),
               ],
             ),
