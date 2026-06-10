@@ -3,5 +3,6 @@ class Config {
   // For Android emulator use: http://10.0.2.2:5000/api
   // For iOS simulator use:     http://localhost:5000/api
   // For real device use:       http://192.168.1.100:5000/api (your machine's LAN IP)
-  static const String apiBaseUrl = 'https://attendance-l3oa.onrender.com/api';
+  // static const String apiBaseUrl = 'https://attendance-l3oa.onrender.com/api';
+  static const String apiBaseUrl = 'http://192.168.0.139:5000/api';
 }

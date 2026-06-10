@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../main.dart';
+import '../widgets/organic_background.dart';
 import 'scanner_page.dart';
 import 'leave_page.dart';
 
@@ -306,8 +308,8 @@ class _HomePageState extends State<HomePage> {
         maxChildSize: 0.95,
         builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
-            color: Color(0xFFf9f9f9),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: Color(0xFFffffff),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(56)),
           ),
           child: LeavePage(scrollController: scrollController),
         ),
@@ -322,23 +324,16 @@ class _HomePageState extends State<HomePage> {
     final notifications = <Map<String, dynamic>>[
       {
         'icon': Icons.check_circle,
-        'title': 'Punch In Successful',
-        'subtitle': 'You punched in at ${_fmtTime(_now)}',
-        'color': Colors.green,
+        'title': 'Flow Started',
+        'subtitle': 'You dropped in at ${_fmtTime(_now)}',
+        'color': scheme.secondary,
         'read': false,
       },
       {
-        'icon': Icons.info_outline,
-        'title': 'Office Hours Reminder',
-        'subtitle': 'Office timing: $_officeStartTime – $_officeEndTime',
+        'icon': Icons.wb_sunny,
+        'title': 'Evening Vibe',
+        'subtitle': 'Keep the momentum going!',
         'color': scheme.primary,
-        'read': false,
-      },
-      {
-        'icon': Icons.event_available,
-        'title': 'Attendance Summary',
-        'subtitle': 'Present: $_present  |  Absent: $_absent  |  Late: $_late  |  Leaves: $_leave',
-        'color': Colors.orange,
         'read': false,
       },
     ];
@@ -354,32 +349,41 @@ class _HomePageState extends State<HomePage> {
         builder: (_, scrollController) => StatefulBuilder(
           builder: (context, setSheetState) => Container(
             decoration: const BoxDecoration(
-              color: Color(0xFFf9f9f9),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              color: Color(0xFFffffff),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(48)),
             ),
             child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               children: [
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    width: 64,
+                    height: 6,
+                    margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
+                      color: const Color(0xFFfffbf2),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ),
                 Row(
                   children: [
-                    Icon(Icons.notifications, color: scheme.onSurface),
-                    const SizedBox(width: 8),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Icon(Icons.notifications_active, color: scheme.primary),
+                    ),
+                    const SizedBox(width: 16),
                     Text(
-                      'Notifications',
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      'Flow Alerts',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
                         color: scheme.onSurface,
                       ),
                     ),
@@ -388,121 +392,130 @@ class _HomePageState extends State<HomePage> {
                       Text(
                         '${notifications.length}',
                         style: textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                          color: scheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 ...notifications.asMap().entries.map((entry) {
                   final i = entry.key;
                   final n = entry.value;
                   final isLast = i == notifications.length - 1;
-                  return Column(
-                    children: [
-                      Dismissible(
-                        key: ValueKey('notif_$i'),
-                        direction: DismissDirection.horizontal,
-                        background: Container(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.only(left: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade600,
-                            borderRadius: BorderRadius.circular(12),
+                      return Column(
+                        children: [
+                          Dismissible(
+                            key: ValueKey('notif_$i'),
+                            direction: DismissDirection.horizontal,
+                            background: Container(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10b981),
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.done_all, color: Colors.white, size: 22),
+                                  SizedBox(width: 8),
+                                  Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            secondaryBackground: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFef4444),
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                                ],
+                              ),
+                            ),
+                            confirmDismiss: (direction) async {
+                              if (direction == DismissDirection.startToEnd) {
+                                setSheetState(() => n['read'] = true);
+                                return false;
+                              } else {
+                                setSheetState(() => notifications.removeAt(i));
+                                return true;
+                              }
+                            },
+                            child: Opacity(
+                              opacity: n['read'] == true ? 0.5 : 1,
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: i == 0
+                                      ? scheme.secondary.withValues(alpha: 0.1)
+                                      : const Color(0xFFfffbf2),
+                                  borderRadius: BorderRadius.circular(32),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(n['icon'], size: 22, color: n['color']),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            n['title'],
+                                            style: textTheme.bodyMedium?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: scheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            n['subtitle'],
+                                            style: textTheme.labelSmall?.copyWith(
+                                              color: scheme.onSurface.withValues(alpha: 0.5),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.done_all, color: Colors.white, size: 22),
-                              SizedBox(width: 8),
-                              Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                            ],
+                          if (!isLast) const SizedBox(height: 16),
+                        ],
+                      );
+                    }),
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFfffbf2),
+                          foregroundColor: scheme.onSurface,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100),
                           ),
                         ),
-                        secondaryBackground: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade600,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                              SizedBox(width: 8),
-                              Icon(Icons.delete_outline, color: Colors.white, size: 22),
-                            ],
-                          ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.startToEnd) {
-                            setSheetState(() => n['read'] = true);
-                            return false;
-                          } else {
-                            setSheetState(() => notifications.removeAt(i));
-                            return true;
-                          }
-                        },
-                        child: Opacity(
-                          opacity: n['read'] == true ? 0.5 : 1,
-                          child: _notificationItem(scheme, textTheme, n['icon'], n['title'], n['subtitle'], n['color']),
-                        ),
+                        child: Text('Got it', style: GoogleFonts.hankenGrotesk(
+                          fontSize: 16, fontWeight: FontWeight.w700,
+                        )),
                       ),
-                      if (!isLast) const Divider(height: 24),
-                    ],
-                  );
-                }),
+                    ),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  Widget _notificationItem(ColorScheme scheme, TextTheme textTheme, IconData icon, String title, String subtitle, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, size: 22, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
   }
 
   double get _attendanceRate {
@@ -513,7 +526,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColors>()!;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -530,327 +542,461 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: scheme.surface,
       body: SafeArea(
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _greeting.toUpperCase(),
-                            style: textTheme.labelMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Text(
-                            firstName.isNotEmpty ? firstName : 'there',
-                            style: textTheme.headlineMedium?.copyWith(
-                              color: scheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.notifications_outlined),
-                      iconSize: 28,
-                      color: scheme.onSurfaceVariant,
-                      onPressed: _openNotificationSheet,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.15),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Opacity(
-                            opacity: 0.06,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.white,
-                                    Colors.black.withValues(alpha: 0.3),
-                                  ],
+        child: Stack(
+          children: [
+            const OrganicBackground(),
+            CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'HELLO THERE',
+                                style: textTheme.labelMedium?.copyWith(
+                                  color: scheme.primary,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 2),
+                              Text(
+                                firstName.isNotEmpty ? firstName : 'there',
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w700,
+                                  height: 44 / 40,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Column(
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.notifications_outlined),
+                            iconSize: 22,
+                            color: scheme.onSurface,
+                            onPressed: _openNotificationSheet,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 12),
+                        // Floating shift badge
+                        SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(32),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  clockStr,
-                                  style: textTheme.headlineLarge?.copyWith(
-                                    color: scheme.onPrimaryContainer,
+                                  'SHIFT',
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurface.withValues(alpha: 0.5),
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.5,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: scheme.onPrimaryContainer.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.schedule,
-                                        size: 16,
-                                        color: scheme.onPrimaryContainer,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Worked: $_workedDisplay',
-                                        style: textTheme.labelMedium?.copyWith(
-                                          color: scheme.onPrimaryContainer,
-                                        ),
-                                      ),
-                                    ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$_officeStartTime – $_officeEndTime',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: scheme.onSurface,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 24),
-                            if (_isPunchedOut)
-                              Column(
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        // Clock display
+                        Text(
+                          clockStr,
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 64,
+                            fontWeight: FontWeight.w800,
+                            height: 64 / 64,
+                            letterSpacing: -1.5,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Work timer pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: scheme.secondary.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.water_drop, size: 18, color: scheme.onSurface.withValues(alpha: 0.7)),
+                              const SizedBox(width: 6),
+                              Text(
+                                '$_workedDisplay',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: scheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        // Liquid punch button
+                        if (_isPunchedOut)
+                          Column(
+                            children: [
+                              Icon(Icons.check_circle, size: 72, color: const Color(0xFF10b981)),
+                              const SizedBox(height: 12),
+                              Text('Today completed', style: textTheme.titleLarge?.copyWith(color: scheme.onSurface)),
+                            ],
+                          )
+                        else
+                          GestureDetector(
+                            onTap: _isPunchedIn ? _punchOut : _punchIn,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              width: 192,
+                              height: 192,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: _isPunchedIn
+                                      ? [const Color(0xFFa8dadc), const Color(0xFF8ec4c6)]
+                                      : [const Color(0xFFffae94), const Color(0xFFe68c71)],
+                                ),
+                                borderRadius: BorderRadius.circular(100),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _isPunchedIn
+                                        ? const Color(0xFFa8dadc).withValues(alpha: 0.4)
+                                        : const Color(0xFFff9b7d).withValues(alpha: 0.4),
+                                    blurRadius: 40,
+                                    offset: const Offset(0, 20),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    Icons.check_circle,
+                                    Icons.fingerprint,
                                     size: 48,
                                     color: Colors.white,
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Today completed',
-                                    style: textTheme.bodyLarge?.copyWith(
+                                    _isPunchedIn ? 'Drop Out' : 'Drop In',
+                                    style: textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
                                       color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            else
-                              GestureDetector(
-                                onTap: _isPunchedIn ? _punchOut : _punchIn,
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: scheme.primary.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        blurRadius: 20,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.fingerprint,
-                                        size: 48,
-                                        color: _isPunchedIn
-                                            ? scheme.error
-                                            : scheme.primary.withValues(
-                                                alpha: 0.8,
-                                              ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _isPunchedIn ? 'Punch Out' : 'Punch In',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: _isPunchedIn
-                                              ? scheme.error
-                                              : scheme.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.only(top: 16),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: scheme.onPrimaryContainer.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _shiftTime(
-                                      textTheme,
-                                      'Punch In',
-                                      _fmtTime(_punchInTime),
-                                      scheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: _shiftTime(
-                                      textTheme,
-                                      'Punch Out',
-                                      _fmtTime(_punchOutTime),
-                                      scheme.onPrimaryContainer,
+                                      letterSpacing: 1.5,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: scheme.onPrimaryContainer.withValues(
-                                    alpha: 0.7,
-                                  ),
+                          ),
+                        const SizedBox(height: 40),
+                        // Arrived / Left cards
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(40),
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Office: $_officeStartTime – $_officeEndTime',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: scheme.onPrimaryContainer.withValues(
-                                      alpha: 0.7,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'ARRIVED',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: scheme.onSurface.withValues(alpha: 0.3),
+                                        letterSpacing: 1.0,
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _fmtTime(_punchInTime),
+                                      style: GoogleFonts.hankenGrotesk(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: scheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(40),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'LEFT',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: scheme.onSurface.withValues(alpha: 0.3),
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _fmtTime(_punchOutTime),
+                                      style: GoogleFonts.hankenGrotesk(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: scheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: scheme.secondary.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(40),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(Icons.calendar_today, size: 20, color: scheme.secondary),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '${(_attendanceRate * 100).toStringAsFixed(0)}%',
+                              style: GoogleFonts.hankenGrotesk(
+                                fontSize: 24, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'Attendance',
+                              style: textTheme.labelMedium?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.5),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _statBento(
-                        context,
-                        colors,
-                        textTheme,
-                        scheme,
-                        Icons.event_available,
-                        'Attendance',
-                        '${(_attendanceRate * 100).toStringAsFixed(0)}%',
-                        _attendanceRate,
-                        scheme.primary,
-                      ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 20),
                     Expanded(
-                      child: _statBento(
-                        context,
-                        colors,
-                        textTheme,
-                        scheme,
-                        Icons.warning_amber_rounded,
-                        'Late Balance',
-                        '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
-                        (_lateUsed / 180).clamp(0, 1),
-                        colors.tertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 80),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 12),
-                      child: Text(
-                        'QUICK ACTIONS',
-                        style: textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          letterSpacing: 1.2,
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(40),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(Icons.warning_amber_rounded, size: 20, color: scheme.primary),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
+                              style: GoogleFonts.hankenGrotesk(
+                                fontSize: 24, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'Late balance',
+                              style: textTheme.labelMedium?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.5),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    _actionItem(
-                      context,
-                      colors,
-                      textTheme,
-                      scheme,
-                      Icons.calendar_today,
-                      'Apply for Leave',
-                      'Vacation, Sick or Casual leave',
-                      _openLeaveSheet,
-                      colors.secondaryContainer,
-                      colors.onSecondaryContainer,
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 80),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 56, height: 56,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFfffbf2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.auto_awesome, size: 24, color: Color(0xFFff9b7d)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('New Request', style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 18, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                                )),
+                                Text('Take a break or leave', style: textTheme.labelMedium?.copyWith(
+                                  color: scheme.onSurface.withValues(alpha: 0.5),
+                                )),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.bubble_chart, size: 20, color: scheme.primary.withValues(alpha: 0.15)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    _actionItem(
-                      context,
-                      colors,
-                      textTheme,
-                      scheme,
-                      Icons.history,
-                      'View Attendance History',
-                      'Check previous punch records',
-                      null,
-                      colors.surfaceContainerHigh,
-                      scheme.onSurface,
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _openLeaveSheet,
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 56, height: 56,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFfffbf2),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.history_edu, size: 24, color: Color(0xFFa8dadc)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('My Journal', style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 18, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                                  )),
+                                  Text('Past flow records', style: textTheme.labelMedium?.copyWith(
+                                    color: scheme.onSurface.withValues(alpha: 0.5),
+                                  )),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.bubble_chart, size: 20, color: scheme.secondary.withValues(alpha: 0.15)),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -858,154 +1004,9 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _shiftTime(TextTheme tt, String label, String time, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: tt.labelSmall?.copyWith(color: color.withValues(alpha: 0.7)),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          time,
-          style: tt.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _statBento(
-    BuildContext context,
-    AppColors colors,
-    TextTheme tt,
-    ColorScheme scheme,
-    IconData icon,
-    String label,
-    String value,
-    double progress,
-    Color barColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.surfaceContainerHighest),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: barColor),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          Text(
-            value,
-            style: tt.headlineSmall?.copyWith(color: scheme.onSurface),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: colors.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(barColor),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionItem(
-    BuildContext context,
-    AppColors colors,
-    TextTheme tt,
-    ColorScheme scheme,
-    IconData icon,
-    String title,
-    String subtitle,
-    VoidCallback? onTap,
-    Color iconBg,
-    Color iconColor,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.surfaceContainerHighest),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 24, color: iconColor),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: tt.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: tt.labelMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: colors.outline),
-          ],
-        ),
-      ),
-    );
+    ),
+  ),
+);
   }
 }

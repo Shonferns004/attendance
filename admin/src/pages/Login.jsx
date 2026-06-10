@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { adminLogin, workerLogin } from '../api/auth';
+import { unifiedLogin } from '../api/auth';
 
 function Login({ onLogin }) {
   const [identifier, setIdentifier] = useState('');
@@ -12,14 +12,8 @@ function Login({ onLogin }) {
     setError('');
     setLoading(true);
     try {
-      const isEmail = identifier.includes('@');
-      if (isEmail) {
-        const data = await adminLogin(identifier, password);
-        onLogin(data.token, 'admin');
-      } else {
-        const data = await workerLogin(identifier, password);
-        onLogin(data.token, 'worker', data.worker);
-      }
+      const data = await unifiedLogin(identifier, password);
+      onLogin(data.token, data.role, data.user);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,9 +28,9 @@ function Login({ onLogin }) {
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg shadow-blue-500/20">
-              A
+              U
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Welcome</h1>
+            <h1 className="text-2xl font-bold text-gray-800">UFS CRM</h1>
             <p className="text-gray-500 mt-1">Sign in with your credentials</p>
           </div>
           {error && (
@@ -53,7 +47,7 @@ function Login({ onLogin }) {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50/50"
-                placeholder="admin@admin.com or Login ID"
+                placeholder="you@email.com or Login ID"
                 required
               />
             </div>

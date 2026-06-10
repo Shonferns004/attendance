@@ -9,6 +9,7 @@ import { getQRByCode } from '../models/qrModel.js';
 import { getSetting } from '../models/settingsModel.js';
 import { getApprovedHalfDayLeave, getApprovedLeaves } from '../models/leaveModel.js';
 import { getAllAttendance } from '../models/attendanceModel.js';
+import { getAllWorkers } from '../models/workerModel.js';
 
 const MAX_LATE_MINUTES = 180;
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -198,7 +199,13 @@ function expandLeaveDates(leave) {
 
 export const listAll = async (req, res) => {
   try {
-    const records = await getAllAttendance();
+    let records = await getAllAttendance();
+    const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
+    if (ngoId) {
+      const workers = await getAllWorkers(ngoId);
+      const workerIds = new Set(workers.map((w) => w.id));
+      records = records.filter((r) => workerIds.has(r.worker_id));
+    }
     for (const r of records) {
       if (r.punch_in_time && r.punch_out_time) {
         const pi = new Date(r.punch_in_time).getTime();

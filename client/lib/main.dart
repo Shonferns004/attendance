@@ -1,4 +1,6 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'services/api_service.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
@@ -148,37 +150,37 @@ class AppColors extends ThemeExtension<AppColors> {
   ThemeExtension<AppColors> lerp(covariant ThemeExtension<AppColors>? other, double t) => this;
 
   static const light = AppColors(
-    primaryFixed: Color(0xFFdce1ff),
-    primaryFixedDim: Color(0xFFb5c4ff),
-    onPrimaryFixed: Color(0xFF00164e),
-    onPrimaryFixedVariant: Color(0xFF003cae),
-    secondaryContainer: Color(0xFFdde2f0),
-    onSecondaryContainer: Color(0xFF5f6470),
-    secondaryFixed: Color(0xFFdde2f0),
-    secondaryFixedDim: Color(0xFFc1c6d4),
-    onSecondaryFixed: Color(0xFF161c25),
-    onSecondaryFixedVariant: Color(0xFF414752),
-    tertiary: Color(0xFF98181f),
-    tertiaryContainer: Color(0xFFba3234),
+    primaryFixed: Color(0xFFfde2d8),
+    primaryFixedDim: Color(0xFFfcc7b5),
+    onPrimaryFixed: Color(0xFF3d1508),
+    onPrimaryFixedVariant: Color(0xFFd47a5c),
+    secondaryContainer: Color(0xFFd6ecee),
+    onSecondaryContainer: Color(0xFF234b4d),
+    secondaryFixed: Color(0xFFd6ecee),
+    secondaryFixedDim: Color(0xFFb0d9db),
+    onSecondaryFixed: Color(0xFF0a2a2c),
+    onSecondaryFixedVariant: Color(0xFF5a9ea1),
+    tertiary: Color(0xFFb87c4a),
+    tertiaryContainer: Color(0xFFd49a64),
     onTertiary: Color(0xFFffffff),
-    onTertiaryContainer: Color(0xFFffdbd8),
-    tertiaryFixed: Color(0xFFffdad7),
-    tertiaryFixedDim: Color(0xFFffb3ae),
-    onTertiaryFixed: Color(0xFF410005),
-    onTertiaryFixedVariant: Color(0xFF8f0f1a),
+    onTertiaryContainer: Color(0xFFfff1e0),
+    tertiaryFixed: Color(0xFFfdebd4),
+    tertiaryFixedDim: Color(0xFFf5d1a8),
+    onTertiaryFixed: Color(0xFF3d230a),
+    onTertiaryFixedVariant: Color(0xFF8f5e30),
     surfaceContainerLowest: Color(0xFFffffff),
-    surfaceContainerLow: Color(0xFFf3f3f3),
-    surfaceContainer: Color(0xFFeeeeee),
-    surfaceContainerHigh: Color(0xFFe8e8e8),
-    surfaceContainerHighest: Color(0xFFe2e2e2),
-    surfaceDim: Color(0xFFdadada),
-    surfaceBright: Color(0xFFf9f9f9),
-    surfaceVariant: Color(0xFFe2e2e2),
-    outline: Color(0xFF747685),
-    outlineVariant: Color(0xFFc4c5d6),
-    inverseSurface: Color(0xFF2f3131),
-    inverseOnSurface: Color(0xFFf1f1f1),
-    inversePrimary: Color(0xFFb5c4ff),
+    surfaceContainerLow: Color(0xFFfffbf2),
+    surfaceContainer: Color(0xFFfcf3e6),
+    surfaceContainerHigh: Color(0xFFf5eadc),
+    surfaceContainerHighest: Color(0xFFe8ddd0),
+    surfaceDim: Color(0xFFd9cfc3),
+    surfaceBright: Color(0xFFffffff),
+    surfaceVariant: Color(0xFFe8ddd0),
+    outline: Color(0xFF7b7266),
+    outlineVariant: Color(0xFFccc3b7),
+    inverseSurface: Color(0xFF312b25),
+    inverseOnSurface: Color(0xFFf3ede5),
+    inversePrimary: Color(0xFFfcc7b5),
   );
 }
 
@@ -192,36 +194,54 @@ class AttendXApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Inter',
         colorScheme: const ColorScheme.light(
-          primary: Color(0xFF0041bc),
+          primary: Color(0xFFff9b7d),
           onPrimary: Color(0xFFffffff),
-          primaryContainer: Color(0xFF2d5bd7),
-          onPrimaryContainer: Color(0xFFdce2ff),
-          secondary: Color(0xFF595f6a),
+          primaryContainer: Color(0xFFfde2d8),
+          onPrimaryContainer: Color(0xFF3d1508),
+          secondary: Color(0xFFa8dadc),
           onSecondary: Color(0xFFffffff),
-          surface: Color(0xFFf9f9f9),
-          onSurface: Color(0xFF1a1c1c),
-          surfaceContainerHighest: Color(0xFFe2e2e2),
-          outline: Color(0xFF747685),
+          secondaryContainer: Color(0xFFd6ecee),
+          onSecondaryContainer: Color(0xFF234b4d),
+          surface: Color(0xFFfffbf2),
+          onSurface: Color(0xFF4a4e69),
+          surfaceContainerHighest: Color(0xFFe8ddd0),
+          outline: Color(0xFF7b7266),
           error: Color(0xFFba1a1a),
           onError: Color(0xFFffffff),
           errorContainer: Color(0xFFffdad6),
           onErrorContainer: Color(0xFF93000a),
-          inverseSurface: Color(0xFF2f3131),
-          onInverseSurface: Color(0xFFf1f1f1),
-          inversePrimary: Color(0xFFb5c4ff),
+          inverseSurface: Color(0xFF312b25),
+          onInverseSurface: Color(0xFFf3ede5),
+          inversePrimary: Color(0xFFfcc7b5),
         ),
         extensions: const [AppColors.light],
-        scaffoldBackgroundColor: const Color(0xFFf9f9f9),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(fontSize: 48, fontWeight: FontWeight.w700, height: 56 / 48),
-          headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, height: 32 / 24),
-          headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, height: 24 / 18),
-          bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16),
-          bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14),
-          labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 16 / 12, letterSpacing: 0.24),
-          labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, height: 12 / 10),
+        scaffoldBackgroundColor: const Color(0xFFfffbf2),
+        textTheme: GoogleFonts.manropeTextTheme().copyWith(
+          headlineLarge: GoogleFonts.hankenGrotesk(
+            fontSize: 40, fontWeight: FontWeight.w800, height: 44 / 40,
+          ),
+          headlineMedium: GoogleFonts.hankenGrotesk(
+            fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
+          ),
+          headlineSmall: GoogleFonts.hankenGrotesk(
+            fontSize: 18, fontWeight: FontWeight.w700, height: 24 / 18,
+          ),
+          titleLarge: GoogleFonts.hankenGrotesk(
+            fontSize: 20, fontWeight: FontWeight.w700, height: 28 / 20,
+          ),
+          bodyLarge: GoogleFonts.manrope(
+            fontSize: 16, fontWeight: FontWeight.w500, height: 24 / 16,
+          ),
+          bodyMedium: GoogleFonts.manrope(
+            fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14,
+          ),
+          labelMedium: GoogleFonts.manrope(
+            fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.24,
+          ),
+          labelSmall: GoogleFonts.manrope(
+            fontSize: 10, fontWeight: FontWeight.w700, height: 12 / 10,
+          ),
         ),
       ),
       home: const AuthGate(),
@@ -289,7 +309,6 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColors>()!;
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -298,29 +317,43 @@ class _MainShellState extends State<MainShell> {
           ProfilePage(onLogout: widget.onLogout, tabChangeVersion: _tabChangeVersion),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: colors.surfaceContainerHighest)),
-          color: colors.surfaceContainerLowest,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                _NavItem(
-                  index: 0, label: 'Home',
-                  icon: Icons.home_outlined, activeIcon: Icons.home,
-                  isActive: _currentIndex == 0,
-                  onTap: () { if (_currentIndex != 0) { _tabChangeVersion++; setState(() => _currentIndex = 0); } },
-                ),
-                _NavItem(
-                  index: 1, label: 'Profile',
-                  icon: Icons.person_outline, activeIcon: Icons.person,
-                  isActive: _currentIndex == 1,
-                  onTap: () { if (_currentIndex != 1) { _tabChangeVersion++; setState(() => _currentIndex = 1); } },
-                ),
-              ],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(100),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 35,
+                    offset: const Offset(0, 15),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  _NavItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home,
+                    label: 'Home',
+                    isActive: _currentIndex == 0,
+                    onTap: () { if (_currentIndex != 0) { _tabChangeVersion++; setState(() => _currentIndex = 0); } },
+                  ),
+                  _NavItem(
+                    icon: Icons.person_outline,
+                    activeIcon: Icons.person,
+                    label: 'Profile',
+                    isActive: _currentIndex == 1,
+                    onTap: () { if (_currentIndex != 1) { _tabChangeVersion++; setState(() => _currentIndex = 1); } },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -330,33 +363,43 @@ class _MainShellState extends State<MainShell> {
 }
 
 class _NavItem extends StatelessWidget {
-  final int index;
   final IconData icon;
   final IconData activeIcon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
 
-  const _NavItem({required this.index, required this.icon, required this.activeIcon, required this.label, required this.isActive, required this.onTap});
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(isActive ? activeIcon : icon, size: 24,
-                color: isActive ? colors.primary : colors.onSurface.withValues(alpha: 0.5)),
-              const SizedBox(height: 2),
-              Text(label, style: TextStyle(fontSize: 11,
-                color: isActive ? colors.primary : colors.onSurface.withValues(alpha: 0.5))),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isActive ? activeIcon : icon,
+              size: 24,
+              color: isActive ? scheme.primary : scheme.onSurface.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600,
+                color: isActive ? scheme.primary : scheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ),
+          ],
         ),
       ),
     );

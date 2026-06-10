@@ -8,16 +8,18 @@ import {
   removeTask,
   updateTaskStatus,
 } from '../controllers/taskController.js';
-import { authenticateAdmin, authenticateWorker } from '../middleware/authMiddleware.js';
+import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.post('/', authenticateAdmin, addTask);
-router.get('/', authenticateAdmin, getTasks);
+const adminOrHrOrHo = authenticateRole('super_admin', 'hoadmin', 'hr');
+
+router.post('/', adminOrHrOrHo, addTask);
+router.get('/', adminOrHrOrHo, getTasks);
 router.get('/my-tasks', authenticateWorker, getMyTasks);
-router.get('/:id', authenticateAdmin, getTask);
-router.put('/:id', authenticateAdmin, editTask);
+router.get('/:id', adminOrHrOrHo, getTask);
+router.put('/:id', adminOrHrOrHo, editTask);
 router.put('/status/:id', authenticateWorker, updateTaskStatus);
-router.delete('/:id', authenticateAdmin, removeTask);
+router.delete('/:id', authenticateRole('super_admin', 'hoadmin'), removeTask);
 
 export default router;

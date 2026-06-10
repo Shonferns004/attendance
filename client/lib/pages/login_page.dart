@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
-import '../main.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onLogin;
@@ -40,8 +40,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).extension<AppColors>()!;
-    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
       body: Container(
@@ -49,7 +47,10 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
+            colors: [
+              const Color(0xFFff9b7d),
+              const Color(0xFFff9b7d).withValues(alpha: 0.85),
+            ],
           ),
         ),
         child: SafeArea(
@@ -60,25 +61,29 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 80, height: 80,
+                    width: 88, height: 88,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(44),
                     ),
-                    child: const Icon(Icons.qr_code_scanner, size: 40, color: Colors.white),
+                    child: const Icon(Icons.qr_code_scanner, size: 44, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  Text('Worker Login', style: tt.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text('Worker Login', style: GoogleFonts.hankenGrotesk(
+                    fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white,
+                  )),
                   const SizedBox(height: 4),
                   Text('Sign in to mark attendance',
-                    style: tt.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7))),
+                    style: GoogleFonts.manrope(
+                      fontSize: 15, color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ),
                   const SizedBox(height: 40),
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(40),
                     ),
                     child: Column(
                       children: [
@@ -86,42 +91,56 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _loginCtrl,
                           decoration: InputDecoration(
                             labelText: 'Login ID',
-                            prefixIcon: Icon(Icons.person_outline, color: scheme.onSurfaceVariant),
+                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF0b1c30).withValues(alpha: 0.5)),
+                            prefixIcon: Icon(Icons.person_outline, color: const Color(0xFF0b1c30).withValues(alpha: 0.4)),
                             filled: true,
-                            fillColor: scheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            fillColor: const Color(0xFFf8fafd),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         TextField(
                           controller: _passCtrl,
                           obscureText: true,
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline, color: scheme.onSurfaceVariant),
+                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF0b1c30).withValues(alpha: 0.5)),
+                            prefixIcon: Icon(Icons.lock_outline, color: const Color(0xFF0b1c30).withValues(alpha: 0.4)),
                             filled: true,
-                            fillColor: scheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            fillColor: const Color(0xFFf8fafd),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
                           Text(_error!, style: TextStyle(fontSize: 13, color: scheme.error)),
                         ],
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
+                          height: 56,
                           child: ElevatedButton(
                             onPressed: _loading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: scheme.primary,
+                              backgroundColor: const Color(0xFFff9b7d),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              shadowColor: const Color(0xFFff9b7d).withValues(alpha: 0.3),
                             ),
                             child: _loading
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : Text('Sign In', style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 16, fontWeight: FontWeight.w700,
+                                  )),
                           ),
                         ),
                       ],

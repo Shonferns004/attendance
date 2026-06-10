@@ -1,5 +1,18 @@
 const API = '/api';
 
+export const unifiedLogin = async (identifier, password) => {
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message);
+  }
+  return res.json();
+};
+
 export const adminLogin = async (email, password) => {
   const res = await fetch(`${API}/auth/admin/login`, {
     method: 'POST',

@@ -24,7 +24,7 @@ async function generateLoginId(name) {
 
 export const addWorker = async (req, res) => {
   try {
-    const { name, email, gender, dob } = req.body;
+    const { name, email, gender, dob, ngo_id } = req.body;
     if (!name || !email) {
       return res.status(400).json({ message: 'Name and email are required' });
     }
@@ -39,6 +39,8 @@ export const addWorker = async (req, res) => {
       password: hashedPassword,
       gender: gender || null,
       dob: dob || null,
+      ngo_id: ngo_id || req.user.ngo_id || null,
+      created_by: req.user.id,
     });
 
     return res.status(201).json({
@@ -82,6 +84,8 @@ export const bulkAddWorkers = async (req, res) => {
         password: hashedPassword,
         gender: w.gender || null,
         dob: w.dob || null,
+        ngo_id: w.ngo_id || req.user.ngo_id || null,
+        created_by: req.user.id,
       };
     });
     const created = await createWorkers(prepared);
@@ -104,7 +108,8 @@ export const bulkAddWorkers = async (req, res) => {
 
 export const getWorkers = async (req, res) => {
   try {
-    const workers = await getAllWorkers();
+    const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
+    const workers = await getAllWorkers(ngoId);
     const safeWorkers = workers.map((w) => ({
       id: w.id,
       name: w.name,
@@ -112,6 +117,7 @@ export const getWorkers = async (req, res) => {
       login_id: w.login_id,
       gender: w.gender,
       dob: w.dob,
+      ngo_id: w.ngo_id,
       created_at: w.created_at,
     }));
     return res.json(safeWorkers);
@@ -133,6 +139,7 @@ export const getMyProfile = async (req, res) => {
       login_id: worker.login_id,
       gender: worker.gender,
       dob: worker.dob,
+      ngo_id: worker.ngo_id,
       created_at: worker.created_at,
     });
   } catch (error) {
@@ -153,6 +160,7 @@ export const getWorker = async (req, res) => {
       login_id: worker.login_id,
       gender: worker.gender,
       dob: worker.dob,
+      ngo_id: worker.ngo_id,
       created_at: worker.created_at,
     });
   } catch (error) {
@@ -162,12 +170,13 @@ export const getWorker = async (req, res) => {
 
 export const editWorker = async (req, res) => {
   try {
-    const { name, email, gender, dob } = req.body;
+    const { name, email, gender, dob, ngo_id } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (email) updates.email = email;
     if (gender !== undefined) updates.gender = gender;
     if (dob !== undefined) updates.dob = dob;
+    if (ngo_id) updates.ngo_id = ngo_id;
     const worker = await updateWorker(req.params.id, updates);
     return res.json({ message: 'Worker updated successfully', worker });
   } catch (error) {
@@ -177,7 +186,8 @@ export const editWorker = async (req, res) => {
 
 export const getBirthdays = async (req, res) => {
   try {
-    const workers = await getAllWorkers();
+    const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
+    const workers = await getAllWorkers(ngoId);
     const today = new Date();
     const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const upcoming = workers

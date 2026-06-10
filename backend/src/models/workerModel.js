@@ -19,11 +19,15 @@ export const createWorkers = async (workersData) => {
   return data;
 };
 
-export const getAllWorkers = async () => {
-  const { data, error } = await supabase
+export const getAllWorkers = async (ngo_id) => {
+  let query = supabase
     .from('workers')
     .select('*')
     .order('created_at', { ascending: false });
+
+  if (ngo_id) query = query.eq('ngo_id', ngo_id);
+
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 };

@@ -9,7 +9,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'https://attendance-l3oa.onrender.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },

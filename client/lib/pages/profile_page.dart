@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../main.dart';
 import '../widgets/mini_calendar.dart';
+import '../widgets/organic_background.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -153,27 +155,32 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: SafeArea(
-        child: ListView(
-          controller: _scrollController,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-          children: [
-            const SizedBox(height: 8),
-            _profileCard(colors, scheme, tt, initials, name, loginId, email),
-            const SizedBox(height: 16),
-            _statsCard(colors, scheme, tt, monthYear, rate),
-            const SizedBox(height: 16),
-            _lateCard(colors, scheme, tt),
-            const SizedBox(height: 16),
-            _calendarCard(colors, scheme, tt, now),
-            const SizedBox(height: 16),
-            _recentActivityCard(colors, scheme, tt),
-            const SizedBox(height: 16),
-            if (_monthlyStats.isNotEmpty) _breakdownCard(colors, scheme, tt),
-            const SizedBox(height: 16),
-            if (widget.onLogout != null) _logoutButton(colors, scheme, tt),
-          ],
-        ),
+      body: Stack(
+        children: [
+          const OrganicBackground(),
+          SafeArea(
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+              children: [
+                const SizedBox(height: 8),
+                _profileCard(colors, scheme, tt, initials, name, loginId, email),
+                const SizedBox(height: 16),
+                _statsCard(colors, scheme, tt, monthYear, rate),
+                const SizedBox(height: 16),
+                _lateCard(colors, scheme, tt),
+                const SizedBox(height: 16),
+                _calendarCard(colors, scheme, tt, now),
+                const SizedBox(height: 16),
+                _recentActivityCard(colors, scheme, tt),
+                const SizedBox(height: 16),
+                if (_monthlyStats.isNotEmpty) _breakdownCard(colors, scheme, tt),
+                const SizedBox(height: 16),
+                if (widget.onLogout != null) _logoutButton(colors, scheme, tt),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -183,30 +190,45 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             width: 64, height: 64,
             decoration: BoxDecoration(
-              color: colors.primaryFixed,
+              color: scheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(child: Text(initials,
-              style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary))),
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 22, fontWeight: FontWeight.w800, color: scheme.primary,
+              ),
+            )),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: tt.headlineSmall?.copyWith(color: scheme.onSurface)),
-                Text(loginId, style: tt.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                Text(email, style: tt.labelMedium?.copyWith(color: scheme.primary)),
+                Text(name, style: GoogleFonts.hankenGrotesk(
+                  fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
+                )),
+                Text(loginId, style: tt.bodyMedium?.copyWith(
+                  color: const Color(0xFF0b1c30).withValues(alpha: 0.5),
+                )),
+                Text(email, style: tt.labelMedium?.copyWith(
+                  color: scheme.primary, fontWeight: FontWeight.w600,
+                )),
               ],
             ),
           ),
@@ -219,10 +241,16 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -230,9 +258,14 @@ class _ProfilePageState extends State<ProfilePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('THIS MONTH — ${monthLabel.toUpperCase()}',
-                style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant, letterSpacing: 0.6)),
+                style: tt.labelMedium?.copyWith(
+                  color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
+                  letterSpacing: 0.6, fontWeight: FontWeight.w700,
+                )),
               Text('${(rate * 100).toStringAsFixed(1)}%',
-                style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w800, color: scheme.primary,
+                )),
             ],
           ),
           const SizedBox(height: 16),
@@ -272,10 +305,16 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,18 +326,24 @@ class _ProfilePageState extends State<ProfilePage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Late Balance', style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
-                  Text('Used this month', style: tt.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text('Late Balance', style: GoogleFonts.hankenGrotesk(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
+                  )),
+                  Text('Used this month', style: tt.labelMedium?.copyWith(
+                    color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
+                  )),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: colors.primaryFixed,
-                  borderRadius: BorderRadius.circular(20),
+                  color: scheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(28),
                 ),
                 child: Text('${180 - _lateUsed} left',
-                  style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: scheme.primary,
+                  )),
               ),
             ],
           ),
@@ -306,9 +351,14 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('$_lateUsed', style: tt.headlineMedium?.copyWith(color: scheme.primary)),
+              Text('$_lateUsed', style: GoogleFonts.hankenGrotesk(
+                fontSize: 32, fontWeight: FontWeight.w800, color: const Color(0xFF0b1c30),
+              )),
               const SizedBox(width: 4),
-              Text('/ 180 min', style: tt.headlineSmall?.copyWith(color: scheme.onSurfaceVariant)),
+              Text('/ 180 min', style: GoogleFonts.hankenGrotesk(
+                fontSize: 18, fontWeight: FontWeight.w600,
+                color: const Color(0xFF0b1c30).withValues(alpha: 0.3),
+              )),
             ],
           ),
           const SizedBox(height: 12),
@@ -329,10 +379,16 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,7 +397,9 @@ class _ProfilePageState extends State<ProfilePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(DateFormat('MMMM yyyy').format(DateTime(_calYear, _calMonth)),
-                style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
+                )),
               Row(
                 children: [
                   GestureDetector(
@@ -414,8 +472,8 @@ class _ProfilePageState extends State<ProfilePage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFFf8fafd),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           children: [
@@ -448,11 +506,10 @@ class _ProfilePageState extends State<ProfilePage> {
     final formattedDate = dt != null ? DateFormat('EEEE, d MMMM yyyy').format(dt) : dateStr;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainerHighest),
+        color: const Color(0xFFf8fafd),
+        borderRadius: BorderRadius.circular(32),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,19 +518,21 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Icon(statusIcon, size: 18, color: statusColor),
               const SizedBox(width: 8),
-              Text(formattedDate, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+              Text(formattedDate, style: GoogleFonts.hankenGrotesk(
+                fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
+              )),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(child: _detailBox(tt, colors, scheme, Icons.login, 'Punch In', _fmtTime(punchIn))),
@@ -500,19 +559,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _detailBox(TextTheme tt, AppColors colors, ColorScheme scheme, IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.surfaceContainerHighest),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Icon(icon, size: 16, color: colors.outline),
+          Icon(icon, size: 16, color: scheme.primary.withValues(alpha: 0.5)),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 9, color: colors.outline)),
+          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600,
+            color: const Color(0xFF0b1c30).withValues(alpha: 0.4))),
           const SizedBox(height: 2),
-          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30))),
         ],
       ),
     );
@@ -525,16 +591,22 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Monthly breakdown',
-            style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+            style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30))),
           const SizedBox(height: 16),
           ...sortedMonths.take(6).map((entry) {
             final y = entry.key ~/ 100;
@@ -594,15 +666,24 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.surfaceContainer),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('RECENT ACTIVITY', style: tt.labelMedium?.copyWith(color: colors.outline, letterSpacing: 1.0)),
+          Text('RECENT ACTIVITY', style: tt.labelMedium?.copyWith(
+            color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
+            letterSpacing: 1.0, fontWeight: FontWeight.w700,
+          )),
           const SizedBox(height: 12),
           ...recent.map((r) {
             final date = r['date']?.toString() ?? '';
@@ -642,15 +723,21 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _logoutButton(AppColors colors, ColorScheme scheme, TextTheme tt) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
+      height: 56,
+      child: ElevatedButton(
         onPressed: widget.onLogout,
-        icon: Icon(Icons.logout, color: colors.tertiary),
-        label: Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.tertiary)),
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: colors.tertiary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFFef4444),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: const BorderSide(color: Color(0xFFfee2e2)),
+          ),
         ),
+        child: Text('Logout', style: GoogleFonts.hankenGrotesk(
+          fontSize: 16, fontWeight: FontWeight.w700,
+        )),
       ),
     );
   }
@@ -659,15 +746,22 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.surfaceVariant),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Text(num, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color)),
+          Text(num, style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, color: colors.outline)),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+            color: const Color(0xFF0b1c30).withValues(alpha: 0.4))),
         ],
       ),
     );

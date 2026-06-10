@@ -6,6 +6,7 @@ import {
   updateLeaveStatus,
   getLeaveById,
 } from '../models/leaveModel.js';
+import { getAllWorkers } from '../models/workerModel.js';
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
@@ -124,7 +125,13 @@ export const myLeaves = async (req, res) => {
 
 export const listAll = async (req, res) => {
   try {
-    const leaves = await getAllLeaves();
+    let leaves = await getAllLeaves();
+    const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
+    if (ngoId) {
+      const workers = await getAllWorkers(ngoId);
+      const workerIds = new Set(workers.map((w) => w.id));
+      leaves = leaves.filter((l) => workerIds.has(l.worker_id));
+    }
     return res.json(leaves);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -133,7 +140,13 @@ export const listAll = async (req, res) => {
 
 export const listPending = async (req, res) => {
   try {
-    const leaves = await getPendingLeaves();
+    let leaves = await getPendingLeaves();
+    const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
+    if (ngoId) {
+      const workers = await getAllWorkers(ngoId);
+      const workerIds = new Set(workers.map((w) => w.id));
+      leaves = leaves.filter((l) => workerIds.has(l.worker_id));
+    }
     return res.json(leaves);
   } catch (error) {
     return res.status(500).json({ message: error.message });

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { getWorkerByLoginId } from '../models/workerModel.js';
+import { getUserByEmail } from '../models/userModel.js';
 
 dotenv.config();
 
@@ -13,11 +14,11 @@ export const adminLogin = async (req, res) => {
       password === process.env.ADMIN_PASSWORD
     ) {
       const token = jwt.sign(
-        { email, role: 'admin' },
+        { email, role: 'super_admin', name: 'Super Admin' },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
-      return res.json({ token, role: 'admin', message: 'Admin login successful' });
+      return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email }, message: 'Login successful' });
     }
     return res.status(401).json({ message: 'Invalid admin credentials' });
   } catch (error) {
@@ -25,10 +26,47 @@ export const adminLogin = async (req, res) => {
   }
 };
 
-export const workerLogin = async (req, res) => {
+export const unifiedLogin = async (req, res) => {
   try {
-    const { login_id, password } = req.body;
-    const worker = await getWorkerByLoginId(login_id);
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ message: 'Identifier and password are required' });
+    }
+
+    const isEmail = identifier.includes('@');
+
+    if (isEmail) {
+      if (
+        identifier === process.env.ADMIN_EMAIL &&
+        password === process.env.ADMIN_PASSWORD
+      ) {
+        const token = jwt.sign(
+          { email: identifier, role: 'super_admin', name: 'Super Admin' },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email: identifier }, message: 'Login successful' });
+      }
+
+      const user = await getUserByEmail(identifier);
+      if (user) {
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) {
+          return res.status(401).json({ message: 'Invalid password' });
+        }
+        const token = jwt.sign(
+          { id: user.id, ngo_id: user.ngo_id, email: user.email, role: user.role, name: user.name },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        const { password_hash, ...safeUser } = user;
+        return res.json({ token, role: user.role, user: safeUser, message: 'Login successful' });
+      }
+
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const worker = await getWorkerByLoginId(identifier);
     if (!worker) {
       return res.status(401).json({ message: 'Invalid login ID' });
     }
@@ -37,14 +75,14 @@ export const workerLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid password' });
     }
     const token = jwt.sign(
-      { id: worker.id, login_id: worker.login_id, role: 'worker' },
+      { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role: 'worker' },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     return res.json({
       token,
       role: 'worker',
-      worker: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, gender: worker.gender, dob: worker.dob },
+      user: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, ngo_id: worker.ngo_id, gender: worker.gender, dob: worker.dob },
       message: 'Login successful',
     });
   } catch (error) {

@@ -9,6 +9,10 @@ import qrRoutes from './routes/qrRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
+import ngoRoutes from './routes/ngoRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import letterRoutes from './routes/letterRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 
 dotenv.config();
 
@@ -25,6 +29,10 @@ app.use('/api/qr', qrRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/ngos', ngoRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/letters', letterRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });
@@ -37,25 +45,7 @@ async function checkLeavesTable() {
     console.warn(
       '\n=== MISSING TABLE: leaves ===\n' +
       'The "leaves" table does not exist in your Supabase database.\n' +
-      'Run this SQL in your Supabase SQL Editor:\n\n' +
-      '  CREATE TABLE IF NOT EXISTS leaves (\n' +
-      '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n' +
-      '    worker_id UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,\n' +
-      '    type TEXT NOT NULL CHECK (type IN (\'full_day\', \'half_day\', \'vacational\')),\n' +
-      '    leave_date DATE,\n' +
-      '    start_date DATE,\n' +
-      '    end_date DATE,\n' +
-      '    half_start_time TIME,\n' +
-      '    half_end_time TIME,\n' +
-      '    days NUMERIC(4,1) NOT NULL,\n' +
-      '    reason TEXT NOT NULL,\n' +
-      '    status TEXT NOT NULL DEFAULT \'pending\' CHECK (status IN (\'pending\', \'approved\', \'rejected\')),\n' +
-      '    admin_remark TEXT,\n' +
-      '    applied_at TIMESTAMPTZ DEFAULT NOW(),\n' +
-      '    updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
-      '  );\n\n' +
-      '  CREATE INDEX IF NOT EXISTS idx_leaves_worker_id ON leaves(worker_id);\n' +
-      '  CREATE INDEX IF NOT EXISTS idx_leaves_status ON leaves(status);\n' +
+      'Run the SQL in backend/migrations/ in your Supabase SQL Editor.\n' +
       '========================\n'
     );
   }

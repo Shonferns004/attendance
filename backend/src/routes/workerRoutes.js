@@ -9,17 +9,19 @@ import {
   getBirthdays,
   getMyProfile,
 } from '../controllers/workerController.js';
-import { authenticateAdmin, authenticateWorker } from '../middleware/authMiddleware.js';
+import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.post('/', authenticateAdmin, addWorker);
-router.post('/bulk', authenticateAdmin, bulkAddWorkers);
-router.get('/', authenticateAdmin, getWorkers);
-router.get('/birthdays', authenticateAdmin, getBirthdays);
+const adminOrHrOrHo = authenticateRole('super_admin', 'hoadmin', 'hr');
+
+router.post('/', adminOrHrOrHo, addWorker);
+router.post('/bulk', adminOrHrOrHo, bulkAddWorkers);
+router.get('/', adminOrHrOrHo, getWorkers);
+router.get('/birthdays', adminOrHrOrHo, getBirthdays);
 router.get('/me', authenticateWorker, getMyProfile);
-router.get('/:id', authenticateAdmin, getWorker);
-router.put('/:id', authenticateAdmin, editWorker);
-router.delete('/:id', authenticateAdmin, removeWorker);
+router.get('/:id', adminOrHrOrHo, getWorker);
+router.put('/:id', adminOrHrOrHo, editWorker);
+router.delete('/:id', authenticateRole('super_admin', 'hoadmin'), removeWorker);
 
 export default router;
