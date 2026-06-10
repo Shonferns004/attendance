@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { generateQR } from '../api/qr';
+import { generateQR, getQRCodes, deleteQRCode } from '../api/qr';
 
 function GenerateQR() {
   const [label, setLabel] = useState('');
@@ -11,7 +11,12 @@ function GenerateQR() {
   const [locating, setLocating] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [qrList, setQrList] = useState([]);
   const canvasRef = useRef(null);
+
+  useEffect(() => {
+    getQRCodes().then(setQrList).catch(() => {});
+  }, []);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -42,6 +47,7 @@ function GenerateQR() {
     try {
       const data = await generateQR(label, parseFloat(latitude), parseFloat(longitude), parseFloat(radius));
       setResult(data);
+      setQrList((prev) => [data.qr, ...prev]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -202,6 +208,44 @@ function GenerateQR() {
                 Copy Data
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-headline-md text-primary mb-4">All QR Codes</h2>
+        {qrList.length === 0 ? (
+          <p className="text-on-surface-variant">No QR codes generated yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {qrList.map((qr) => (
+              <div key={qr.id} className="bg-white rounded-xl shadow-sm border border-outline-variant p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="font-bold text-primary text-sm">{qr.label}</p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteQRCode(qr.id);
+                        setQrList((prev) => prev.filter((q) => q.id !== qr.id));
+                      } catch {}
+                    }}
+                    className="text-error hover:text-error/70 transition-colors"
+                    title="Delete QR code"
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
+                </div>
+                <div className="bg-surface-container rounded-lg p-3 flex items-center justify-center mb-3">
+                  <QRCodeCanvas value={JSON.stringify({ code: qr.code, lat: qr.latitude, lng: qr.longitude })} size={140} level="H" fgColor="#091426" />
+                </div>
+                <p className="text-body-xs text-on-surface-variant">
+                  {qr.latitude}, {qr.longitude} &bull; {qr.radius_meters}m
+                </p>
+                <p className="text-body-xs text-on-surface-variant/60 mt-1">
+                  {new Date(qr.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>
