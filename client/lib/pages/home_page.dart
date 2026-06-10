@@ -28,6 +28,8 @@ class _HomePageState extends State<HomePage> {
   int _lateUsed = 0;
   int _present = 0, _absent = 0, _late = 0, _leave = 0;
   String _workerName = '';
+  String _officeStartTime = '10:00';
+  String _officeEndTime = '19:00';
 
   @override
   void initState() {
@@ -80,6 +82,9 @@ class _HomePageState extends State<HomePage> {
       ]);
       final today = res[0] as Map<String, dynamic>;
       final history = res[1] as List<dynamic>;
+
+      _officeStartTime = (today['officeStartTime'] ?? '10:00') as String;
+      _officeEndTime = (today['officeEndTime'] ?? '19:00') as String;
 
       final att = today['attendance'];
       setState(() {
@@ -427,6 +432,16 @@ class _HomePageState extends State<HomePage> {
                                     Expanded(child: _shiftTime(textTheme, 'Punch Out', _fmtTime(_punchOutTime), scheme.onPrimaryContainer)),
                                   ],
                                 ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.access_time, size: 14, color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
+                                const SizedBox(width: 4),
+                                Text('Office: $_officeStartTime – $_officeEndTime',
+                                  style: textTheme.labelSmall?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
+                              ],
                             ),
                           ],
                         ),

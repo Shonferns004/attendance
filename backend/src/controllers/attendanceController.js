@@ -27,10 +27,17 @@ function istDateStr(date = new Date()) {
 
 async function getOfficeStart() {
   const val = await getSetting('office_start_time');
-  if (val) {
-    const [h, m] = val.split(':').map(Number);
-    return { hour: h, minute: m };
-  }
+  if (!val) return { hour: 10, minute: 0 };
+  const [h, m] = val.split(':').map(Number);
+  return { hour: h || 10, minute: m || 0 };
+}
+
+async function getOfficeEnd() {
+  const val = await getSetting('office_end_time');
+  if (!val) return { hour: 19, minute: 0 };
+  const [h, m] = val.split(':').map(Number);
+  return { hour: h || 19, minute: m || 0 };
+}
   return { hour: 10, minute: 0 };
 }
 
@@ -158,10 +165,17 @@ export const todayStatus = async (req, res) => {
   try {
     const record = await getTodayAttendance(req.user.id);
     const lateUsed = await getMonthlyLateMinutes(req.user.id);
+    const [officeStart, officeEnd] = await Promise.all([
+      getOfficeStart(),
+      getOfficeEnd(),
+    ]);
+    const fmt = (o) => `${o.hour.toString().padStart(2, '0')}:${o.minute.toString().padStart(2, '0')}`;
     return res.json({
       attendance: record || null,
       lateUsed,
       lateRemaining: MAX_LATE_MINUTES - lateUsed,
+      officeStartTime: fmt(officeStart),
+      officeEndTime: fmt(officeEnd),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
