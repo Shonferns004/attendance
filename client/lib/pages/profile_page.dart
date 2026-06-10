@@ -146,20 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.menu, color: scheme.primary),
-                    const SizedBox(width: 16),
-                    Text('Attendance', style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
-                  ],
-                ),
-                Icon(Icons.notifications_outlined, color: scheme.onSurfaceVariant),
-              ],
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             _profileCard(colors, scheme, tt, initials, name, loginId, email),
             const SizedBox(height: 16),
             _statsCard(colors, scheme, tt, monthYear, rate),

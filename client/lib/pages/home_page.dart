@@ -343,11 +343,6 @@ class _HomePageState extends State<HomePage> {
 
     final clockStr = DateFormat('hh:mm a').format(_now);
     final firstName = _workerName.split(' ').first;
-    final initials = _workerName
-        .split(' ')
-        .map((n) => n.isNotEmpty ? n[0] : '')
-        .join()
-        .toUpperCase();
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -355,63 +350,6 @@ class _HomePageState extends State<HomePage> {
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.menu, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 16),
-                        Text(
-                          'Attendance',
-                          style: textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.notifications_outlined,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: colors.primaryFixed,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: scheme.primaryContainer,
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              initials.isNotEmpty ? initials[0] : '?',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
