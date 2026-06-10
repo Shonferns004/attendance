@@ -5,12 +5,16 @@ class MiniCalendar extends StatelessWidget {
   final int year;
   final int month;
   final Map<String, String> statusByDate;
+  final String? selectedDate;
+  final ValueChanged<String>? onDateSelected;
 
   const MiniCalendar({
     super.key,
     required this.year,
     required this.month,
     this.statusByDate = const {},
+    this.selectedDate,
+    this.onDateSelected,
   });
 
   @override
@@ -66,20 +70,25 @@ class MiniCalendar extends StatelessWidget {
                   fg = colors.outlineVariant;
                 }
 
+                final isSelected = selectedDate == key;
+
                 return Expanded(
-                  child: Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: bg,
-                      borderRadius: BorderRadius.circular(8),
-                      border: hasBorder ? Border.all(color: scheme.primary, width: 2) : null,
-                    ),
-                    child: Text('$dayNum',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isToday ? FontWeight.w700 : null,
-                        color: fg ?? scheme.onSurface,
+                  child: GestureDetector(
+                    onTap: onDateSelected != null ? () => onDateSelected!(key) : null,
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? scheme.primary : bg,
+                        borderRadius: BorderRadius.circular(8),
+                        border: hasBorder ? Border.all(color: scheme.primary, width: 2) : null,
+                      ),
+                      child: Text('$dayNum',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? scheme.onPrimary : (fg ?? scheme.onSurface),
+                        ),
                       ),
                     ),
                   ),

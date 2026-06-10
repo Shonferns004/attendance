@@ -22,6 +22,8 @@ class _ProfilePageState extends State<ProfilePage> {
   int _present = 0, _absent = 0, _late = 0, _leave = 0, _lateUsed = 0;
   Map<String, String> _statusByDate = {};
   Map<String, String> _hoursByDate = {};
+  Map<String, Map<String, dynamic>> _historyByDate = {};
+  String? _selectedDateKey;
   final Map<int, Map<String, int>> _monthlyStats = {};
   int _calYear = 0, _calMonth = 0;
 
@@ -60,6 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final statusMap = <String, String>{};
     final monthlyStats = <int, Map<String, int>>{};
     final hoursMap = <String, String>{};
+    final detailMap = <String, Map<String, dynamic>>{};
 
     try {
       final res = await Future.wait([
@@ -75,6 +78,14 @@ class _ProfilePageState extends State<ProfilePage> {
         statusMap[date.toString()] = status.toString();
         final hw = rec['hours_worked'];
         if (hw != null) hoursMap[date.toString()] = hw.toString();
+        detailMap[date.toString()] = {
+          'date': date,
+          'status': status,
+          'punch_in_time': rec['punch_in_time'],
+          'punch_out_time': rec['punch_out_time'],
+          'hours_worked': hw,
+          'late_minutes': rec['late_minutes'],
+        };
 
         final dt = DateTime.tryParse(date.toString());
         if (dt != null) {
@@ -103,6 +114,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _lateUsed = today['lateUsed'] ?? 0;
         _statusByDate = statusMap;
         _hoursByDate = hoursMap;
+        _historyByDate = detailMap;
         _monthlyStats.clear();
         _monthlyStats.addAll(monthlyStats);
       });
@@ -326,41 +338,47 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(DateFormat('MMMM yyyy').format(DateTime(_calYear, _calMonth)),
+                style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+              Row(
                 children: [
-                  Text(DateFormat('MMMM yyyy').format(DateTime(_calYear, _calMonth)),
-                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (_calMonth == 1) { _calYear--; _calMonth = 12; }
-                            else { _calMonth--; }
-                          });
-                        },
-                        child: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (_calMonth == 12) { _calYear++; _calMonth = 1; }
-                            else { _calMonth++; }
-                          });
-                        },
-                        child: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-                      ),
-                    ],
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (_calMonth == 1) { _calYear--; _calMonth = 12; }
+                        else { _calMonth--; }
+                        _selectedDateKey = null;
+                      });
+                    },
+                    child: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (_calMonth == 12) { _calYear++; _calMonth = 1; }
+                        else { _calMonth++; }
+                        _selectedDateKey = null;
+                      });
+                    },
+                    child: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              MiniCalendar(
-                year: _calYear,
-                month: _calMonth,
-                statusByDate: _statusByDate,
-              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          MiniCalendar(
+            year: _calYear,
+            month: _calMonth,
+            statusByDate: _statusByDate,
+            selectedDate: _selectedDateKey,
+            onDateSelected: (key) => setState(() {
+              _selectedDateKey = _selectedDateKey == key ? null : key;
+            }),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12, runSpacing: 8,
@@ -371,6 +389,130 @@ class _ProfilePageState extends State<ProfilePage> {
               _legendDot('Leave', scheme.primary),
             ],
           ),
+          if (_selectedDateKey != null) ...[
+            const SizedBox(height: 16),
+            _dayDetailCard(colors, scheme, tt),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _fmtTime(dynamic ts) {
+    if (ts == null) return '—';
+    if (ts is DateTime) return DateFormat('hh:mm a').format(ts.toLocal());
+    String s = ts.toString();
+    if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) s += 'Z';
+    final t = DateTime.tryParse(s);
+    if (t == null) return '—';
+    return DateFormat('hh:mm a').format(t.toLocal());
+  }
+
+  Widget _dayDetailCard(AppColors colors, ColorScheme scheme, TextTheme tt) {
+    final detail = _historyByDate[_selectedDateKey];
+    if (detail == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 18, color: colors.outline),
+            const SizedBox(width: 10),
+            Text('No record for this date', style: tt.bodyMedium?.copyWith(color: colors.outline)),
+          ],
+        ),
+      );
+    }
+
+    final status = detail['status']?.toString() ?? '';
+    final punchIn = detail['punch_in_time'];
+    final punchOut = detail['punch_out_time'];
+    final hoursWorked = detail['hours_worked'];
+    final lateMinutes = detail['late_minutes'];
+
+    Color statusColor;
+    IconData statusIcon;
+    switch (status) {
+      case 'present': statusColor = const Color(0xFF10b981); statusIcon = Icons.check_circle; break;
+      case 'absent': statusColor = colors.tertiary; statusIcon = Icons.cancel; break;
+      case 'late': statusColor = colors.onTertiaryFixedVariant; statusIcon = Icons.warning_amber; break;
+      case 'leave': statusColor = scheme.primary; statusIcon = Icons.event; break;
+      default: statusColor = colors.outline; statusIcon = Icons.help_outline;
+    }
+
+    final dateStr = _selectedDateKey ?? '';
+    final dt = DateTime.tryParse(dateStr);
+    final formattedDate = dt != null ? DateFormat('EEEE, d MMMM yyyy').format(dt) : dateStr;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.surfaceContainerHighest),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(statusIcon, size: 18, color: statusColor),
+              const SizedBox(width: 8),
+              Text(formattedDate, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _detailBox(tt, colors, scheme, Icons.login, 'Punch In', _fmtTime(punchIn))),
+              const SizedBox(width: 8),
+              Expanded(child: _detailBox(tt, colors, scheme, Icons.logout, 'Punch Out', _fmtTime(punchOut))),
+              const SizedBox(width: 8),
+              Expanded(child: _detailBox(tt, colors, scheme, Icons.timer, 'Worked', hoursWorked?.toString() ?? '—')),
+            ],
+          ),
+          if (lateMinutes != null && (lateMinutes as num) > 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: colors.onTertiaryFixedVariant),
+                const SizedBox(width: 4),
+                Text('Late by ${lateMinutes} min', style: tt.labelSmall?.copyWith(color: colors.onTertiaryFixedVariant)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _detailBox(TextTheme tt, AppColors colors, ColorScheme scheme, IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.surfaceContainerHighest),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 16, color: colors.outline),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 9, color: colors.outline)),
+          const SizedBox(height: 2),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
         ],
       ),
     );
