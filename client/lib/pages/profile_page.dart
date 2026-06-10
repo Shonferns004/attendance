@@ -23,6 +23,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, String> _statusByDate = {};
   Map<String, String> _hoursByDate = {};
   final Map<int, Map<String, int>> _monthlyStats = {};
+  int _calYear = 0, _calMonth = 0;
 
   @override
   void initState() {
@@ -109,7 +110,11 @@ class _ProfilePageState extends State<ProfilePage> {
       // history/today API failed — still show worker data
     }
 
-    setState(() => _loading = false);
+    final n = DateTime.now();
+    setState(() {
+      _loading = false;
+      if (_calYear == 0) { _calYear = n.year; _calMonth = n.month; }
+    });
   }
 
   @override
@@ -334,25 +339,41 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(DateFormat('MMMM yyyy').format(now),
-                style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
-              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                  Text(DateFormat('MMMM yyyy').format(DateTime(_calYear, _calMonth)),
+                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_calMonth == 1) { _calYear--; _calMonth = 12; }
+                            else { _calMonth--; }
+                          });
+                        },
+                        child: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_calMonth == 12) { _calYear++; _calMonth = 1; }
+                            else { _calMonth++; }
+                          });
+                        },
+                        child: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          MiniCalendar(
-            year: now.year,
-            month: now.month,
-            statusByDate: _statusByDate,
-          ),
+              const SizedBox(height: 16),
+              MiniCalendar(
+                year: _calYear,
+                month: _calMonth,
+                statusByDate: _statusByDate,
+              ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12, runSpacing: 8,
