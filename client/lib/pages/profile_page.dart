@@ -47,16 +47,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadData() async {
+    _worker = await ApiService.getWorkerData();
+    int p = 0, a = 0, l = 0, lv = 0;
+    final statusMap = <String, String>{};
+    final monthlyStats = <int, Map<String, int>>{};
+    final hoursMap = <String, String>{};
+
     try {
-      final worker = await ApiService.getWorkerData();
-      final history = await ApiService.getHistory();
-      final today = await ApiService.getTodayStatus();
+      final [history, today] = await Future.wait([
+        ApiService.getHistory(),
+        ApiService.getTodayStatus(),
+      ]);
 
-      int p = 0, a = 0, l = 0, lv = 0;
-      final statusMap = <String, String>{};
-      final monthlyStats = <int, Map<String, int>>{};
-
-      final hoursMap = <String, String>{};
       for (final rec in history) {
         final date = rec['date'] ?? '';
         final status = rec['status'] ?? 'present';
@@ -83,7 +85,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       setState(() {
-        _worker = worker;
         _history = history;
         _present = p;
         _absent = a;
@@ -94,11 +95,12 @@ class _ProfilePageState extends State<ProfilePage> {
         _hoursByDate = hoursMap;
         _monthlyStats.clear();
         _monthlyStats.addAll(monthlyStats);
-        _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      // history/today API failed — still show worker data
     }
+
+    setState(() => _loading = false);
   }
 
   @override

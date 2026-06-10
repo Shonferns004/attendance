@@ -28,8 +28,6 @@ class _HomePageState extends State<HomePage> {
   int _lateUsed = 0;
   int _present = 0, _absent = 0, _late = 0, _leave = 0;
   String _workerName = '';
-  String _errorMsg = '';
-  String _successMsg = '';
 
   @override
   void initState() {
@@ -71,14 +69,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _fetchStatus() async {
+    final worker = await ApiService.getWorkerData();
+    _workerName = worker?['name'] ?? '';
+    int p = 0, a = 0, l = 0, lv = 0;
+
     try {
-      final worker = await ApiService.getWorkerData();
-      final today = await ApiService.getTodayStatus();
-      final history = await ApiService.getHistory();
+      final [today, history] = await Future.wait([
+        ApiService.getTodayStatus(),
+        ApiService.getHistory(),
+      ]);
 
       final att = today['attendance'];
       setState(() {
-        _workerName = worker?['name'] ?? '';
         _lateUsed = today['lateUsed'] ?? 0;
         if (att != null) {
           _isPunchedIn = att['punch_in_time'] != null;
@@ -98,36 +100,46 @@ class _HomePageState extends State<HomePage> {
             _workedDisplay = '$h:$m:$s';
           }
         }
-        int p = 0, a = 0, l = 0, lv = 0;
-        for (final rec in history) {
-          final s = rec['status']?.toString() ?? '';
-          if (s == 'present') p++;
-          else if (s == 'absent') a++;
-          else if (s == 'late') l++;
-          else if (s == 'leave') lv++;
-        }
-        _present = p; _absent = a; _late = l; _leave = lv;
-        _loading = false;
       });
+      for (final rec in history) {
+        final s = rec['status']?.toString() ?? '';
+        if (s == 'present') p++;
+        else if (s == 'absent') a++;
+        else if (s == 'late') l++;
+        else if (s == 'leave') lv++;
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      // API calls failed — still show worker name
     }
+    setState(() {
+      _present = p; _absent = a; _late = l; _leave = lv;
+      _loading = false;
+    });
   }
 
   Future<void> _punchIn() async {
     Position? pos;
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
-      if (!service) { _showError('GPS is disabled'); return; }
+      if (!service) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('GPS is disabled'), backgroundColor: Colors.red.shade700));
+        return;
+      }
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) { _showError('Location permission denied'); return; }
+        if (perm == LocationPermission.denied) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission denied'), backgroundColor: Colors.red.shade700));
+          return;
+        }
       }
-      if (perm == LocationPermission.deniedForever) { _showError('Location permission permanently denied'); return; }
+      if (perm == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission permanently denied'), backgroundColor: Colors.red.shade700));
+        return;
+      }
       pos = await Geolocator.getCurrentPosition();
     } catch (e) {
-      _showError('Failed to get location: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to get location: $e'), backgroundColor: Colors.red.shade700));
       return;
     }
 
@@ -145,55 +157,64 @@ class _HomePageState extends State<HomePage> {
         _isPunchedOut = false;
         _punchOutTime = null;
         _updateWorked();
-        _successMsg = 'Punched in successfully';
-        _errorMsg = '';
       });
-      _clearMessages();
-      _fetchStatus();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Punched in successfully'), backgroundColor: const Color(0xFF10b981)),
+        );
+      }
     } catch (e) {
-      _showError(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception:', '').trim()), backgroundColor: Colors.red.shade700),
+        );
+      }
     }
   }
 
   Future<void> _punchOut() async {
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
-      if (!service) { _showError('GPS is disabled'); return; }
+      if (!service) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('GPS is disabled'), backgroundColor: Colors.red.shade700));
+        return;
+      }
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) { _showError('Location permission denied'); return; }
+        if (perm == LocationPermission.denied) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission denied'), backgroundColor: Colors.red.shade700));
+          return;
+        }
       }
-      if (perm == LocationPermission.deniedForever) { _showError('Location permission permanently denied'); return; }
+      if (perm == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission permanently denied'), backgroundColor: Colors.red.shade700));
+        return;
+      }
       final pos = await Geolocator.getCurrentPosition();
       final data = await ApiService.punchOut(pos.latitude, pos.longitude);
       setState(() {
         _isPunchedOut = true;
         _punchOutTime = DateTime.now();
         _updateWorked();
-        _successMsg = 'Punched out successfully';
-        _errorMsg = '';
       });
-      _clearMessages();
-      _fetchStatus();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Punched out successfully'), backgroundColor: const Color(0xFF10b981)),
+        );
+      }
     } catch (e) {
-      _showError(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception:', '').trim()), backgroundColor: Colors.red.shade700),
+        );
+      }
     }
-  }
-
-  void _showError(String msg) {
-    setState(() { _errorMsg = msg; _successMsg = ''; });
-    _clearMessages();
-  }
-
-  void _clearMessages() {
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) setState(() { _errorMsg = ''; _successMsg = ''; });
-    });
   }
 
   String _fmtTime(dynamic ts) {
     if (ts == null) return '—';
+    if (ts is DateTime) return DateFormat('hh:mm a').format(ts.toLocal());
     String s = ts.toString();
     if (!s.endsWith('Z') && !RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) s += 'Z';
     final t = DateTime.tryParse(s);
