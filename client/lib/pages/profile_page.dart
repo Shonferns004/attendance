@@ -54,10 +54,12 @@ class _ProfilePageState extends State<ProfilePage> {
     final hoursMap = <String, String>{};
 
     try {
-      final [history, today] = await Future.wait([
+      final res = await Future.wait([
         ApiService.getHistory(),
         ApiService.getTodayStatus(),
       ]);
+      final history = res[0] as List<dynamic>;
+      final today = res[1] as Map<String, dynamic>;
 
       for (final rec in history) {
         final date = rec['date'] ?? '';

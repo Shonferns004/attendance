@@ -74,10 +74,12 @@ class _HomePageState extends State<HomePage> {
     int p = 0, a = 0, l = 0, lv = 0;
 
     try {
-      final [today, history] = await Future.wait([
+      final res = await Future.wait([
         ApiService.getTodayStatus(),
         ApiService.getHistory(),
       ]);
+      final today = res[0] as Map<String, dynamic>;
+      final history = res[1] as List<dynamic>;
 
       final att = today['attendance'];
       setState(() {
