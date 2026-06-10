@@ -38,9 +38,6 @@ async function getOfficeEnd() {
   const [h, m] = val.split(':').map(Number);
   return { hour: h || 19, minute: m || 0 };
 }
-  return { hour: 10, minute: 0 };
-}
-
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
