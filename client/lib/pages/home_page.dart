@@ -118,7 +118,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _punchIn() async {
-    Position? pos;
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
       if (!service) {
@@ -137,7 +136,7 @@ class _HomePageState extends State<HomePage> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Location permission permanently denied'), backgroundColor: Colors.red.shade700));
         return;
       }
-      pos = await Geolocator.getCurrentPosition();
+      await Geolocator.getCurrentPosition();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to get location: $e'), backgroundColor: Colors.red.shade700));
       return;
@@ -151,11 +150,13 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final data = await ApiService.punchIn(result['code'], result['lat'], result['lng']);
+      final lm = (data['lateMinutes'] ?? 0) as int;
       setState(() {
         _isPunchedIn = true;
         _punchInTime = DateTime.now();
         _isPunchedOut = false;
         _punchOutTime = null;
+        if (lm > 0) _lateUsed += lm;
         _updateWorked();
       });
       if (mounted) {
@@ -192,7 +193,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition();
-      final data = await ApiService.punchOut(pos.latitude, pos.longitude);
+      await ApiService.punchOut(pos.latitude, pos.longitude);
       setState(() {
         _isPunchedOut = true;
         _punchOutTime = DateTime.now();
