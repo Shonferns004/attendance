@@ -60,6 +60,7 @@ flutter:
 
   assets:
     - assets/logo/
+    - assets/splash/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -96,7 +97,7 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#ffffff"
-  image: "assets/logo/logo.png"
+  image: "assets/splash/splash.png"
   android: true
   ios: false
   android_gravity: center

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bulk Add Workers</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; padding: 24px; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 24px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+  input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s; font-family: inherit; }
+  input:focus, textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+  textarea { resize: vertical; min-height: 180px; font-family: 'Courier New', monospace; font-size: 13px; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #4f46e5; }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-success:hover:not(:disabled) { background: #059669; }
+  .btn-outline { background: transparent; border: 1px solid #d1d5db; color: #374151; }
+  .btn-outline:hover:not(:disabled) { background: #f9fafb; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .help-text { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .preview-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+  th { background: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; }
+  tr:hover td { background: #f9fafb; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-success { background: #d1fae5; color: #065f46; }
+  .badge-error { background: #fee2e2; color: #991b1b; }
+  .error-msg { color: #dc2626; font-size: 13px; padding: 8px 12px; background: #fef2f2; border-radius: 8px; margin-top: 8px; }
+  .success-msg { color: #065f46; font-size: 13px; padding: 8px 12px; background: #d1fae5; border-radius: 8px; margin-top: 8px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat { background: #f9fafb; border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 120px; }
+  .stat-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .stat-value.success { color: #10b981; }
+  .stat-value.error { color: #ef4444; }
+  .stat-value.total { color: #6366f1; }
+  .hidden { display: none; }
+  #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .spinner { width: 36px; height: 36px; border: 3px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .copy-btn { background: none; border: none; cursor: pointer; color: #6366f1; font-size: 13px; padding: 2px 6px; border-radius: 4px; }
+  .copy-btn:hover { background: #eef2ff; }
+  .inline-code { font-family: 'Courier New', monospace; font-size: 12px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
+  .format-hint { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; font-size: 13px; color: #92400e; margin-bottom: 12px; }
+  @media (max-width: 640px) { .row { flex-direction: column; } body { padding: 12px; } .card { padding: 16px; } }
+</style>
+</head>
+<body>
+<div id="loadingOverlay" class="hidden"><div class="spinner"></div></div>
+
+<div class="container">
+  <h1>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Bulk Add Workers
+  </h1>
+  <p class="subtitle">Add multiple workers at once. Login IDs are auto-generated as <span class="inline-code">{firstName}{surnameInitial}_ufs_{'{'}NN{'}'}</span>.</p>
+
+  <div class="card">
+    <div class="card-title">API Connection</div>
+    <div class="row">
+      <div>
+        <label for="apiUrl">API Base URL</label>
+        <input id="apiUrl" type="text" value="http://localhost:5000/api" placeholder="http://localhost:5000/api" />
+      </div>
+      <div>
+        <label for="adminToken">Admin Token <span style="color:#ef4444;">*</span></label>
+        <input id="adminToken" type="text" placeholder="Paste your JWT from localStorage auth_token" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Worker Data</div>
+    <div class="format-hint">
+      <strong>Format:</strong> One worker per line. Columns: <span class="inline-code">Name</span>, <span class="inline-code">Email</span>, <span class="inline-code">Gender</span> (optional), <span class="inline-code">DOB</span> (optional)<br>
+      <strong>Example:</strong><br>
+      <span class="inline-code">Shawn Fernanades,shawn@email.com,Male,1995-06-15</span><br>
+      <span class="inline-code">Rahul Gupta,rahul@email.com,Male,</span><br>
+      <span class="inline-code">Priya Thakur,priya@email.com</span>
+    </div>
+    <label for="csvInput">Paste workers (CSV format)</label>
+    <textarea id="csvInput" placeholder="Shawn Fernanades,shawn@email.com,Male,1995-06-15&#10;Rahul Gupta,rahul@email.com"></textarea>
+    <div class="actions" style="justify-content:space-between; margin-top:12px;">
+      <div>
+        <span id="parseCount" style="font-size:13px; color:#6b7280;">0 workers parsed</span>
+      </div>
+      <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Upload CSV File</button>
+      <input id="fileInput" type="file" accept=".csv" style="display:none" onchange="handleFileUpload(event)" />
+    </div>
+  </div>
+
+  <div id="previewSection" class="card hidden">
+    <div class="card-title">Preview (<span id="previewCount">0</span> workers)</div>
+    <div class="preview-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Gender</th><th>DOB</th></tr></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="submitBulk()" id="submitBtn">Add All Workers</button>
+    </div>
+  </div>
+
+  <div id="resultsSection" class="card hidden">
+    <div class="card-title">Results</div>
+    <div class="stats" id="statsContainer"></div>
+    <div class="preview-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Login ID</th><th>Password</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn btn-success" onclick="copyResults()">Copy All to Clipboard</button>
+      <button class="btn btn-outline" onclick="downloadCSV()">Download CSV</button>
+      <button class="btn btn-outline" onclick="resetAll()">Add More</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let parsedWorkers = [];
+let results = [];
+
+document.getElementById('csvInput').addEventListener('input', parseInput);
+
+function parseInput() {
+  const text = document.getElementById('csvInput').value.trim();
+  if (!text) { parsedWorkers = []; document.getElementById('previewSection').classList.add('hidden'); document.getElementById('parseCount').textContent = '0 workers parsed'; return; }
+  const rows = text.split('\n').filter(r => r.trim());
+  parsedWorkers = rows.map((row, i) => {
+    const cols = row.split(',').map(c => c.trim());
+    return { name: cols[0] || '', email: cols[1] || '', gender: cols[2] || '', dob: cols[3] || '', _row: i + 1 };
+  }).filter(w => w.name && w.email);
+  document.getElementById('parseCount').textContent = `${parsedWorkers.length} workers parsed`;
+  renderPreview();
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('csvInput').value = e.target.result;
+    parseInput();
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function renderPreview() {
+  const section = document.getElementById('previewSection');
+  const body = document.getElementById('previewBody');
+  document.getElementById('previewCount').textContent = parsedWorkers.length;
+  if (parsedWorkers.length === 0) { section.classList.add('hidden'); return; }
+  body.innerHTML = parsedWorkers.map((w, i) =>
+    `<tr><td>${i + 1}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td><td>${esc(w.gender || '—')}</td><td>${esc(w.dob || '—')}</td></tr>`
+  ).join('');
+  section.classList.remove('hidden');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function submitBulk() {
+  const token = document.getElementById('adminToken').value.trim();
+  const apiUrl = document.getElementById('apiUrl').value.trim().replace(/\/+$/, '');
+  if (!token) { alert('Please enter your admin token.'); return; }
+  if (parsedWorkers.length === 0) { alert('No workers to add.'); return; }
+  if (!confirm(`Add ${parsedWorkers.length} workers?`)) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Adding...';
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${apiUrl}/workers/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ workers: parsedWorkers.map(w => ({ name: w.name, email: w.email, gender: w.gender, dob: w.dob })) }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    results = data.workers;
+    renderResults(results);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add All Workers';
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+}
+
+function renderResults(workers) {
+  const section = document.getElementById('resultsSection');
+  const body = document.getElementById('resultsBody');
+  const stats = document.getElementById('statsContainer');
+  const success = workers.filter(w => w.login_id);
+  const failed = workers.length - success.length;
+  stats.innerHTML =
+    `<div class="stat"><div class="stat-label">Total</div><div class="stat-value total">${workers.length}</div></div>` +
+    `<div class="stat"><div class="stat-label">Added</div><div class="stat-value success">${success.length}</div></div>` +
+    (failed ? `<div class="stat"><div class="stat-label">Failed</div><div class="stat-value error">${failed}</div></div>` : '');
+  body.innerHTML = workers.map((w, i) =>
+    `<tr><td>${i + 1}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td>` +
+    `<td><span class="inline-code" style="font-size:13px;">${esc(w.login_id)}</span></td>` +
+    `<td><span class="inline-code" style="font-size:13px;">${esc(w.generated_password)}</span> <button class="copy-btn" onclick="copyText('${w.login_id}')">Copy</button></td></tr>`
+  ).join('');
+  section.classList.remove('hidden');
+  document.getElementById('csvInput').value = '';
+  document.getElementById('previewSection').classList.add('hidden');
+  document.getElementById('parseCount').textContent = '0 workers parsed';
+  parsedWorkers = [];
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function copyResults() {
+  const lines = results.map(w => `${w.login_id},${w.generated_password}`);
+  navigator.clipboard.writeText('Login ID,Password\n' + lines.join('\n')).then(() => {
+    alert('Copied to clipboard!');
+  }).catch(() => alert('Failed to copy'));
+}
+
+function downloadCSV() {
+  let csv = 'Name,Email,Login ID,Password\n';
+  csv += results.map(w => `${w.name},${w.email},${w.login_id},${w.generated_password}`).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'workers_credentials.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function resetAll() {
+  document.getElementById('resultsSection').classList.add('hidden');
+  document.getElementById('resultsBody').innerHTML = '';
+  results = [];
+}
+</script>
+</body>
+</html>

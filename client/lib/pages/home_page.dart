@@ -315,6 +315,120 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openNotificationSheet() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFf9f9f9),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(Icons.notifications, color: scheme.onSurface),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Notifications',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _notificationItem(
+                scheme, textTheme,
+                Icons.check_circle,
+                'Punch In Successful',
+                'You punched in at ${_fmtTime(_now)}',
+                Colors.green,
+              ),
+              const Divider(height: 24),
+              _notificationItem(
+                scheme, textTheme,
+                Icons.info_outline,
+                'Office Hours Reminder',
+                'Office timing: $_officeStartTime – $_officeEndTime',
+                scheme.primary,
+              ),
+              const Divider(height: 24),
+              _notificationItem(
+                scheme, textTheme,
+                Icons.event_available,
+                'Attendance Summary',
+                'Present: $_present  |  Absent: $_absent  |  Late: $_late  |  Leaves: $_leave',
+                Colors.orange,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _notificationItem(ColorScheme scheme, TextTheme textTheme, IconData icon, String title, String subtitle, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 22, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   String get _greeting {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good Morning';
@@ -353,21 +467,34 @@ class _HomePageState extends State<HomePage> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _greeting.toUpperCase(),
-                      style: textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        letterSpacing: 1.2,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _greeting.toUpperCase(),
+                            style: textTheme.labelMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            firstName.isNotEmpty ? firstName : 'there',
+                            style: textTheme.headlineMedium?.copyWith(
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      firstName.isNotEmpty ? firstName : 'there',
-                      style: textTheme.headlineMedium?.copyWith(
-                        color: scheme.onSurface,
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      iconSize: 28,
+                      color: scheme.onSurfaceVariant,
+                      onPressed: _openNotificationSheet,
                     ),
                   ],
                 ),

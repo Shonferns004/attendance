@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   addWorker,
+  bulkAddWorkers,
   getWorkers,
   getWorker,
   editWorker,
@@ -13,6 +14,7 @@ import { authenticateAdmin, authenticateWorker } from '../middleware/authMiddlew
 const router = Router();
 
 router.post('/', authenticateAdmin, addWorker);
+router.post('/bulk', authenticateAdmin, bulkAddWorkers);
 router.get('/', authenticateAdmin, getWorkers);
 router.get('/birthdays', authenticateAdmin, getBirthdays);
 router.get('/me', authenticateWorker, getMyProfile);

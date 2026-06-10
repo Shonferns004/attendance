@@ -1,9 +1,9 @@
 import bcrypt from 'bcryptjs';
 import {
   createWorker,
+  createWorkers,
   getAllWorkers,
   getWorkerById,
-  getWorkerByLoginId,
   getWorkerCount,
   updateWorker,
   deleteWorker,
@@ -11,25 +11,15 @@ import {
 
 const DEFAULT_PASSWORD = '123456';
 
-function sanitizeName(name) {
-  return name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-}
-
 async function generateLoginId(name) {
-  const base = sanitizeName(name);
-  let counter = 1;
-  let login_id;
-  let exists = true;
-  while (exists) {
-    login_id = `${base}_sevak_${String(counter).padStart(2, '0')}`;
-    const existing = await getWorkerByLoginId(login_id);
-    if (!existing) {
-      exists = false;
-    } else {
-      counter++;
-    }
-  }
-  return login_id;
+  const parts = name.trim().split(/\s+/);
+  const firstName = parts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const surnameInitial = parts.length > 1
+    ? parts[parts.length - 1].charAt(0).toLowerCase().replace(/[^a-z0-9]/g, '')
+    : '';
+  const base = surnameInitial ? `${firstName}${surnameInitial}` : firstName;
+  const count = await getWorkerCount();
+  return `${base}_ufs_${String(count + 1).padStart(2, '0')}`;
 }
 
 export const addWorker = async (req, res) => {
@@ -62,6 +52,50 @@ export const addWorker = async (req, res) => {
         dob: worker.dob,
         generated_password: DEFAULT_PASSWORD,
       },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const bulkAddWorkers = async (req, res) => {
+  try {
+    const { workers } = req.body;
+    if (!workers || !Array.isArray(workers) || workers.length === 0) {
+      return res.status(400).json({ message: 'Workers array is required' });
+    }
+    const count = await getWorkerCount();
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, salt);
+    const prepared = workers.map((w, i) => {
+      const parts = (w.name || '').trim().split(/\s+/);
+      const firstName = parts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const surnameInitial = parts.length > 1
+        ? parts[parts.length - 1].charAt(0).toLowerCase().replace(/[^a-z0-9]/g, '')
+        : '';
+      const base = surnameInitial ? `${firstName}${surnameInitial}` : firstName;
+      const login_id = `${base}_ufs_${String(count + i + 1).padStart(2, '0')}`;
+      return {
+        name: w.name,
+        email: w.email,
+        login_id,
+        password: hashedPassword,
+        gender: w.gender || null,
+        dob: w.dob || null,
+      };
+    });
+    const created = await createWorkers(prepared);
+    return res.status(201).json({
+      message: `${created.length} workers added successfully`,
+      workers: created.map((w) => ({
+        id: w.id,
+        name: w.name,
+        email: w.email,
+        login_id: w.login_id,
+        gender: w.gender,
+        dob: w.dob,
+        generated_password: DEFAULT_PASSWORD,
+      })),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

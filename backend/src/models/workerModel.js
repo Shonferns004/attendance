@@ -10,6 +10,15 @@ export const createWorker = async (workerData) => {
   return data;
 };
 
+export const createWorkers = async (workersData) => {
+  const { data, error } = await supabase
+    .from('workers')
+    .insert(workersData)
+    .select();
+  if (error) throw error;
+  return data;
+};
+
 export const getAllWorkers = async () => {
   const { data, error } = await supabase
     .from('workers')
