@@ -86,6 +86,26 @@ export const getWorkers = async (req, res) => {
   }
 };
 
+export const getMyProfile = async (req, res) => {
+  try {
+    const worker = await getWorkerById(req.user.id);
+    if (!worker) {
+      return res.status(404).json({ message: 'Worker not found' });
+    }
+    return res.json({
+      id: worker.id,
+      name: worker.name,
+      email: worker.email,
+      login_id: worker.login_id,
+      gender: worker.gender,
+      dob: worker.dob,
+      created_at: worker.created_at,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getWorker = async (req, res) => {
   try {
     const worker = await getWorkerById(req.params.id);

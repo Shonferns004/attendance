@@ -48,6 +48,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadData() async {
     _worker = await ApiService.getWorkerData();
+    try {
+      final profile = await ApiService.getMyProfile();
+      _worker = profile;
+      await ApiService.saveWorkerData(profile);
+    } catch (_) {
+      // cached data still available
+    }
     int p = 0, a = 0, l = 0, lv = 0;
     final statusMap = <String, String>{};
     final monthlyStats = <int, Map<String, int>>{};

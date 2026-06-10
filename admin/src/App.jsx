@@ -71,8 +71,7 @@ function App() {
     return (
       <div className="min-h-screen bg-background">
         <Sidebar onLogout={handleLogout} />
-        <TopNavBar />
-        <main className="ml-[260px] pt-16 min-h-screen">
+        <main className="ml-[260px] min-h-screen">
           <div className="p-margin-page max-w-container-max-width mx-auto">
             <Routes>
               <Route path="/" element={<Dashboard />} />

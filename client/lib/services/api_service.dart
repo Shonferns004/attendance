@@ -109,6 +109,16 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>> getMyProfile() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/workers/me'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to get profile');
+    return body;
+  }
+
   static Future<List<dynamic>> getMyLeaves() async {
     final res = await http.get(
       Uri.parse('$baseUrl/leaves/my'),
