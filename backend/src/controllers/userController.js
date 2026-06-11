@@ -14,7 +14,7 @@ export const addUser = async (req, res) => {
       ngo_id = req.user.ngo_id;
     }
 
-    if (!ngo_id) {
+    if (!ngo_id && req.user.role !== 'hr') {
       return res.status(400).json({ message: 'NGO is required' });
     }
 
@@ -33,7 +33,7 @@ export const addUser = async (req, res) => {
       password_hash,
       role,
       department: department || null,
-      created_by: req.user.id,
+      created_by: req.user.id || null,
     });
 
     const { password_hash: _, ...safeUser } = user;

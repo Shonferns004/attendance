@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser } from '../api/users';
-import { getNgos } from '../api/ngos';
 
 function UserManagement() {
   const [users, setUsers] = useState([]);
-  const [ngos, setNgos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ ngo_id: '', name: '', email: '', role: 'recruiter', department: '' });
+  const [form, setForm] = useState({ name: '', email: '', role: 'recruiter', department: '' });
 
   const loadData = () =>
-    Promise.all([getUsers(), getNgos()])
-      .then(([u, n]) => { setUsers(u); setNgos(n); })
+    getUsers()
+      .then(setUsers)
       .catch(console.error)
       .finally(() => setLoading(false));
 
@@ -19,12 +17,11 @@ function UserManagement() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.ngo_id) return alert('Please select an NGO');
     try {
       const result = await createUser(form);
       setUsers([result.user, ...users]);
       setShowForm(false);
-      setForm({ ngo_id: '', name: '', email: '', role: 'recruiter', department: '' });
+      setForm({ name: '', email: '', role: 'recruiter', department: '' });
     } catch (err) { alert(err.message); }
   };
 
@@ -37,15 +34,12 @@ function UserManagement() {
 
   const roleColors = {
     hoadmin: 'bg-cyan-50 text-cyan-700',
-    hr: 'bg-emerald-50 text-emerald-700',
     accounts: 'bg-amber-50 text-amber-700',
     leads: 'bg-rose-50 text-rose-700',
     recruiter: 'bg-violet-50 text-violet-700',
     telecaller: 'bg-orange-50 text-orange-700',
     team_lead: 'bg-pink-50 text-pink-700',
   };
-
-  const getNgoName = (ngoId) => ngos.find((n) => n.id === ngoId)?.name || '—';
 
   if (loading) return <div className="animate-pulse h-96 bg-gray-100 rounded-2xl" />;
 
@@ -65,14 +59,6 @@ function UserManagement() {
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">NGO *</label>
-              <select value={form.ngo_id} onChange={(e) => setForm({ ...form, ngo_id: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white" required>
-                <option value="">Select NGO</option>
-                {ngos.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
-              </select>
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
@@ -112,7 +98,6 @@ function UserManagement() {
               <th className="px-6 py-4 font-medium">Name</th>
               <th className="px-6 py-4 font-medium">Email</th>
               <th className="px-6 py-4 font-medium">Role</th>
-              <th className="px-6 py-4 font-medium">NGO</th>
               <th className="px-6 py-4 font-medium">Status</th>
               <th className="px-6 py-4 font-medium">Action</th>
             </tr>
@@ -125,7 +110,6 @@ function UserManagement() {
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-label-sm font-medium capitalize ${roleColors[u.role] || 'bg-gray-50 text-gray-700'}`}>{u.role.replace('_', ' ')}</span>
                 </td>
-                <td className="px-6 py-4 text-gray-500">{getNgoName(u.ngo_id)}</td>
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-label-sm font-medium ${u.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     {u.is_active ? 'Active' : 'Inactive'}
