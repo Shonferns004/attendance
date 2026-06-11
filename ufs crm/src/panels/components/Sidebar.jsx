@@ -31,6 +31,7 @@ const navMap = {
     { path: '/users', label: 'Users', icon: 'manage_accounts' },
     { path: '/attendance', label: 'Attendance', icon: 'fact_check' },
     { path: '/leaves', label: 'Leaves', icon: 'event_note' },
+    { path: '/qr', label: 'QR Codes', icon: 'qr_code' },
     { path: '/salary', label: 'Payroll', icon: 'payments' },
     {
       label: 'Letters',

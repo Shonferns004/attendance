@@ -36,6 +36,7 @@ import HRGeneratedList from '../panels/HR/pages/Letters/GeneratedList';
 import HREventList from '../panels/HR/pages/EventList';
 import HREventForm from '../panels/HR/pages/EventForm';
 import HRNoticeList from '../panels/HR/pages/NoticeList';
+import GenerateQR from '../panels/HOAdmin/pages/GenerateQR';
 import HRNoticeForm from '../panels/HR/pages/NoticeForm';
 import HRAchievementList from '../panels/HR/pages/AchievementList';
 import HRAchievementForm from '../panels/HR/pages/AchievementForm';
@@ -157,6 +158,7 @@ function AdminLayout({ user, onLogout }) {
               <Route path="/users" element={<HRUserManagement />} />
               <Route path="/leaves" element={<HRLeaves />} />
               <Route path="/attendance" element={<HRAttendance />} />
+              <Route path="/qr" element={<GenerateQR />} />
               <Route path="/letters" element={<HRTemplateList />} />
               <Route path="/letters/new" element={<HRTemplateEditor />} />
               <Route path="/letters/:id/edit" element={<HRTemplateEditor />} />
