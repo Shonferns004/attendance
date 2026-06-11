@@ -46,11 +46,13 @@ class NotificationService {
     );
 
     final token = await messaging.getToken();
+    print('FCM Token: $token');
     if (token != null) {
       await _registerToken(token);
     }
 
     messaging.onTokenRefresh.listen((newToken) {
+      print('FCM Token refreshed: $newToken');
       _registerToken(newToken);
     });
 
@@ -64,10 +66,17 @@ class NotificationService {
   Future<void> _registerToken(String token) async {
     try {
       final worker = await ApiService.getWorkerData();
+      print('Worker data: $worker');
       if (worker != null && worker['id'] != null) {
-        await ApiService.registerFcmToken(worker['id'].toString(), token);
+        print("Registering FCM token for worker ${worker['id']}");
+        final result = await ApiService.registerFcmToken(worker['id'].toString(), token);
+        print('FCM token registered: $result');
+      } else {
+        print('Cannot register FCM token: no worker data');
       }
-    } catch (_) {}
+    } catch (e) {
+      print('FCM token registration error: $e');
+    }
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
