@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -161,37 +160,37 @@ class AppColors extends ThemeExtension<AppColors> {
   ThemeExtension<AppColors> lerp(covariant ThemeExtension<AppColors>? other, double t) => this;
 
   static const light = AppColors(
-    primaryFixed: Color(0xFFfde2d8),
-    primaryFixedDim: Color(0xFFfcc7b5),
-    onPrimaryFixed: Color(0xFF3d1508),
-    onPrimaryFixedVariant: Color(0xFFd47a5c),
-    secondaryContainer: Color(0xFFd6ecee),
-    onSecondaryContainer: Color(0xFF234b4d),
-    secondaryFixed: Color(0xFFd6ecee),
-    secondaryFixedDim: Color(0xFFb0d9db),
-    onSecondaryFixed: Color(0xFF0a2a2c),
-    onSecondaryFixedVariant: Color(0xFF5a9ea1),
-    tertiary: Color(0xFFb87c4a),
-    tertiaryContainer: Color(0xFFd49a64),
+    primaryFixed: Color(0xFFd1e4ff),
+    primaryFixedDim: Color(0xFFb0c9e8),
+    onPrimaryFixed: Color(0xFF011d35),
+    onPrimaryFixedVariant: Color(0xFF314863),
+    secondaryContainer: Color(0xFFaff1ca),
+    onSecondaryContainer: Color(0xFF317051),
+    secondaryFixed: Color(0xFFaff1ca),
+    secondaryFixedDim: Color(0xFF93d4af),
+    onSecondaryFixed: Color(0xFF002112),
+    onSecondaryFixedVariant: Color(0xFF0a5135),
+    tertiary: Color(0xFF201100),
+    tertiaryContainer: Color(0xFF3c2300),
     onTertiary: Color(0xFFffffff),
-    onTertiaryContainer: Color(0xFFfff1e0),
-    tertiaryFixed: Color(0xFFfdebd4),
-    tertiaryFixedDim: Color(0xFFf5d1a8),
-    onTertiaryFixed: Color(0xFF3d230a),
-    onTertiaryFixedVariant: Color(0xFF8f5e30),
+    onTertiaryContainer: Color(0xFFc28228),
+    tertiaryFixed: Color(0xFFffddb8),
+    tertiaryFixedDim: Color(0xFFffb95f),
+    onTertiaryFixed: Color(0xFF2a1700),
+    onTertiaryFixedVariant: Color(0xFF653e00),
     surfaceContainerLowest: Color(0xFFffffff),
-    surfaceContainerLow: Color(0xFFfffbf2),
-    surfaceContainer: Color(0xFFfcf3e6),
-    surfaceContainerHigh: Color(0xFFf5eadc),
-    surfaceContainerHighest: Color(0xFFe8ddd0),
-    surfaceDim: Color(0xFFd9cfc3),
-    surfaceBright: Color(0xFFffffff),
-    surfaceVariant: Color(0xFFe8ddd0),
-    outline: Color(0xFF7b7266),
-    outlineVariant: Color(0xFFccc3b7),
-    inverseSurface: Color(0xFF312b25),
-    inverseOnSurface: Color(0xFFf3ede5),
-    inversePrimary: Color(0xFFfcc7b5),
+    surfaceContainerLow: Color(0xFFf0f4f8),
+    surfaceContainer: Color(0xFFeaeef2),
+    surfaceContainerHigh: Color(0xFFe4e9ed),
+    surfaceContainerHighest: Color(0xFFdfe3e7),
+    surfaceDim: Color(0xFFd6dade),
+    surfaceBright: Color(0xFFf6fafe),
+    surfaceVariant: Color(0xFFdfe3e7),
+    outline: Color(0xFF74777e),
+    outlineVariant: Color(0xFFc3c6ce),
+    inverseSurface: Color(0xFF2c3134),
+    inverseOnSurface: Color(0xFFedf1f5),
+    inversePrimary: Color(0xFFb0c9e8),
   );
 }
 
@@ -208,52 +207,55 @@ class AttendXApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme.light(
-          primary: Color(0xFFff9b7d),
+          primary: Color(0xFF00152a),
           onPrimary: Color(0xFFffffff),
-          primaryContainer: Color(0xFFfde2d8),
-          onPrimaryContainer: Color(0xFF3d1508),
-          secondary: Color(0xFFa8dadc),
+          primaryContainer: Color(0xFF102a43),
+          onPrimaryContainer: Color(0xFF7a92b0),
+          secondary: Color(0xFF2a6a4b),
           onSecondary: Color(0xFFffffff),
-          secondaryContainer: Color(0xFFd6ecee),
-          onSecondaryContainer: Color(0xFF234b4d),
-          surface: Color(0xFFfffbf2),
-          onSurface: Color(0xFF4a4e69),
-          surfaceContainerHighest: Color(0xFFe8ddd0),
-          outline: Color(0xFF7b7266),
+          secondaryContainer: Color(0xFFaff1ca),
+          onSecondaryContainer: Color(0xFF317051),
+          surface: Color(0xFFf6fafe),
+          onSurface: Color(0xFF171c1f),
+          surfaceContainerHighest: Color(0xFFdfe3e7),
+          outline: Color(0xFF74777e),
           error: Color(0xFFba1a1a),
           onError: Color(0xFFffffff),
           errorContainer: Color(0xFFffdad6),
           onErrorContainer: Color(0xFF93000a),
-          inverseSurface: Color(0xFF312b25),
-          onInverseSurface: Color(0xFFf3ede5),
-          inversePrimary: Color(0xFFfcc7b5),
+          inverseSurface: Color(0xFF2c3134),
+          onInverseSurface: Color(0xFFedf1f5),
+          inversePrimary: Color(0xFFb0c9e8),
         ),
         extensions: const [AppColors.light],
-        scaffoldBackgroundColor: const Color(0xFFfffbf2),
+        scaffoldBackgroundColor: const Color(0xFFf6fafe),
         textTheme: GoogleFonts.manropeTextTheme().copyWith(
           headlineLarge: GoogleFonts.hankenGrotesk(
-            fontSize: 40, fontWeight: FontWeight.w800, height: 44 / 40,
-          ),
-          headlineMedium: GoogleFonts.hankenGrotesk(
             fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
           ),
+          headlineMedium: GoogleFonts.hankenGrotesk(
+            fontSize: 20, fontWeight: FontWeight.w600, height: 28 / 20,
+          ),
           headlineSmall: GoogleFonts.hankenGrotesk(
-            fontSize: 18, fontWeight: FontWeight.w700, height: 24 / 18,
+            fontSize: 18, fontWeight: FontWeight.w600, height: 24 / 18,
           ),
           titleLarge: GoogleFonts.hankenGrotesk(
-            fontSize: 20, fontWeight: FontWeight.w700, height: 28 / 20,
+            fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
           ),
           bodyLarge: GoogleFonts.manrope(
-            fontSize: 16, fontWeight: FontWeight.w500, height: 24 / 16,
+            fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16,
           ),
           bodyMedium: GoogleFonts.manrope(
             fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14,
           ),
+          labelLarge: GoogleFonts.manrope(
+            fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 20, letterSpacing: 0.02,
+          ),
           labelMedium: GoogleFonts.manrope(
-            fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.24,
+            fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.05,
           ),
           labelSmall: GoogleFonts.manrope(
-            fontSize: 10, fontWeight: FontWeight.w700, height: 12 / 10,
+            fontSize: 11, fontWeight: FontWeight.w700, height: 12 / 11,
           ),
         ),
       ),
@@ -336,44 +338,37 @@ class _MainShellState extends State<MainShell> {
           ProfilePage(onLogout: widget.onLogout, tabChangeVersion: _tabChangeVersion),
         ],
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(100),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              height: 72,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 35,
-                    offset: const Offset(0, 15),
-                  ),
-                ],
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: const Color(0xFFf6fafe),
+            border: Border(top: BorderSide(color: const Color(0xFFc3c6ce).withValues(alpha: 0.5))),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
               ),
-              child: Row(
-                children: [
-                  _NavItem(
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home,
-                    label: 'Home',
-                    isActive: _currentIndex == 0,
-                    onTap: () { if (_currentIndex != 0) { _tabChangeVersion++; setState(() => _currentIndex = 0); } },
-                  ),
-                  _NavItem(
-                    icon: Icons.person_outline,
-                    activeIcon: Icons.person,
-                    label: 'Profile',
-                    isActive: _currentIndex == 1,
-                    onTap: () { if (_currentIndex != 1) { _tabChangeVersion++; setState(() => _currentIndex = 1); } },
-                  ),
-                ],
+            ],
+          ),
+          child: Row(
+            children: [
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
+                isActive: _currentIndex == 0,
+                onTap: () { if (_currentIndex != 0) { _tabChangeVersion++; setState(() => _currentIndex = 0); } },
               ),
-            ),
+              _NavItem(
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Profile',
+                isActive: _currentIndex == 1,
+                onTap: () { if (_currentIndex != 1) { _tabChangeVersion++; setState(() => _currentIndex = 1); } },
+              ),
+            ],
           ),
         ),
       ),
@@ -398,27 +393,33 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              size: 24,
-              color: isActive ? scheme.primary : scheme.onSurface.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w600,
-                color: isActive ? scheme.primary : scheme.onSurface.withValues(alpha: 0.3),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFFaff1ca) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                size: 22,
+                color: isActive ? const Color(0xFF317051) : const Color(0xFF43474d),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: isActive ? const Color(0xFF317051) : const Color(0xFF43474d),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -39,8 +39,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -48,42 +46,42 @@ class _LoginPageState extends State<LoginPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFFff9b7d),
-              const Color(0xFFff9b7d).withValues(alpha: 0.85),
+              const Color(0xFF00152a),
+              const Color(0xFF102a43),
             ],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 88, height: 88,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(44),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/logo/logo.png',
+                      width: 72, height: 72,
                     ),
-                    child: const Icon(Icons.qr_code_scanner, size: 44, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  Text('Worker Login', style: GoogleFonts.hankenGrotesk(
-                    fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white,
+                  Text('UFS Attendance', style: GoogleFonts.hankenGrotesk(
+                    fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white,
                   )),
                   const SizedBox(height: 4),
                   Text('Sign in to mark attendance',
                     style: GoogleFonts.manrope(
-                      fontSize: 15, color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14, color: Colors.white.withValues(alpha: 0.6),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(40),
+                      color: const Color(0xFFffffff),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFc3c6ce)),
                     ),
                     child: Column(
                       children: [
@@ -91,12 +89,12 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _loginCtrl,
                           decoration: InputDecoration(
                             labelText: 'Login ID',
-                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF0b1c30).withValues(alpha: 0.5)),
-                            prefixIcon: Icon(Icons.person_outline, color: const Color(0xFF0b1c30).withValues(alpha: 0.4)),
+                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF43474d)),
+                            prefixIcon: Icon(Icons.person_outline, color: const Color(0xFF74777e)),
                             filled: true,
-                            fillColor: const Color(0xFFf8fafd),
+                            fillColor: const Color(0xFFf0f4f8),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -107,34 +105,33 @@ class _LoginPageState extends State<LoginPage> {
                           obscureText: true,
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF0b1c30).withValues(alpha: 0.5)),
-                            prefixIcon: Icon(Icons.lock_outline, color: const Color(0xFF0b1c30).withValues(alpha: 0.4)),
+                            labelStyle: GoogleFonts.manrope(color: const Color(0xFF43474d)),
+                            prefixIcon: Icon(Icons.lock_outline, color: const Color(0xFF74777e)),
                             filled: true,
-                            fillColor: const Color(0xFFf8fafd),
+                            fillColor: const Color(0xFFf0f4f8),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide.none,
                             ),
                           ),
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!, style: TextStyle(fontSize: 13, color: scheme.error)),
+                          Text(_error!, style: TextStyle(fontSize: 13, color: const Color(0xFFba1a1a))),
                         ],
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
-                          height: 56,
+                          height: 48,
                           child: ElevatedButton(
                             onPressed: _loading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFff9b7d),
+                              backgroundColor: const Color(0xFF00152a),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              shadowColor: const Color(0xFFff9b7d).withValues(alpha: 0.3),
                             ),
                             child: _loading
                                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

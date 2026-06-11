@@ -46,7 +46,8 @@
   .stat-value.error { color: #ef4444; }
   .stat-value.total { color: #6366f1; }
   .hidden { display: none; }
-  #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.7); align-items: center; justify-content: center; z-index: 1000; }
+  #loadingOverlay:not(.hidden) { display: flex; }
   .spinner { width: 36px; height: 36px; border: 3px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .copy-btn { background: none; border: none; cursor: pointer; color: #6366f1; font-size: 13px; padding: 2px 6px; border-radius: 4px; }
@@ -64,19 +65,35 @@
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Bulk Add Workers
   </h1>
-  <p class="subtitle">Add multiple workers at once. Login IDs are auto-generated as <span class="inline-code">{firstName}{surnameInitial}_ufs_{'{'}NN{'}'}</span>.</p>
+  <p class="subtitle">Add multiple workers at once. Login IDs are auto-generated as <span class="inline-code">{firstName}{surnameInitial}_ufs_{NN}</span>.</p>
 
   <div class="card">
     <div class="card-title">API Connection</div>
     <div class="row">
       <div>
         <label for="apiUrl">API Base URL</label>
-        <input id="apiUrl" type="text" value="https://attendance-l3oa.onrender.com/api" placeholder="https://attendance-l3oa.onrender.com/api" />
+        <input id="apiUrl" type="text" value="https://attendance-roan-zeta.vercel.app/api" placeholder="https://attendance-l3oa.onrender.com/api" />
       </div>
       <div>
         <label for="adminToken">Admin Token <span style="color:#ef4444;">*</span></label>
-        <input id="adminToken" type="text" placeholder="Paste your JWT from localStorage auth_token" />
+        <input id="adminToken" type="text" value="" placeholder="Paste your JWT from localStorage auth_token" />
       </div>
+    </div>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;">
+      <div class="row">
+        <div>
+          <label for="loginEmail">Admin Email</label>
+          <input id="loginEmail" type="email" value="admin@admin.com" />
+        </div>
+        <div>
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" value="admin123" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn btn-primary" onclick="adminLogin()" id="loginBtn" style="width:100%;">Get Token</button>
+        </div>
+      </div>
+      <div id="loginError" class="hidden error-msg" style="margin-top:8px;"></div>
     </div>
   </div>
 
@@ -173,6 +190,35 @@ function renderPreview() {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+async function adminLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const apiUrl = document.getElementById('apiUrl').value.trim().replace(/\/+$/, '');
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginError');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  err.classList.add('hidden');
+  try {
+    const res = await fetch(`${apiUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Login failed');
+    document.getElementById('adminToken').value = data.token;
+    btn.textContent = 'Token Set ✓';
+    btn.style.background = '#10b981';
+    setTimeout(() => { btn.style.background = ''; }, 2000);
+  } catch (e) {
+    err.textContent = 'Login error: ' + e.message;
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    if (btn.textContent === 'Logging in...') btn.textContent = 'Get Token';
+  }
+}
+
 async function submitBulk() {
   const token = document.getElementById('adminToken').value.trim();
   const apiUrl = document.getElementById('apiUrl').value.trim().replace(/\/+$/, '');
@@ -217,7 +263,7 @@ function renderResults(workers) {
   body.innerHTML = workers.map((w, i) =>
     `<tr><td>${i + 1}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td>` +
     `<td><span class="inline-code" style="font-size:13px;">${esc(w.login_id)}</span></td>` +
-    `<td><span class="inline-code" style="font-size:13px;">${esc(w.generated_password)}</span> <button class="copy-btn" onclick="copyText('${w.login_id}')">Copy</button></td></tr>`
+    `<td><span class="inline-code" style="font-size:13px;">${esc(w.generated_password)}</span> <button class="copy-btn" onclick="copyText('${w.generated_password}')">Copy</button></td></tr>`
   ).join('');
   section.classList.remove('hidden');
   document.getElementById('csvInput').value = '';

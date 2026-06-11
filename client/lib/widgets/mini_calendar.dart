@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 
 class MiniCalendar extends StatelessWidget {
   final int year;
@@ -19,9 +18,7 @@ class MiniCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColors>()!;
-    final scheme = Theme.of(context).colorScheme;
-    final days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    final days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     final firstDay = DateTime(year, month, 1).weekday % 7;
     final monthDays = DateTime(year, month + 1, 0).day;
     final now = DateTime.now();
@@ -32,14 +29,14 @@ class MiniCalendar extends StatelessWidget {
         Row(
           children: days.map((d) => Expanded(
             child: Center(
-              child: Text(d, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: colors.outline)),
+              child: Text(d, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF74777e))),
             ),
           )).toList(),
         ),
         const SizedBox(height: 4),
         ...List.generate((firstDay + monthDays + 6) ~/ 7, (row) {
           return Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 2),
             child: Row(
               children: List.generate(7, (col) {
                 final dayNum = row * 7 + col - firstDay + 1;
@@ -55,19 +52,41 @@ class MiniCalendar extends StatelessWidget {
                 Color? bg;
                 Color? fg;
                 bool hasBorder = false;
-                if (isToday) {
-                  bg = colors.primaryFixed;
-                  fg = scheme.primary;
-                  hasBorder = true;
-                } else if (status != null) {
+                bool filled = false;
+
+                if (status != null) {
                   switch (status) {
-                    case 'present': fg = const Color(0xFF10b981); break;
-                    case 'absent': fg = colors.tertiary; break;
-                    case 'late': fg = colors.onTertiaryFixedVariant; break;
-                    case 'leave': fg = scheme.primary; break;
+                    case 'present':
+                      bg = const Color(0xFFaff1ca);
+                      fg = const Color(0xFF0a5135);
+                      filled = true;
+                      break;
+                    case 'absent':
+                      bg = const Color(0xFFffdad6);
+                      fg = const Color(0xFFba1a1a);
+                      filled = true;
+                      break;
+                    case 'late':
+                      bg = const Color(0xFFffddb8);
+                      fg = const Color(0xFF653e00);
+                      filled = true;
+                      break;
+                    case 'leave':
+                      bg = const Color(0xFFd1e4ff);
+                      fg = const Color(0xFF011d35);
+                      filled = true;
+                      break;
                   }
-                } else if (isWeekend || isFuture) {
-                  fg = colors.outlineVariant;
+                }
+
+                if (isToday && !filled) {
+                  bg = const Color(0xFFd1e4ff);
+                  fg = const Color(0xFF00152a);
+                  hasBorder = true;
+                }
+
+                if (!filled && (isWeekend || isFuture)) {
+                  fg = const Color(0xFF74777e).withValues(alpha: 0.3);
                 }
 
                 final isSelected = selectedDate == key;
@@ -79,15 +98,15 @@ class MiniCalendar extends StatelessWidget {
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected ? scheme.primary : bg,
-                        borderRadius: BorderRadius.circular(8),
-                        border: hasBorder ? Border.all(color: scheme.primary, width: 2) : null,
+                        color: isSelected ? const Color(0xFF00152a) : bg,
+                        borderRadius: BorderRadius.circular(4),
+                        border: hasBorder ? Border.all(color: const Color(0xFF00152a), width: 2) : null,
                       ),
                       child: Text('$dayNum',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? scheme.onPrimary : (fg ?? scheme.onSurface),
+                          fontSize: 12,
+                          fontWeight: filled || isToday ? FontWeight.w700 : FontWeight.w400,
+                          color: isSelected ? Colors.white : (fg ?? const Color(0xFF171c1f)),
                         ),
                       ),
                     ),

@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
-import '../widgets/organic_background.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/progress_circle.dart';
+
 import 'scanner_page.dart';
 import 'leave_page.dart';
 
@@ -77,6 +79,38 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchStatus() async {
     final worker = await ApiService.getWorkerData();
     _workerName = worker?['name'] ?? '';
+    _workerId = worker?['id']?.toString() ?? '';
+
+    // Load cached data instantly
+    final cachedStatus = await ApiService.getCachedTodayStatus();
+    final cachedHistory = await ApiService.getCachedHistory();
+    if (cachedStatus != null) _applyTodayStatus(cachedStatus);
+    if (cachedHistory != null) {
+      int p = 0, a = 0, l = 0, lv = 0;
+      for (final rec in cachedHistory) {
+        switch (rec['status']?.toString() ?? '') {
+          case 'present': p++; break;
+          case 'absent': a++; break;
+          case 'late': l++; break;
+          case 'leave': lv++; break;
+        }
+      }
+      setState(() { _present = p; _absent = a; _late = l; _leave = lv; });
+    }
+
+    if (_workerId.isNotEmpty) {
+      final cachedNotifs = await ApiService.getCachedNotifications(_workerId);
+      final cachedUnread = await ApiService.getCachedUnreadCount(_workerId);
+      if (cachedNotifs != null) {
+        setState(() {
+          _notifications = cachedNotifs.cast<Map<String, dynamic>>();
+          _unreadCount = cachedUnread;
+        });
+      }
+    }
+
+    setState(() => _loading = false);
+
     int p = 0, a = 0, l = 0, lv = 0;
 
     try {
@@ -123,12 +157,9 @@ class _HomePageState extends State<HomePage> {
         else if (s == 'leave')
           lv++;
       }
-    } catch (_) {
-      // API calls failed — still show worker name
-    }
+    } catch (_) {}
 
     try {
-      _workerId = worker?['id']?.toString() ?? '';
       if (_workerId.isNotEmpty) {
         final notifs = await ApiService.getNotifications(_workerId);
         final unread = await ApiService.getUnreadNotificationCount(_workerId);
@@ -144,7 +175,31 @@ class _HomePageState extends State<HomePage> {
       _absent = a;
       _late = l;
       _leave = lv;
-      _loading = false;
+    });
+  }
+
+  void _applyTodayStatus(Map<String, dynamic> today) {
+    final att = today['attendance'];
+    setState(() {
+      _lateUsed = today['lateUsed'] ?? 0;
+      if (att != null) {
+        _isPunchedIn = att['punch_in_time'] != null;
+        _isPunchedOut = att['punch_out_time'] != null;
+        _punchInTime = att['punch_in_time'] != null
+            ? DateTime.tryParse(att['punch_in_time'].toString())
+            : null;
+        _punchOutTime = att['punch_out_time'] != null
+            ? DateTime.tryParse(att['punch_out_time'].toString())
+            : null;
+        if (_isPunchedIn && !_isPunchedOut) _updateWorked();
+        if (_isPunchedOut && _punchInTime != null && _punchOutTime != null) {
+          final diff = _punchOutTime!.difference(_punchInTime!);
+          final h = diff.inHours.toString().padLeft(2, '0');
+          final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+          final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+          _workedDisplay = '$h:$m:$s';
+        }
+      }
     });
   }
 
@@ -388,410 +443,90 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    if (_loading) {
-      return Scaffold(
-        backgroundColor: scheme.surface,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    if (_loading) return const HomeSkeleton();
 
     final clockStr = DateFormat('hh:mm a').format(_now);
     final firstName = _workerName.split(' ').first;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: const Color(0xFFf6fafe),
       body: SafeArea(
-        child: Stack(
-          children: [
-            const OrganicBackground(),
-            CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'HELLO THERE',
-                                style: textTheme.labelMedium?.copyWith(
-                                  color: scheme.primary,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                firstName.isNotEmpty ? firstName : 'there',
-                                style: GoogleFonts.hankenGrotesk(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w700,
-                                  height: 44 / 40,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Stack(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.notifications_outlined),
-                                iconSize: 22,
-                                color: scheme.onSurface,
-                                onPressed: _openNotificationSheet,
-                              ),
-                            ),
-                            if (_unreadCount > 0)
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: scheme.error,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 18,
-                                    minHeight: 18,
-                                  ),
-                                  child: Text(
-                                    '$_unreadCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 12),
-                        // Floating shift badge
-                        SizedBox(
-                          width: double.infinity,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(32),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'SHIFT',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurface.withValues(alpha: 0.5),
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '$_officeStartTime – $_officeEndTime',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: scheme.onSurface,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        // Clock display
-                        Text(
-                          clockStr,
-                          style: GoogleFonts.hankenGrotesk(
-                            fontSize: 64,
-                            fontWeight: FontWeight.w800,
-                            height: 64 / 64,
-                            letterSpacing: -1.5,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Work timer pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: scheme.secondary.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.water_drop, size: 18, color: scheme.onSurface.withValues(alpha: 0.7)),
-                              const SizedBox(width: 6),
-                              Text(
-                                '$_workedDisplay',
-                                style: textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: scheme.onSurface.withValues(alpha: 0.7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        // Liquid punch button
-                        if (_isPunchedOut)
-                          Column(
-                            children: [
-                              Icon(Icons.check_circle, size: 72, color: const Color(0xFF10b981)),
-                              const SizedBox(height: 12),
-                              Text('Today completed', style: textTheme.titleLarge?.copyWith(color: scheme.onSurface)),
-                            ],
-                          )
-                        else
-                          GestureDetector(
-                            onTap: _isPunchedIn ? _punchOut : _punchIn,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: 192,
-                              height: 192,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: _isPunchedIn
-                                      ? [const Color(0xFFa8dadc), const Color(0xFF8ec4c6)]
-                                      : [const Color(0xFFffae94), const Color(0xFFe68c71)],
-                                ),
-                                borderRadius: BorderRadius.circular(100),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _isPunchedIn
-                                        ? const Color(0xFFa8dadc).withValues(alpha: 0.4)
-                                        : const Color(0xFFff9b7d).withValues(alpha: 0.4),
-                                    blurRadius: 40,
-                                    offset: const Offset(0, 20),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.fingerprint,
-                                    size: 48,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _isPunchedIn ? 'Drop Out' : 'Drop In',
-                                    style: textTheme.labelMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 40),
-                        // Arrived / Left cards
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(40),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'ARRIVED',
-                                      style: textTheme.labelSmall?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: scheme.onSurface.withValues(alpha: 0.3),
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _fmtTime(_punchInTime),
-                                      style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                        color: scheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(40),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'LEFT',
-                                      style: textTheme.labelSmall?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: scheme.onSurface.withValues(alpha: 0.3),
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _fmtTime(_punchOutTime),
-                                      style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                        color: scheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: scheme.secondary.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(40),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                              child: Icon(Icons.calendar_today, size: 20, color: scheme.secondary),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HELLO THERE',
+                            style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                              color: const Color(0xFF00152a),
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '${(_attendanceRate * 100).toStringAsFixed(0)}%',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 24, fontWeight: FontWeight.w700, color: scheme.onSurface,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            firstName.isNotEmpty ? firstName : 'there',
+                            style: GoogleFonts.hankenGrotesk(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              height: 32 / 24,
+                              color: const Color(0xFF171c1f),
                             ),
-                            Text(
-                              'Attendance',
-                              style: textTheme.labelMedium?.copyWith(
-                                color: scheme.onSurface.withValues(alpha: 0.5),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(40),
+                    Stack(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFffffff),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFc3c6ce)),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.notifications_outlined),
+                            iconSize: 22,
+                            color: const Color(0xFF43474d),
+                            onPressed: _openNotificationSheet,
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 40, height: 40,
+                        if (_unreadCount > 0)
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                  ),
-                                ],
+                                color: const Color(0xFFba1a1a),
+                                shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.warning_amber_rounded, size: 20, color: scheme.primary),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 24, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
                               ),
-                            ),
-                            Text(
-                              'Late balance',
-                              style: textTheme.labelMedium?.copyWith(
-                                color: scheme.onSurface.withValues(alpha: 0.5),
-                                fontWeight: FontWeight.w500,
+                              child: Text(
+                                '$_unreadCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -799,94 +534,372 @@ class _HomePageState extends State<HomePage> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 32, 20, 80),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFffffff),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFc3c6ce)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'SHIFT',
+                            style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.05,
+                              color: const Color(0xFF74777e),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$_officeStartTime – $_officeEndTime',
+                            style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600,
+                              color: const Color(0xFF171c1f),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      clockStr,
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 64,
+                        fontWeight: FontWeight.w800,
+                        height: 64 / 64,
+                        letterSpacing: -1.5,
+                        color: const Color(0xFF171c1f),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFaff1ca).withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.access_time, size: 18, color: const Color(0xFF317051)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$_workedDisplay',
+                            style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500,
+                              color: const Color(0xFF317051),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    if (_isPunchedOut)
+                      Column(
+                        children: [
+                          Icon(Icons.check_circle, size: 72, color: const Color(0xFF2a6a4b)),
+                          const SizedBox(height: 12),
+                          Text('Today completed', style: GoogleFonts.hankenGrotesk(
+                            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                          )),
+                        ],
+                      )
+                    else
+                      GestureDetector(
+                        onTap: _isPunchedIn ? _punchOut : _punchIn,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 192,
+                          height: 192,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: _isPunchedIn
+                                  ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
+                                  : [const Color(0xFF00152a), const Color(0xFF102a43)],
+                            ),
+                            borderRadius: BorderRadius.circular(100),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _isPunchedIn
+                                    ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
+                                    : const Color(0xFF00152a).withValues(alpha: 0.4),
+                                blurRadius: 40,
+                                offset: const Offset(0, 20),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _isPunchedIn ? Icons.logout : Icons.fingerprint,
+                                size: 48,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _isPunchedIn ? 'Punch Out' : 'Punch In',
+                                style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.5,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 40),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFffffff),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'ARRIVED',
+                                  style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
+                                    color: const Color(0xFF74777e),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _fmtTime(_punchInTime),
+                                  style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF171c1f),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFffffff),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'LEFT',
+                                  style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
+                                    color: const Color(0xFF74777e),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _fmtTime(_punchOutTime),
+                                  style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF171c1f),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFffffff),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${(_attendanceRate * 100).toStringAsFixed(0)}%',
+                                      style: GoogleFonts.hankenGrotesk(
+                                        fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    ProgressCircle(
+                                      size: 40, thickness: 3,
+                                      value: _attendanceRate,
+                                      color: const Color(0xFF2a6a4b),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Attendance',
+                                  style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                                    color: const Color(0xFF43474d),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFffffff),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
+                                      style: GoogleFonts.hankenGrotesk(
+                                        fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    ProgressCircle(
+                                      size: 40, thickness: 3,
+                                      value: (_lateUsed / 180).clamp(0.0, 1.0),
+                                      color: const Color(0xFFc28228),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Late balance',
+                                  style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                                    color: const Color(0xFF43474d),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 80),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: const Color(0xFFffffff),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFc3c6ce)),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 56, height: 56,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFfffbf2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(Icons.auto_awesome, size: 24, color: Color(0xFFff9b7d)),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('New Request', style: GoogleFonts.hankenGrotesk(
-                                  fontSize: 18, fontWeight: FontWeight.w700, color: scheme.onSurface,
-                                )),
-                                Text('Take a break or leave', style: textTheme.labelMedium?.copyWith(
-                                  color: scheme.onSurface.withValues(alpha: 0.5),
-                                )),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.bubble_chart, size: 20, color: scheme.primary.withValues(alpha: 0.15)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: _openLeaveSheet,
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                      child: InkWell(
+                        onTap: _openLeaveSheet,
                         child: Row(
                           children: [
                             Container(
-                              width: 56, height: 56,
+                              width: 48, height: 48,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFfffbf2),
-                                borderRadius: BorderRadius.circular(16),
+                                color: const Color(0xFFd1e4ff),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Icon(Icons.history_edu, size: 24, color: Color(0xFFa8dadc)),
+                              child: const Icon(Icons.auto_awesome, size: 22, color: Color(0xFF00152a)),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('My Journal', style: GoogleFonts.hankenGrotesk(
-                                    fontSize: 18, fontWeight: FontWeight.w700, color: scheme.onSurface,
+                                  Text('New Request', style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
                                   )),
-                                  Text('Past flow records', style: textTheme.labelMedium?.copyWith(
-                                    color: scheme.onSurface.withValues(alpha: 0.5),
+                                  Text('Take a break or leave', style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF43474d),
                                   )),
                                 ],
                               ),
                             ),
-                            Icon(Icons.bubble_chart, size: 20, color: scheme.secondary.withValues(alpha: 0.15)),
+                            Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFffffff),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFc3c6ce)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48, height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFaff1ca),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Icon(Icons.history_edu, size: 22, color: Color(0xFF2a6a4b)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('My Journal', style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                                )),
+                                Text('Past flow records', style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF43474d),
+                                )),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
+                        ],
                       ),
                     ),
                   ],
@@ -895,10 +908,8 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
 }
 
@@ -917,18 +928,18 @@ IconData _notifIcon(String? type) {
   }
 }
 
-Color _notifColor(String? type, ColorScheme scheme) {
+Color _notifColor(String? type) {
   switch (type) {
     case 'birthday':
       return const Color(0xFFf43f5e);
     case 'event':
-      return scheme.secondary;
+      return const Color(0xFF2a6a4b);
     case 'notice':
-      return scheme.primary;
+      return const Color(0xFF00152a);
     case 'achievement':
       return const Color(0xFFf59e0b);
     default:
-      return scheme.onSurface;
+      return const Color(0xFF43474d);
   }
 }
 
@@ -959,50 +970,10 @@ class _NotificationSheet extends StatefulWidget {
 
 class _NotificationSheetState extends State<_NotificationSheet> {
   late List<Map<String, dynamic>> _items;
-  bool _sending = false;
-
   @override
   void initState() {
     super.initState();
     _items = List.from(widget.notifications);
-  }
-
-  Future<void> _sendTest() async {
-    setState(() => _sending = true);
-    try {
-      await ApiService.sendTestNotification(widget.workerId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('📬 Test notification sent! Check in 10s...'),
-            backgroundColor: const Color(0xFF10b981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      await Future.delayed(const Duration(seconds: 10));
-      try {
-        final notifs = await ApiService.getNotifications(widget.workerId);
-        if (mounted) {
-          setState(() {
-            _items = notifs.cast<Map<String, dynamic>>();
-          });
-          widget.onRefresh?.call();
-        }
-      } catch (_) {}
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed: ${e.toString().replaceFirst("Exception: ", "")}'),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
   }
 
   @override
@@ -1014,49 +985,50 @@ class _NotificationSheetState extends State<_NotificationSheet> {
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
           color: Color(0xFFffffff),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(48)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
         ),
         child: ListView(
           controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
             Center(
               child: Container(
-                width: 64,
-                height: 6,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFfffbf2),
-                  borderRadius: BorderRadius.circular(3),
+                  color: const Color(0xFFdfe3e7),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: widget.scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(24),
+                    color: const Color(0xFFd1e4ff),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Icon(Icons.notifications_active, color: widget.scheme.primary),
+                  child: const Icon(Icons.notifications_active, color: Color(0xFF00152a), size: 22),
                 ),
                 const SizedBox(width: 16),
                 Text(
-                  'Flow Alerts',
+                  'Notifications',
                   style: GoogleFonts.hankenGrotesk(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: widget.scheme.onSurface,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF171c1f),
                   ),
                 ),
                 const Spacer(),
                 if (_items.isNotEmpty)
                   Text(
                     '${widget.unreadCount} unread',
-                    style: widget.textTheme.labelMedium?.copyWith(
-                      color: widget.scheme.onSurface.withValues(alpha: 0.5),
+                    style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600,
+                      color: const Color(0xFF43474d),
                     ),
                   ),
               ],
@@ -1068,10 +1040,10 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.notifications_off, size: 48, color: widget.scheme.onSurface.withValues(alpha: 0.2)),
+                      Icon(Icons.notifications_off, size: 48, color: const Color(0xFF74777e).withValues(alpha: 0.3)),
                       const SizedBox(height: 12),
-                      Text('No notifications yet', style: widget.textTheme.bodyMedium?.copyWith(
-                        color: widget.scheme.onSurface.withValues(alpha: 0.4),
+                      Text('No notifications yet', style: TextStyle(
+                        fontSize: 14, color: const Color(0xFF74777e).withValues(alpha: 0.6),
                       )),
                     ],
                   ),
@@ -1090,32 +1062,32 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                       direction: DismissDirection.horizontal,
                       background: Container(
                         alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 24),
+                        padding: const EdgeInsets.only(left: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10b981),
-                          borderRadius: BorderRadius.circular(32),
+                          color: const Color(0xFF2a6a4b),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.done_all, color: Colors.white, size: 22),
+                            Icon(Icons.done_all, color: Colors.white, size: 20),
                             SizedBox(width: 8),
-                            Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text('Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
                           ],
                         ),
                       ),
                       secondaryBackground: Container(
                         alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 24),
+                        padding: const EdgeInsets.only(right: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFef4444),
-                          borderRadius: BorderRadius.circular(32),
+                          color: const Color(0xFFba1a1a),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
                             SizedBox(width: 8),
-                            Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                            Icon(Icons.delete_outline, color: Colors.white, size: 20),
                           ],
                         ),
                       ),
@@ -1133,19 +1105,20 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                       child: Opacity(
                         opacity: isRead ? 0.5 : 1,
                         child: Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: !isRead
-                                ? widget.scheme.secondary.withValues(alpha: 0.1)
-                                : const Color(0xFFfffbf2),
-                            borderRadius: BorderRadius.circular(32),
+                                ? const Color(0xFFf0f4f8)
+                                : const Color(0xFFffffff),
+                            borderRadius: BorderRadius.circular(8),
+                            border: !isRead ? Border.all(color: const Color(0xFFc3c6ce).withValues(alpha: 0.3)) : null,
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 _notifIcon(n['type']?.toString()),
-                                size: 22,
-                                color: _notifColor(n['type']?.toString(), widget.scheme),
+                                size: 20,
+                                color: _notifColor(n['type']?.toString()),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -1154,16 +1127,17 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                                   children: [
                                     Text(
                                       n['title'] ?? '',
-                                      style: widget.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: widget.scheme.onSurface,
+                                      style: TextStyle(
+                                        fontSize: 14, fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF171c1f),
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       n['body'] ?? '',
-                                      style: widget.textTheme.labelSmall?.copyWith(
-                                        color: widget.scheme.onSurface.withValues(alpha: 0.5),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: const Color(0xFF74777e),
                                       ),
                                     ),
                                   ],
@@ -1174,48 +1148,26 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                         ),
                       ),
                     ),
-                    if (!isLast) const SizedBox(height: 16),
+                    if (!isLast) const SizedBox(height: 12),
                   ],
                 );
               }),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _sending ? null : _sendTest,
-                icon: _sending
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send, size: 18),
-                label: Text(_sending ? 'Sending...' : 'Send Test Notification (10s)', style: GoogleFonts.hankenGrotesk(
-                  fontSize: 14, fontWeight: FontWeight.w700,
-                )),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.scheme.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
+              height: 48,
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFfffbf2),
-                  foregroundColor: widget.scheme.onSurface,
+                  backgroundColor: const Color(0xFFf0f4f8),
+                  foregroundColor: const Color(0xFF171c1f),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                child: Text('Got it', style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w700,
+                child: Text('Close', style: GoogleFonts.hankenGrotesk(
+                  fontSize: 14, fontWeight: FontWeight.w700,
                 )),
               ),
             ),

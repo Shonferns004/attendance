@@ -33,6 +33,8 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('worker_token');
     await prefs.remove('worker_data');
+    final keys = prefs.getKeys().where((k) => k.startsWith('cache_')).toList();
+    for (final k in keys) await prefs.remove(k);
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -78,6 +80,18 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>?> getCachedTodayStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('cache_today_status');
+    if (data != null) return jsonDecode(data);
+    return null;
+  }
+
+  static Future<void> _cacheTodayStatus(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cache_today_status', jsonEncode(data));
+  }
+
   static Future<Map<String, dynamic>> getTodayStatus() async {
     final res = await http.get(
       Uri.parse('$baseUrl/attendance/today'),
@@ -85,7 +99,20 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception('Failed to get status');
+    await _cacheTodayStatus(body);
     return body;
+  }
+
+  static Future<List<dynamic>?> getCachedHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('cache_history');
+    if (data != null) return jsonDecode(data);
+    return null;
+  }
+
+  static Future<void> _cacheHistory(List<dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cache_history', jsonEncode(data));
   }
 
   static Future<List<dynamic>> getHistory() async {
@@ -95,7 +122,9 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception('Failed to get history');
-    return body is List ? body : [];
+    final list = body is List ? body : [];
+    await _cacheHistory(list);
+    return list;
   }
 
   static Future<Map<String, dynamic>> applyLeave(Map<String, dynamic> data) async {
@@ -109,6 +138,18 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>?> getCachedProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('cache_profile');
+    if (data != null) return jsonDecode(data);
+    return null;
+  }
+
+  static Future<void> _cacheProfile(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cache_profile', jsonEncode(data));
+  }
+
   static Future<Map<String, dynamic>> getMyProfile() async {
     final res = await http.get(
       Uri.parse('$baseUrl/workers/me'),
@@ -116,6 +157,7 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to get profile');
+    await _cacheProfile(body);
     return body;
   }
 
@@ -145,6 +187,13 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>?> getCachedNotifications(String workerId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('cache_notifications_$workerId');
+    if (data != null) return jsonDecode(data);
+    return null;
+  }
+
   static Future<List<dynamic>> getNotifications(String workerId) async {
     final res = await http.get(
       Uri.parse('$baseUrl/notifications/$workerId'),
@@ -152,7 +201,10 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception('Failed to get notifications');
-    return body is List ? body : [];
+    final list = body is List ? body : [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cache_notifications_$workerId', jsonEncode(list));
+    return list;
   }
 
   static Future<void> markNotificationRead(String id) async {
@@ -166,6 +218,11 @@ class ApiService {
     }
   }
 
+  static Future<int> getCachedUnreadCount(String workerId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('cache_unread_$workerId') ?? 0;
+  }
+
   static Future<int> getUnreadNotificationCount(String workerId) async {
     final res = await http.get(
       Uri.parse('$baseUrl/notifications/$workerId/unread-count'),
@@ -173,7 +230,10 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception('Failed to get unread count');
-    return (body['count'] ?? 0) as int;
+    final count = (body['count'] ?? 0) as int;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('cache_unread_$workerId', count);
+    return count;
   }
 
   static Future<void> sendTestNotification(String workerId) async {

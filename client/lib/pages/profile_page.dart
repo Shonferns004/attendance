@@ -4,7 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../main.dart';
 import '../widgets/mini_calendar.dart';
-import '../widgets/organic_background.dart';
+import '../widgets/progress_circle.dart';
+import '../widgets/consistency_bar.dart';
+import '../widgets/menu_item.dart';
+import '../widgets/skeleton_loader.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -53,13 +56,75 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadData() async {
     _worker = await ApiService.getWorkerData();
+    final n = DateTime.now();
+    if (_calYear == 0) { _calYear = n.year; _calMonth = n.month; }
+
+    // Load cached data instantly
+    final cachedProfile = await ApiService.getCachedProfile();
+    if (cachedProfile != null) {
+      _worker = cachedProfile;
+      await ApiService.saveWorkerData(cachedProfile);
+    }
+    _applyCachedHistory(ApiService.getCachedHistory());
+
+    setState(() => _loading = false);
+
     try {
       final profile = await ApiService.getMyProfile();
       _worker = profile;
       await ApiService.saveWorkerData(profile);
-    } catch (_) {
-      // cached data still available
+    } catch (_) {}
+
+    await _refreshHistoryFromNetwork();
+  }
+
+  Future<void> _applyCachedHistory(Future<List<dynamic>?> future) async {
+    final cachedHistory = await future;
+    if (cachedHistory == null) return;
+    int p = 0, a = 0, l = 0, lv = 0;
+    final statusMap = <String, String>{};
+    final monthlyStats = <int, Map<String, int>>{};
+    final hoursMap = <String, String>{};
+    final detailMap = <String, Map<String, dynamic>>{};
+
+    for (final rec in cachedHistory) {
+      final date = rec['date'] ?? '';
+      final status = rec['status'] ?? 'present';
+      statusMap[date.toString()] = status.toString();
+      final hw = rec['hours_worked'];
+      if (hw != null) hoursMap[date.toString()] = hw.toString();
+      detailMap[date.toString()] = {
+        'date': date,
+        'status': status,
+        'punch_in_time': rec['punch_in_time'],
+        'punch_out_time': rec['punch_out_time'],
+        'hours_worked': hw,
+        'late_minutes': rec['late_minutes'],
+      };
+      final dt = DateTime.tryParse(date.toString());
+      if (dt != null) {
+        final ym = dt.year * 100 + dt.month;
+        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0});
+        final st = status.toString();
+        if (monthlyStats[ym]!.containsKey(st)) {
+          monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
+        }
+      }
+      switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; break; case 'leave': lv++; break; }
     }
+
+    setState(() {
+      _history = cachedHistory;
+      _present = p; _absent = a; _late = l; _leave = lv;
+      _statusByDate = statusMap;
+      _hoursByDate = hoursMap;
+      _historyByDate = detailMap;
+      _monthlyStats.clear();
+      _monthlyStats.addAll(monthlyStats);
+    });
+  }
+
+  Future<void> _refreshHistoryFromNetwork() async {
     int p = 0, a = 0, l = 0, lv = 0;
     final statusMap = <String, String>{};
     final monthlyStats = <int, Map<String, int>>{};
@@ -88,7 +153,6 @@ class _ProfilePageState extends State<ProfilePage> {
           'hours_worked': hw,
           'late_minutes': rec['late_minutes'],
         };
-
         final dt = DateTime.tryParse(date.toString());
         if (dt != null) {
           final ym = dt.year * 100 + dt.month;
@@ -98,21 +162,12 @@ class _ProfilePageState extends State<ProfilePage> {
             monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
           }
         }
-
-        switch (status) {
-          case 'present': p++; break;
-          case 'absent': a++; break;
-          case 'late': l++; break;
-          case 'leave': lv++; break;
-        }
+        switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; break; case 'leave': lv++; break; }
       }
 
       setState(() {
         _history = history;
-        _present = p;
-        _absent = a;
-        _late = l;
-        _leave = lv;
+        _present = p; _absent = a; _late = l; _leave = lv;
         _lateUsed = today['lateUsed'] ?? 0;
         _statusByDate = statusMap;
         _hoursByDate = hoursMap;
@@ -120,15 +175,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _monthlyStats.clear();
         _monthlyStats.addAll(monthlyStats);
       });
-    } catch (_) {
-      // history/today API failed — still show worker data
-    }
-
-    final n = DateTime.now();
-    setState(() {
-      _loading = false;
-      if (_calYear == 0) { _calYear = n.year; _calMonth = n.month; }
-    });
+    } catch (_) {}
   }
 
   @override
@@ -137,98 +184,109 @@ class _ProfilePageState extends State<ProfilePage> {
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    if (_loading) {
-      return Scaffold(
-        backgroundColor: scheme.surface,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    if (_loading) return const ProfileSkeleton();
 
     final name = _worker?['name'] ?? 'Worker';
-    final email = _worker?['email'] ?? '';
     final loginId = _worker?['login_id'] ?? '';
+    final role = _worker?['role'] ?? _worker?['designation'] ?? '';
     final total = _present + _absent + _late + _leave;
     final rate = total > 0 ? (_present + _late) / total : 0.0;
-    final now = DateTime.now();
-    final monthYear = DateFormat('MMMM yyyy').format(now);
+    final monthYear = DateFormat('MMMM yyyy').format(DateTime.now());
     final initials = name.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join().toUpperCase();
 
+    final presentFraction = total > 0 ? _present / total : 0.0;
+    final absentFraction = total > 0 ? _absent / total : 0.0;
+    final leaveFraction = total > 0 ? _leave / total : 0.0;
+    final lateFraction = total > 0 ? _late / total : 0.0;
+
     return Scaffold(
-      backgroundColor: scheme.surface,
-      body: Stack(
-        children: [
-          const OrganicBackground(),
-          SafeArea(
-            child: ListView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-              children: [
-                const SizedBox(height: 8),
-                _profileCard(colors, scheme, tt, initials, name, loginId, email),
-                const SizedBox(height: 16),
-                _statsCard(colors, scheme, tt, monthYear, rate),
-                const SizedBox(height: 16),
-                _lateCard(colors, scheme, tt),
-                const SizedBox(height: 16),
-                _calendarCard(colors, scheme, tt, now),
-                const SizedBox(height: 16),
-                _recentActivityCard(colors, scheme, tt),
-                const SizedBox(height: 16),
-                if (_monthlyStats.isNotEmpty) _breakdownCard(colors, scheme, tt),
-                const SizedBox(height: 16),
-                if (widget.onLogout != null) _logoutButton(colors, scheme, tt),
-              ],
+      backgroundColor: const Color(0xFFf6fafe),
+      body: SafeArea(
+        child: ListView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          children: [
+            _profileCard(name, loginId, role, initials),
+            const SizedBox(height: 24),
+            _monthlyOverview(monthYear),
+            const SizedBox(height: 24),
+            _attendanceCalendar(
+              presentFraction, absentFraction, leaveFraction, lateFraction,
+              rate, colors, scheme, tt,
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            if (_selectedDateKey != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: _dayDetailCard(colors, scheme, tt),
+              ),
+            _accountManagement(colors, scheme, tt),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _profileCard(AppColors colors, ColorScheme scheme, TextTheme tt,
-      String initials, String name, String loginId, String email) {
+  Widget _profileCard(String name, String loginId, String role, String initials) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: const Color(0xFFffffff),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFc3c6ce)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 64, height: 64,
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Center(child: Text(initials,
-              style: GoogleFonts.hankenGrotesk(
-                fontSize: 22, fontWeight: FontWeight.w800, color: scheme.primary,
+          Stack(
+            children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFd1e4ff),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF00152a), width: 2),
+                ),
+                child: Center(child: Text(initials,
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF00152a),
+                  ),
+                )),
               ),
-            )),
+              Positioned(
+                right: 0, bottom: 0,
+                child: Container(
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2a6a4b),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFf6fafe), width: 2),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.hankenGrotesk(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
-                )),
-                Text(loginId, style: tt.bodyMedium?.copyWith(
-                  color: const Color(0xFF0b1c30).withValues(alpha: 0.5),
-                )),
-                Text(email, style: tt.labelMedium?.copyWith(
-                  color: scheme.primary, fontWeight: FontWeight.w600,
-                )),
+                Text(name,
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(role.isNotEmpty ? role : 'Worker',
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF43474d),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text('Employee ID: #$loginId',
+                  style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w400, color: const Color(0xFF74777e),
+                  ),
+                ),
               ],
             ),
           ),
@@ -237,158 +295,121 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _statsCard(AppColors colors, ColorScheme scheme, TextTheme tt, String monthLabel, double rate) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('THIS MONTH — ${monthLabel.toUpperCase()}',
-                style: tt.labelMedium?.copyWith(
-                  color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
-                  letterSpacing: 0.6, fontWeight: FontWeight.w700,
-                )),
-              Text('${(rate * 100).toStringAsFixed(1)}%',
-                style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: scheme.primary,
-                )),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _statBox(tt, colors, '$_present', 'Present', const Color(0xFF10b981))),
-              const SizedBox(width: 8),
-              Expanded(child: _statBox(tt, colors, '$_absent', 'Absent', colors.tertiary)),
-              const SizedBox(width: 8),
-              Expanded(child: _statBox(tt, colors, '$_late', 'Late', colors.onTertiaryFixedVariant)),
-              const SizedBox(width: 8),
-              Expanded(child: _statBox(tt, colors, '$_leave', 'Leave', scheme.primary)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Attendance rate', style: tt.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: rate, minHeight: 8,
-              backgroundColor: colors.surfaceContainerHighest,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF10b981)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _lateCard(AppColors colors, ColorScheme scheme, TextTheme tt) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Late Balance', style: GoogleFonts.hankenGrotesk(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
-                  )),
-                  Text('Used this month', style: tt.labelMedium?.copyWith(
-                    color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
-                  )),
-                ],
+  Widget _monthlyOverview(String monthLabel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Monthly Overview',
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF00152a),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(28),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFe4e9ed),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(monthLabel,
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                  color: const Color(0xFF43474d),
                 ),
-                child: Text('${180 - _lateUsed} left',
-                  style: GoogleFonts.hankenGrotesk(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: scheme.primary,
-                  )),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('$_lateUsed', style: GoogleFonts.hankenGrotesk(
-                fontSize: 32, fontWeight: FontWeight.w800, color: const Color(0xFF0b1c30),
-              )),
-              const SizedBox(width: 4),
-              Text('/ 180 min', style: GoogleFonts.hankenGrotesk(
-                fontSize: 18, fontWeight: FontWeight.w600,
-                color: const Color(0xFF0b1c30).withValues(alpha: 0.3),
-              )),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: (_lateUsed / 180).clamp(0, 1), minHeight: 8,
-              backgroundColor: colors.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(scheme.primary),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: _statProgressCard('$_present', 'Present', _presentStatsValue,
+                    const Color(0xFF2a6a4b), Icons.check_circle)),
+                const SizedBox(width: 12),
+                Expanded(child: _statProgressCard('$_absent', 'Absent', _absentStatsValue,
+                    const Color(0xFFba1a1a), Icons.cancel)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _statProgressCard('$_late', 'Late', _lateStatsValue,
+                    const Color(0xFFc28228), Icons.schedule)),
+                const SizedBox(width: 12),
+                Expanded(child: _statProgressCard('$_leave', 'Leave', _leaveStatsValue,
+                    const Color(0xFF7a92b0), Icons.event_note)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  double get _presentStatsValue => _totalDays > 0 ? _present / _totalDays : 0;
+  double get _absentStatsValue => _totalDays > 0 ? _absent / _totalDays : 0;
+  double get _lateStatsValue => _totalDays > 0 ? _late / _totalDays : 0;
+  double get _leaveStatsValue => _totalDays > 0 ? _leave / _totalDays : 0;
+  int get _totalDays => _present + _absent + _late + _leave;
+
+  Widget _statProgressCard(String count, String label, double value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFffffff),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFc3c6ce)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label,
+                  style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                    color: const Color(0xFF43474d),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(count,
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 20, fontWeight: FontWeight.w700, color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ProgressCircle(
+            size: 36,
+            thickness: 3,
+            value: value,
+            color: color,
+            icon: icon,
+            iconColor: color,
+            iconSize: 12,
           ),
         ],
       ),
     );
   }
 
-  Widget _calendarCard(AppColors colors, ColorScheme scheme, TextTheme tt, DateTime now) {
+  Widget _attendanceCalendar(
+    double presentFrac, double absentFrac, double leaveFrac, double lateFrac,
+    double rate, AppColors colors, ColorScheme scheme, TextTheme tt,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: const Color(0xFFffffff),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFc3c6ce)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,10 +417,11 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(DateFormat('MMMM yyyy').format(DateTime(_calYear, _calMonth)),
+              Text('Attendance Calendar',
                 style: GoogleFonts.hankenGrotesk(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
-                )),
+                  fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
               Row(
                 children: [
                   GestureDetector(
@@ -410,9 +432,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         _selectedDateKey = null;
                       });
                     },
-                    child: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.chevron_left, size: 20, color: const Color(0xFF43474d)),
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -421,13 +446,42 @@ class _ProfilePageState extends State<ProfilePage> {
                         _selectedDateKey = null;
                       });
                     },
-                    child: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.chevron_right, size: 20, color: const Color(0xFF43474d)),
+                    ),
                   ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Monthly Consistency',
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                  color: const Color(0xFF43474d),
+                ),
+              ),
+              Text('${(rate * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
+                  color: const Color(0xFF2a6a4b),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ConsistencyBar(
+            presentFraction: presentFrac,
+            absentFraction: absentFrac,
+            leaveFraction: leaveFrac,
+            lateFraction: lateFrac,
+            height: 8,
+          ),
+          const SizedBox(height: 20),
           MiniCalendar(
             year: _calYear,
             month: _calMonth,
@@ -439,20 +493,61 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 16),
           Wrap(
-            spacing: 12, runSpacing: 8,
+            spacing: 16, runSpacing: 8,
             children: [
-              _legendDot('Present', const Color(0xFF10b981)),
-              _legendDot('Absent', colors.tertiary),
-              _legendDot('Late', colors.onTertiaryFixedVariant),
-              _legendDot('Leave', scheme.primary),
+              _legendDot('Present', const Color(0xFFaff1ca)),
+              _legendDot('Absent', const Color(0xFFffdad6)),
+              _legendDot('Leave', const Color(0xFFd1e4ff)),
+              _legendDot('Half Day', const Color(0xFFffddb8)),
             ],
           ),
-          if (_selectedDateKey != null) ...[
-            const SizedBox(height: 16),
-            _dayDetailCard(colors, scheme, tt),
-          ],
         ],
       ),
+    );
+  }
+
+  Widget _accountManagement(AppColors colors, ColorScheme scheme, TextTheme tt) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Account Management',
+          style: GoogleFonts.hankenGrotesk(
+            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFffffff),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFc3c6ce)),
+          ),
+          child: Column(
+            children: [
+              MenuItem(
+                icon: Icons.settings,
+                label: 'Settings',
+                iconColor: const Color(0xFF43474d),
+                onTap: () {},
+              ),
+              const Divider(height: 1, color: Color(0xFFc3c6ce)),
+              MenuItem(
+                icon: Icons.help_center,
+                label: 'Help Center',
+                iconColor: const Color(0xFF43474d),
+                onTap: () {},
+              ),
+              const Divider(height: 1, color: Color(0xFFc3c6ce)),
+              MenuItem(
+                icon: Icons.logout,
+                label: 'Logout',
+                isDestructive: true,
+                onTap: widget.onLogout,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -472,14 +567,14 @@ class _ProfilePageState extends State<ProfilePage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFf8fafd),
-          borderRadius: BorderRadius.circular(24),
+          color: const Color(0xFFf0f4f8),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(Icons.info_outline, size: 18, color: colors.outline),
+            Icon(Icons.info_outline, size: 18, color: const Color(0xFF74777e)),
             const SizedBox(width: 10),
-            Text('No record for this date', style: tt.bodyMedium?.copyWith(color: colors.outline)),
+            Text('No record for this date', style: TextStyle(fontSize: 14, color: const Color(0xFF74777e))),
           ],
         ),
       );
@@ -494,11 +589,11 @@ class _ProfilePageState extends State<ProfilePage> {
     Color statusColor;
     IconData statusIcon;
     switch (status) {
-      case 'present': statusColor = const Color(0xFF10b981); statusIcon = Icons.check_circle; break;
-      case 'absent': statusColor = colors.tertiary; statusIcon = Icons.cancel; break;
-      case 'late': statusColor = colors.onTertiaryFixedVariant; statusIcon = Icons.warning_amber; break;
-      case 'leave': statusColor = scheme.primary; statusIcon = Icons.event; break;
-      default: statusColor = colors.outline; statusIcon = Icons.help_outline;
+      case 'present': statusColor = const Color(0xFF2a6a4b); statusIcon = Icons.check_circle; break;
+      case 'absent': statusColor = const Color(0xFFba1a1a); statusIcon = Icons.cancel; break;
+      case 'late': statusColor = const Color(0xFFc28228); statusIcon = Icons.schedule; break;
+      case 'leave': statusColor = const Color(0xFF7a92b0); statusIcon = Icons.event_note; break;
+      default: statusColor = const Color(0xFF74777e); statusIcon = Icons.help_outline;
     }
 
     final dateStr = _selectedDateKey ?? '';
@@ -506,10 +601,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final formattedDate = dt != null ? DateFormat('EEEE, d MMMM yyyy').format(dt) : dateStr;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFf8fafd),
-        borderRadius: BorderRadius.circular(32),
+        color: const Color(0xFFffffff),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFc3c6ce)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,37 +614,38 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Icon(statusIcon, size: 18, color: statusColor),
               const SizedBox(width: 8),
-              Text(formattedDate, style: GoogleFonts.hankenGrotesk(
-                fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30),
-              )),
-              const Spacer(),
+              Expanded(
+                child: Text(formattedDate, style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                )),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
+                child: Text(status.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _detailBox(tt, colors, scheme, Icons.login, 'Punch In', _fmtTime(punchIn))),
+              Expanded(child: _detailBox(Icons.login, 'Punch In', _fmtTime(punchIn))),
               const SizedBox(width: 8),
-              Expanded(child: _detailBox(tt, colors, scheme, Icons.logout, 'Punch Out', _fmtTime(punchOut))),
+              Expanded(child: _detailBox(Icons.logout, 'Punch Out', _fmtTime(punchOut))),
               const SizedBox(width: 8),
-              Expanded(child: _detailBox(tt, colors, scheme, Icons.timer, 'Worked', hoursWorked?.toString() ?? '—')),
+              Expanded(child: _detailBox(Icons.timer, 'Worked', hoursWorked?.toString() ?? '—')),
             ],
           ),
           if (lateMinutes != null && (lateMinutes as num) > 0) ...[
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.access_time, size: 14, color: colors.onTertiaryFixedVariant),
+                Icon(Icons.access_time, size: 14, color: const Color(0xFFc28228)),
                 const SizedBox(width: 4),
-                Text('Late by ${lateMinutes} min', style: tt.labelSmall?.copyWith(color: colors.onTertiaryFixedVariant)),
+                Text('Late by ${lateMinutes} min', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFc28228))),
               ],
             ),
           ],
@@ -557,211 +654,21 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _detailBox(TextTheme tt, AppColors colors, ColorScheme scheme, IconData icon, String label, String value) {
+  Widget _detailBox(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFFf0f4f8),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 16, color: scheme.primary.withValues(alpha: 0.5)),
+          Icon(icon, size: 16, color: const Color(0xFF43474d)),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600,
-            color: const Color(0xFF0b1c30).withValues(alpha: 0.4))),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+            color: const Color(0xFF74777e))),
           const SizedBox(height: 2),
-          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30))),
-        ],
-      ),
-    );
-  }
-
-  Widget _breakdownCard(AppColors colors, ColorScheme scheme, TextTheme tt) {
-    final sortedMonths = _monthlyStats.entries.toList()
-      ..sort((a, b) => b.key.compareTo(a.key));
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Monthly breakdown',
-            style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0b1c30))),
-          const SizedBox(height: 16),
-          ...sortedMonths.take(6).map((entry) {
-            final y = entry.key ~/ 100;
-            final m = entry.key % 100;
-            final s = entry.value;
-            final p = s['present'] ?? 0;
-            final a = s['absent'] ?? 0;
-            final l = s['late'] ?? 0;
-            final lv = s['leave'] ?? 0;
-            final t = p + a + l + lv;
-            final r = t > 0 ? ((p + l) / t * 100).round() : 0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(DateFormat('MMM yyyy').format(DateTime(y, m)),
-                            style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 12),
-                          Text('${p}P', style: TextStyle(fontSize: 11, color: const Color(0xFF10b981))),
-                          const SizedBox(width: 6),
-                          Text('${a}A', style: TextStyle(fontSize: 11, color: colors.tertiary)),
-                          const SizedBox(width: 6),
-                          Text('${l}L', style: TextStyle(fontSize: 11, color: colors.onTertiaryFixedVariant)),
-                          const SizedBox(width: 6),
-                          Text('${lv}Le', style: TextStyle(fontSize: 11, color: scheme.primary)),
-                        ],
-                      ),
-                      Text('$r%', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF10b981))),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: LinearProgressIndicator(
-                      value: r / 100, minHeight: 6,
-                      backgroundColor: colors.surfaceContainerHighest,
-                      valueColor: const AlwaysStoppedAnimation(Color(0xFF10b981)),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _recentActivityCard(AppColors colors, ColorScheme scheme, TextTheme tt) {
-    final recent = _history.take(7).toList();
-    if (recent.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('RECENT ACTIVITY', style: tt.labelMedium?.copyWith(
-            color: const Color(0xFF0b1c30).withValues(alpha: 0.4),
-            letterSpacing: 1.0, fontWeight: FontWeight.w700,
-          )),
-          const SizedBox(height: 12),
-          ...recent.map((r) {
-            final date = r['date']?.toString() ?? '';
-            final status = r['status']?.toString() ?? '';
-            final hw = _hoursByDate[date];
-            final dt = DateTime.tryParse(date);
-            final label = dt != null ? DateFormat('dd MMM').format(dt) : date;
-
-            Color dotColor;
-            switch (status) {
-              case 'present': dotColor = const Color(0xFF10b981); break;
-              case 'absent': dotColor = colors.tertiary; break;
-              case 'late': dotColor = colors.onTertiaryFixedVariant; break;
-              case 'leave': dotColor = scheme.primary; break;
-              default: dotColor = colors.outline;
-            }
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Container(width: 10, height: 10, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
-                  const SizedBox(width: 12),
-                  Text(label, style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                  const Spacer(),
-                  if (hw != null)
-                    Text(hw, style: tt.labelMedium?.copyWith(color: colors.outline)),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _logoutButton(AppColors colors, ColorScheme scheme, TextTheme tt) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: widget.onLogout,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFFef4444),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-            side: const BorderSide(color: Color(0xFFfee2e2)),
-          ),
-        ),
-        child: Text('Logout', style: GoogleFonts.hankenGrotesk(
-          fontSize: 16, fontWeight: FontWeight.w700,
-        )),
-      ),
-    );
-  }
-
-  Widget _statBox(TextTheme tt, AppColors colors, String num, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(num, style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-            color: const Color(0xFF0b1c30).withValues(alpha: 0.4))),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f))),
         ],
       ),
     );
@@ -771,9 +678,12 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: const Color(0xFF434654))),
+        Container(width: 12, height: 12, decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        )),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
       ],
     );
   }
