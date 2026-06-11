@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "102341595350",
+    "project_id": "ufs-attend",
+    "storage_bucket": "ufs-attend.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102341595350:android:5f42cf4e74505204b4f977",
+        "android_client_info": {
+          "package_name": "com.ufs.attendapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2OGpJyHswD7dszkQhLItrFkEBvhJK4aY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
