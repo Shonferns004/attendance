@@ -61,10 +61,12 @@ async function checkLeavesTable() {
   }
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  checkLeavesTable();
-  import('./services/notificationScheduler.js');
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+    checkLeavesTable();
+    import('./services/notificationScheduler.js');
+  });
+}
 
 export default app;

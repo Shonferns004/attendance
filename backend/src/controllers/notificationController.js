@@ -4,7 +4,6 @@ import {
   markNotificationRead,
   getUnreadNotificationCount,
 } from '../models/notificationModel.js';
-import { sendPushNotification } from '../services/fcmService.js';
 
 export const registerToken = async (req, res) => {
   try {
@@ -54,6 +53,7 @@ export const sendTestNotification = async (req, res) => {
       return res.status(400).json({ message: 'Worker ID is required' });
     }
 
+    const { sendPushNotification } = await import('../services/fcmService.js');
     const fcmResponse = await sendPushNotification(
       worker_id,
       '🔔 Test Notification',
