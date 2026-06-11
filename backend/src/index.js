@@ -11,6 +11,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
 import ngoRoutes from './routes/ngoRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import hrRoutes from './routes/hrRoutes.js';
 import letterRoutes from './routes/letterRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 
@@ -31,6 +32,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/ngos', ngoRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/hrs', hrRoutes);
 app.use('/api/letters', letterRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

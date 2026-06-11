@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser } from '../api/users';
+import { getHRs, createHR, updateHR } from '../api/hrs';
 import { getNgos } from '../api/ngos';
 
 function UserList() {
   const [users, setUsers] = useState([]);
+  const [hrs, setHrs] = useState([]);
   const [ngos, setNgos] = useState([]);
   const [filter, setFilter] = useState({ role: '', ngo_id: '' });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ngo_id: '', name: '', email: '', role: 'hoadmin', department: '' });
 
+  const allPeople = [...users.map((u) => ({ ...u, _type: 'user' })), ...hrs.map((h) => ({ ...h, role: 'hr', _type: 'hr' }))];
+
   const loadData = () =>
-    Promise.all([getUsers(), getNgos()])
-      .then(([u, n]) => { setUsers(u); setNgos(n); })
+    Promise.all([getUsers(), getHRs(), getNgos()])
+      .then(([u, h, n]) => { setUsers(u); setHrs(h); setNgos(n); })
       .catch(console.error)
       .finally(() => setLoading(false));
 
@@ -20,25 +24,35 @@ function UserList() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (form.role !== 'hr' && !form.ngo_id) return alert('Please select an NGO');
+    if (!form.ngo_id && form.role !== 'hr') return alert('Please select an NGO');
     try {
-      const result = await createUser(form);
-      setUsers([result.user, ...users]);
+      if (form.role === 'hr') {
+        const result = await createHR({ ngo_id: form.ngo_id || null, name: form.name, email: form.email, department: form.department });
+        setHrs([{ ...result.hr, _type: 'hr', role: 'hr' }, ...hrs]);
+      } else {
+        const result = await createUser(form);
+        setUsers([{ ...result.user, _type: 'user' }, ...users]);
+      }
       setShowForm(false);
       setForm({ ngo_id: '', name: '', email: '', role: 'hoadmin', department: '' });
     } catch (err) { alert(err.message); }
   };
 
-  const toggleActive = async (id, current) => {
+  const toggleActive = async (person) => {
     try {
-      await updateUser(id, { is_active: !current });
-      setUsers(users.map((u) => u.id === id ? { ...u, is_active: !current } : u));
+      if (person._type === 'hr') {
+        await updateHR(person.id, { is_active: !person.is_active });
+        setHrs(hrs.map((h) => h.id === person.id ? { ...h, is_active: !person.is_active } : h));
+      } else {
+        await updateUser(person.id, { is_active: !person.is_active });
+        setUsers(users.map((u) => u.id === person.id ? { ...u, is_active: !person.is_active } : u));
+      }
     } catch (err) { alert(err.message); }
   };
 
-  const filtered = users.filter((u) => {
-    if (filter.role && u.role !== filter.role) return false;
-    if (filter.ngo_id && u.ngo_id !== filter.ngo_id) return false;
+  const filtered = allPeople.filter((p) => {
+    if (filter.role && p.role !== filter.role) return false;
+    if (filter.ngo_id && p.ngo_id !== filter.ngo_id) return false;
     return true;
   });
 
@@ -61,7 +75,7 @@ function UserList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-headline-lg font-bold text-gray-900">All Users</h1>
-          <p className="text-gray-500 mt-1">CRM users across all NGOs</p>
+          <p className="text-gray-500 mt-1">CRM users and HR across all NGOs</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
           className="px-5 py-2.5 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors shadow-sm">
@@ -140,23 +154,23 @@ function UserList() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id} className="border-t border-gray-100 hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{u.name}</td>
-                <td className="px-6 py-4 text-gray-500">{u.email}</td>
+            {filtered.map((p) => (
+              <tr key={`${p._type}-${p.id}`} className="border-t border-gray-100 hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium text-gray-900">{p.name}</td>
+                <td className="px-6 py-4 text-gray-500">{p.email}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-label-sm font-medium capitalize ${roleColors[u.role] || 'bg-gray-50 text-gray-700'}`}>{u.role.replace('_', ' ')}</span>
+                  <span className={`px-3 py-1 rounded-full text-label-sm font-medium capitalize ${roleColors[p.role] || 'bg-gray-50 text-gray-700'}`}>{p.role.replace('_', ' ')}</span>
                 </td>
-                <td className="px-6 py-4 text-gray-500">{getNgoName(u.ngo_id)}</td>
+                <td className="px-6 py-4 text-gray-500">{getNgoName(p.ngo_id)}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-label-sm font-medium ${u.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                    {u.is_active ? 'Active' : 'Inactive'}
+                  <span className={`px-3 py-1 rounded-full text-label-sm font-medium ${p.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {p.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button onClick={() => toggleActive(u.id, u.is_active)}
-                    className={`text-sm ${u.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`}>
-                    {u.is_active ? 'Deactivate' : 'Activate'}
+                  <button onClick={() => toggleActive(p)}
+                    className={`text-sm ${p.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`}>
+                    {p.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                 </td>
               </tr>

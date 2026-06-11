@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { getWorkerByLoginId } from '../models/workerModel.js';
 import { getUserByEmail } from '../models/userModel.js';
+import { getHRByEmail } from '../models/hrModel.js';
 
 dotenv.config();
 
@@ -61,6 +62,21 @@ export const unifiedLogin = async (req, res) => {
         );
         const { password_hash, ...safeUser } = user;
         return res.json({ token, role: user.role, user: safeUser, message: 'Login successful' });
+      }
+
+      const hr = await getHRByEmail(identifier);
+      if (hr) {
+        const isMatch = await bcrypt.compare(password, hr.password_hash);
+        if (!isMatch) {
+          return res.status(401).json({ message: 'Invalid password' });
+        }
+        const token = jwt.sign(
+          { id: hr.id, ngo_id: hr.ngo_id, email: hr.email, role: 'hr', name: hr.name },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        const { password_hash, ...safeHR } = hr;
+        return res.json({ token, role: 'hr', user: safeHR, message: 'Login successful' });
       }
 
       return res.status(401).json({ message: 'Invalid credentials' });

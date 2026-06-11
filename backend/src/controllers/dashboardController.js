@@ -1,13 +1,17 @@
 import { getAllNgos } from '../models/ngoModel.js';
 import { getAllUsers, getUsersCountByRole } from '../models/userModel.js';
+import { getAllHRs } from '../models/hrModel.js';
 import { getAllWorkers } from '../models/workerModel.js';
 import supabase from '../config/supabase.js';
 
 export const getSuperAdminDashboard = async (req, res) => {
   try {
     const ngos = await getAllNgos();
-    const users = await getAllUsers({});
-    const workers = await getAllWorkers();
+    const [users, hrs, workers] = await Promise.all([
+      getAllUsers({}),
+      getAllHRs({}),
+      getAllWorkers(),
+    ]);
 
     const activeUsers = users.filter((u) => u.is_active).length;
     const stats = {
@@ -15,7 +19,7 @@ export const getSuperAdminDashboard = async (req, res) => {
       totalUsers: users.length,
       activeUsers,
       totalWorkers: workers.length,
-      totalHr: users.filter((u) => u.role === 'hr').length,
+      totalHr: hrs.length,
       totalRecruiters: users.filter((u) => u.role === 'recruiter').length,
     };
 

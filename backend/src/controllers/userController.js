@@ -14,10 +14,8 @@ export const addUser = async (req, res) => {
       ngo_id = req.user.ngo_id;
     }
 
-    if (!ngo_id) ngo_id = null;
-
-    if (role !== 'hr' && !ngo_id) {
-      return res.status(400).json({ message: 'NGO is required for this role' });
+    if (!ngo_id) {
+      return res.status(400).json({ message: 'NGO is required' });
     }
 
     const existing = await getUserByEmail(email);

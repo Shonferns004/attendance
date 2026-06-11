@@ -5,7 +5,7 @@ function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: 'hr', department: '' });
+  const [form, setForm] = useState({ name: '', email: '', role: 'accounts', department: '' });
 
   useEffect(() => {
     getUsers().then(setUsers).catch(console.error).finally(() => setLoading(false));
@@ -17,7 +17,7 @@ function UserManagement() {
       const result = await createUser(form);
       setUsers([result.user, ...users]);
       setShowForm(false);
-      setForm({ name: '', email: '', role: 'hr', department: '' });
+      setForm({ name: '', email: '', role: 'accounts', department: '' });
     } catch (err) { alert(err.message); }
   };
 
@@ -70,7 +70,6 @@ function UserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none bg-white">
-                <option value="hr">HR</option>
                 <option value="accounts">Accounts</option>
                 <option value="leads">Leads</option>
                 <option value="recruiter">Recruiter</option>

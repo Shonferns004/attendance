@@ -19,7 +19,7 @@ function UserManagement() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (form.role !== 'hr' && !form.ngo_id) return alert('Please select an NGO');
+    if (!form.ngo_id) return alert('Please select an NGO');
     try {
       const result = await createUser(form);
       setUsers([result.user, ...users]);
@@ -82,7 +82,6 @@ function UserManagement() {
                 <option value="team_lead">Team Lead</option>
                 <option value="leads">Leads</option>
                 <option value="accounts">Accounts</option>
-                <option value="hr">HR</option>
               </select>
             </div>
             <div>
