@@ -3,8 +3,8 @@ import {
   getWorkerNotifications,
   markNotificationRead,
   getUnreadNotificationCount,
-  logNotification,
 } from '../models/notificationModel.js';
+import { sendPushNotification } from '../services/fcmService.js';
 
 export const registerToken = async (req, res) => {
   try {
@@ -54,14 +54,17 @@ export const sendTestNotification = async (req, res) => {
       return res.status(400).json({ message: 'Worker ID is required' });
     }
 
-    await logNotification({
+    const fcmResponse = await sendPushNotification(
       worker_id,
-      type: 'notice',
-      title: '🔔 Test Notification',
-      body: 'This is a manual test notification sent from the app!',
-    });
+      '🔔 Test Notification',
+      'This is a manual test notification sent from the app!',
+      'notice'
+    );
 
-    return res.json({ message: 'Test notification sent' });
+    if (fcmResponse) {
+      return res.json({ message: 'Test notification pushed via FCM', fcmResponse });
+    }
+    return res.json({ message: 'Test notification logged (FCM token not found)' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
