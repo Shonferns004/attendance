@@ -69,8 +69,8 @@ class NotificationService {
       print('Worker data: $worker');
       if (worker != null && worker['id'] != null) {
         print("Registering FCM token for worker ${worker['id']}");
-        final result = await ApiService.registerFcmToken(worker['id'].toString(), token);
-        print('FCM token registered: $result');
+        await ApiService.registerFcmToken(worker['id'].toString(), token);
+        print('FCM token registered successfully');
       } else {
         print('Cannot register FCM token: no worker data');
       }

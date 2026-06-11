@@ -66,3 +66,5 @@ app.listen(PORT, '0.0.0.0', () => {
   checkLeavesTable();
   import('./services/notificationScheduler.js');
 });
+
+export default app;

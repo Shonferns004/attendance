@@ -3,6 +3,11 @@ import { logNotification } from '../models/notificationModel.js';
 
 export const sendPushNotification = async (workerId, title, body, type, referenceId = null) => {
   try {
+    if (!messaging) {
+      console.log('Firebase not initialized, skipping push');
+      return null;
+    }
+
     const { getFcmToken } = await import('../models/notificationModel.js');
     const tokenData = await getFcmToken(workerId);
     if (!tokenData) {
