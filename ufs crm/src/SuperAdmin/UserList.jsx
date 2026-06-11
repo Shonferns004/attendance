@@ -27,7 +27,7 @@ function UserList() {
     if (!form.ngo_id && form.role !== 'hr') return alert('Please select an NGO');
     try {
       if (form.role === 'hr') {
-        const result = await createHR({ ngo_id: form.ngo_id || null, name: form.name, email: form.email, department: form.department });
+        const result = await createHR({ ngo_id: form.ngo_id || null, name: form.name, email: form.email });
         setHrs([{ ...result.hr, _type: 'hr', role: 'hr' }, ...hrs]);
       } else {
         const result = await createUser(form);

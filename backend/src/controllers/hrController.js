@@ -28,7 +28,7 @@ export const addHR = async (req, res) => {
       email,
       password_hash,
       department: department || null,
-      created_by: req.user.id,
+      created_by: req.user.id || null,
     });
 
     const { password_hash: _, ...safeHR } = hr;
