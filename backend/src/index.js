@@ -14,6 +14,10 @@ import userRoutes from './routes/userRoutes.js';
 import hrRoutes from './routes/hrRoutes.js';
 import letterRoutes from './routes/letterRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import noticeRoutes from './routes/noticeRoutes.js';
+import achievementRoutes from './routes/achievementRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +39,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/hrs', hrRoutes);
 app.use('/api/letters', letterRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/achievements', achievementRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });
@@ -56,4 +64,5 @@ async function checkLeavesTable() {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   checkLeavesTable();
+  import('./services/notificationScheduler.js');
 });
