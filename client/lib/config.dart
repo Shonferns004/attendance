@@ -4,5 +4,6 @@ class Config {
   // For iOS simulator use:     http://localhost:5000/api
   // For real device use:       http://192.168.1.100:5000/api (your machine's LAN IP)
   // static const String apiBaseUrl = 'https://attendance-l3oa.onrender.com/api';
-  static const String apiBaseUrl = 'http://192.168.1.58:5000/api';
+  // static const String apiBaseUrl = 'http://192.168.1.58:5000/api';
+  static const String apiBaseUrl = 'https://attendance-roan-zeta.vercel.app/api';
 }

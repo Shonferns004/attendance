@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final data = await ApiService.login(_loginCtrl.text.trim(), _passCtrl.text);
       await ApiService.saveToken(data['token']);
-      await ApiService.saveWorkerData(data['worker']);
+      await ApiService.saveWorkerData(data['user']);
       if (mounted) widget.onLogin();
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
