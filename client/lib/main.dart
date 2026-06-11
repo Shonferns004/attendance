@@ -8,10 +8,13 @@ import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 
+bool firebaseInitialized = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
+    firebaseInitialized = true;
   } catch (e) {
     print('Firebase init error: $e');
   }
@@ -278,8 +281,8 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _checkAuth() async {
     try {
       final token = await ApiService.getToken();
-      if (token != null) {
-        NotificationService().init();
+      if (token != null && firebaseInitialized) {
+        await NotificationService().init();
       }
       setState(() => _loggedIn = token != null);
     } catch (_) {
@@ -288,7 +291,9 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _onLogin() {
-    NotificationService().init();
+    if (firebaseInitialized) {
+      NotificationService().init();
+    }
     setState(() => _loggedIn = true);
   }
 
