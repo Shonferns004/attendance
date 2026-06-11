@@ -1,9 +1,9 @@
-const API = '/api';
+import { API_BASE_URL } from './constants';
 
 const getToken = () => localStorage.getItem('auth_token');
 
 export const getWorkers = async () => {
-  const res = await fetch(`${API}/workers`, {
+  const res = await fetch(`${API_BASE_URL}/workers`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   if (!res.ok) throw new Error('Failed to fetch workers');
@@ -11,7 +11,7 @@ export const getWorkers = async () => {
 };
 
 export const addWorker = async (name, email, gender, dob) => {
-  const res = await fetch(`${API}/workers`, {
+  const res = await fetch(`${API_BASE_URL}/workers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -20,14 +20,15 @@ export const addWorker = async (name, email, gender, dob) => {
     body: JSON.stringify({ name, email, gender, dob }),
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message);
+    let message = 'Request failed';
+    try { const err = await res.json(); message = err.message || message; } catch { message = res.statusText || message; }
+    throw new Error(message);
   }
   return res.json();
 };
 
 export const getBirthdays = async () => {
-  const res = await fetch(`${API}/workers/birthdays`, {
+  const res = await fetch(`${API_BASE_URL}/workers/birthdays`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   if (!res.ok) throw new Error('Failed to fetch birthdays');
@@ -35,7 +36,7 @@ export const getBirthdays = async () => {
 };
 
 export const deleteWorker = async (id) => {
-  const res = await fetch(`${API}/workers/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/workers/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${getToken()}` },
   });
