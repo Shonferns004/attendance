@@ -128,4 +128,51 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to get leaves');
     return body is List ? body : [];
   }
+
+  static Future<void> registerFcmToken(String workerId, String token) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/notifications/register-token'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'worker_id': workerId,
+        'token': token,
+        'device_type': 'flutter',
+      }),
+    );
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to register FCM token');
+    }
+  }
+
+  static Future<List<dynamic>> getNotifications(String workerId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/notifications/$workerId'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get notifications');
+    return body is List ? body : [];
+  }
+
+  static Future<void> markNotificationRead(String id) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to mark as read');
+    }
+  }
+
+  static Future<int> getUnreadNotificationCount(String workerId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/notifications/$workerId/unread-count'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get unread count');
+    return (body['count'] ?? 0) as int;
+  }
 }

@@ -1,14 +1,22 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AttendXApp());
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print('Firebase init error: $e');
+  }
+  final navigatorKey = GlobalKey<NavigatorState>();
+  runApp(AttendXApp(navigatorKey: navigatorKey));
 }
 
 class AppColors extends ThemeExtension<AppColors> {
@@ -185,11 +193,13 @@ class AppColors extends ThemeExtension<AppColors> {
 }
 
 class AttendXApp extends StatelessWidget {
-  const AttendXApp({super.key});
+  final GlobalKey<NavigatorState> navigatorKey;
+  const AttendXApp({super.key, required this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'AttendX',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -268,6 +278,9 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _checkAuth() async {
     try {
       final token = await ApiService.getToken();
+      if (token != null) {
+        NotificationService().init();
+      }
       setState(() => _loggedIn = token != null);
     } catch (_) {
       setState(() => _loggedIn = false);
@@ -275,6 +288,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _onLogin() {
+    NotificationService().init();
     setState(() => _loggedIn = true);
   }
 

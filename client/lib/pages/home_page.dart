@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
-import '../main.dart';
 import '../widgets/organic_background.dart';
 import 'scanner_page.dart';
 import 'leave_page.dart';
@@ -30,8 +29,11 @@ class _HomePageState extends State<HomePage> {
   int _lateUsed = 0;
   int _present = 0, _absent = 0, _late = 0, _leave = 0;
   String _workerName = '';
+  String _workerId = '';
   String _officeStartTime = '10:00';
   String _officeEndTime = '19:00';
+  List<Map<String, dynamic>> _notifications = [];
+  int _unreadCount = 0;
 
   @override
   void initState() {
@@ -124,6 +126,19 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       // API calls failed — still show worker name
     }
+
+    try {
+      _workerId = worker?['id']?.toString() ?? '';
+      if (_workerId.isNotEmpty) {
+        final notifs = await ApiService.getNotifications(_workerId);
+        final unread = await ApiService.getUnreadNotificationCount(_workerId);
+        setState(() {
+          _notifications = notifs.cast<Map<String, dynamic>>();
+          _unreadCount = unread;
+        });
+      }
+    } catch (_) {}
+
     setState(() {
       _present = p;
       _absent = a;
@@ -321,199 +336,34 @@ class _HomePageState extends State<HomePage> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final notifications = <Map<String, dynamic>>[
-      {
-        'icon': Icons.check_circle,
-        'title': 'Flow Started',
-        'subtitle': 'You dropped in at ${_fmtTime(_now)}',
-        'color': scheme.secondary,
-        'read': false,
-      },
-      {
-        'icon': Icons.wb_sunny,
-        'title': 'Evening Vibe',
-        'subtitle': 'Keep the momentum going!',
-        'color': scheme.primary,
-        'read': false,
-      },
-    ];
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        builder: (_, scrollController) => StatefulBuilder(
-          builder: (context, setSheetState) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFffffff),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(48)),
-            ),
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              children: [
-                Center(
-                  child: Container(
-                    width: 64,
-                    height: 6,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFfffbf2),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Icon(Icons.notifications_active, color: scheme.primary),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Flow Alerts',
-                      style: GoogleFonts.hankenGrotesk(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (notifications.isNotEmpty)
-                      Text(
-                        '${notifications.length}',
-                        style: textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ...notifications.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final n = entry.value;
-                  final isLast = i == notifications.length - 1;
-                      return Column(
-                        children: [
-                          Dismissible(
-                            key: ValueKey('notif_$i'),
-                            direction: DismissDirection.horizontal,
-                            background: Container(
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.only(left: 24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10b981),
-                                borderRadius: BorderRadius.circular(32),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.done_all, color: Colors.white, size: 22),
-                                  SizedBox(width: 8),
-                                  Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            secondaryBackground: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFef4444),
-                                borderRadius: BorderRadius.circular(32),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.delete_outline, color: Colors.white, size: 22),
-                                ],
-                              ),
-                            ),
-                            confirmDismiss: (direction) async {
-                              if (direction == DismissDirection.startToEnd) {
-                                setSheetState(() => n['read'] = true);
-                                return false;
-                              } else {
-                                setSheetState(() => notifications.removeAt(i));
-                                return true;
-                              }
-                            },
-                            child: Opacity(
-                              opacity: n['read'] == true ? 0.5 : 1,
-                              child: Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: i == 0
-                                      ? scheme.secondary.withValues(alpha: 0.1)
-                                      : const Color(0xFFfffbf2),
-                                  borderRadius: BorderRadius.circular(32),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(n['icon'], size: 22, color: n['color']),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            n['title'],
-                                            style: textTheme.bodyMedium?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              color: scheme.onSurface,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            n['subtitle'],
-                                            style: textTheme.labelSmall?.copyWith(
-                                              color: scheme.onSurface.withValues(alpha: 0.5),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (!isLast) const SizedBox(height: 16),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFfffbf2),
-                          foregroundColor: scheme.onSurface,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                        ),
-                        child: Text('Got it', style: GoogleFonts.hankenGrotesk(
-                          fontSize: 16, fontWeight: FontWeight.w700,
-                        )),
-                      ),
-                    ),
-              ],
-            ),
-          ),
-        ),
+      builder: (_) => _NotificationSheet(
+        notifications: _notifications,
+        unreadCount: _unreadCount,
+        workerId: _workerId,
+        scheme: scheme,
+        textTheme: textTheme,
+        onMarkRead: (id) async {
+          try {
+            await ApiService.markNotificationRead(id);
+            final idx = _notifications.indexWhere((n) => n['id'] == id);
+            if (idx != -1) {
+              setState(() {
+                _notifications[idx]['read_at'] = DateTime.now().toIso8601String();
+                _unreadCount = _notifications.where((n) => n['read_at'] == null).length;
+              });
+            }
+          } catch (_) {}
+        },
+        onDelete: (id) async {
+          setState(() {
+            _notifications.removeWhere((n) => n['id'] == id);
+            _unreadCount = _notifications.where((n) => n['read_at'] == null).length;
+          });
+        },
       ),
     );
   }
@@ -579,26 +429,55 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 4),
+                        Stack(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.notifications_outlined),
-                            iconSize: 22,
-                            color: scheme.onSurface,
-                            onPressed: _openNotificationSheet,
-                          ),
+                              child: IconButton(
+                                icon: const Icon(Icons.notifications_outlined),
+                                iconSize: 22,
+                                color: scheme.onSurface,
+                                onPressed: _openNotificationSheet,
+                              ),
+                            ),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: scheme.error,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 18,
+                                    minHeight: 18,
+                                  ),
+                                  child: Text(
+                                    '$_unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -1008,5 +887,266 @@ class _HomePageState extends State<HomePage> {
     ),
   ),
 );
+  }
+}
+
+IconData _notifIcon(String? type) {
+  switch (type) {
+    case 'birthday':
+      return Icons.cake;
+    case 'event':
+      return Icons.event;
+    case 'notice':
+      return Icons.campaign;
+    case 'achievement':
+      return Icons.emoji_events;
+    default:
+      return Icons.notifications;
+  }
+}
+
+Color _notifColor(String? type, ColorScheme scheme) {
+  switch (type) {
+    case 'birthday':
+      return const Color(0xFFf43f5e);
+    case 'event':
+      return scheme.secondary;
+    case 'notice':
+      return scheme.primary;
+    case 'achievement':
+      return const Color(0xFFf59e0b);
+    default:
+      return scheme.onSurface;
+  }
+}
+
+class _NotificationSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> notifications;
+  final int unreadCount;
+  final String workerId;
+  final ColorScheme scheme;
+  final TextTheme textTheme;
+  final Function(String id) onMarkRead;
+  final Function(String id) onDelete;
+
+  const _NotificationSheet({
+    required this.notifications,
+    required this.unreadCount,
+    required this.workerId,
+    required this.scheme,
+    required this.textTheme,
+    required this.onMarkRead,
+    required this.onDelete,
+  });
+
+  @override
+  State<_NotificationSheet> createState() => _NotificationSheetState();
+}
+
+class _NotificationSheetState extends State<_NotificationSheet> {
+  late List<Map<String, dynamic>> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.from(widget.notifications);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFffffff),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(48)),
+        ),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          children: [
+            Center(
+              child: Container(
+                width: 64,
+                height: 6,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFfffbf2),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: widget.scheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Icon(Icons.notifications_active, color: widget.scheme.primary),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Flow Alerts',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: widget.scheme.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                if (_items.isNotEmpty)
+                  Text(
+                    '${widget.unreadCount} unread',
+                    style: widget.textTheme.labelMedium?.copyWith(
+                      color: widget.scheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            if (_items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 40),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.notifications_off, size: 48, color: widget.scheme.onSurface.withValues(alpha: 0.2)),
+                      const SizedBox(height: 12),
+                      Text('No notifications yet', style: widget.textTheme.bodyMedium?.copyWith(
+                        color: widget.scheme.onSurface.withValues(alpha: 0.4),
+                      )),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._items.asMap().entries.map((entry) {
+                final i = entry.key;
+                final n = entry.value;
+                final isLast = i == _items.length - 1;
+                final isRead = n['read_at'] != null;
+                return Column(
+                  children: [
+                    Dismissible(
+                      key: ValueKey('notif_${n['id']}'),
+                      direction: DismissDirection.horizontal,
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10b981),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.done_all, color: Colors.white, size: 22),
+                            SizedBox(width: 8),
+                            Text('Mark Read', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      secondaryBackground: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFef4444),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                            SizedBox(width: 8),
+                            Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                          ],
+                        ),
+                      ),
+                      confirmDismiss: (direction) async {
+                        if (direction == DismissDirection.startToEnd) {
+                          widget.onMarkRead(n['id'].toString());
+                          setState(() => n['read_at'] = DateTime.now().toIso8601String());
+                          return false;
+                        } else {
+                          widget.onDelete(n['id'].toString());
+                          setState(() => _items.removeAt(i));
+                          return true;
+                        }
+                      },
+                      child: Opacity(
+                        opacity: isRead ? 0.5 : 1,
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: !isRead
+                                ? widget.scheme.secondary.withValues(alpha: 0.1)
+                                : const Color(0xFFfffbf2),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _notifIcon(n['type']?.toString()),
+                                size: 22,
+                                color: _notifColor(n['type']?.toString(), widget.scheme),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      n['title'] ?? '',
+                                      style: widget.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: widget.scheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      n['body'] ?? '',
+                                      style: widget.textTheme.labelSmall?.copyWith(
+                                        color: widget.scheme.onSurface.withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!isLast) const SizedBox(height: 16),
+                  ],
+                );
+              }),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFfffbf2),
+                  foregroundColor: widget.scheme.onSurface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+                child: Text('Got it', style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w700,
+                )),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
