@@ -364,6 +364,18 @@ class _HomePageState extends State<HomePage> {
             _unreadCount = _notifications.where((n) => n['read_at'] == null).length;
           });
         },
+        onRefresh: () async {
+          if (_workerId.isNotEmpty) {
+            try {
+              final notifs = await ApiService.getNotifications(_workerId);
+              final unread = await ApiService.getUnreadNotificationCount(_workerId);
+              setState(() {
+                _notifications = notifs.cast<Map<String, dynamic>>();
+                _unreadCount = unread;
+              });
+            } catch (_) {}
+          }
+        },
       ),
     );
   }
@@ -928,6 +940,7 @@ class _NotificationSheet extends StatefulWidget {
   final TextTheme textTheme;
   final Function(String id) onMarkRead;
   final Function(String id) onDelete;
+  final VoidCallback? onRefresh;
 
   const _NotificationSheet({
     required this.notifications,
@@ -937,6 +950,7 @@ class _NotificationSheet extends StatefulWidget {
     required this.textTheme,
     required this.onMarkRead,
     required this.onDelete,
+    this.onRefresh,
   });
 
   @override
@@ -945,11 +959,50 @@ class _NotificationSheet extends StatefulWidget {
 
 class _NotificationSheetState extends State<_NotificationSheet> {
   late List<Map<String, dynamic>> _items;
+  bool _sending = false;
 
   @override
   void initState() {
     super.initState();
     _items = List.from(widget.notifications);
+  }
+
+  Future<void> _sendTest() async {
+    setState(() => _sending = true);
+    try {
+      await ApiService.sendTestNotification(widget.workerId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('📬 Test notification sent! Check in 10s...'),
+            backgroundColor: const Color(0xFF10b981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await Future.delayed(const Duration(seconds: 10));
+      try {
+        final notifs = await ApiService.getNotifications(widget.workerId);
+        if (mounted) {
+          setState(() {
+            _items = notifs.cast<Map<String, dynamic>>();
+          });
+          widget.onRefresh?.call();
+        }
+      } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: ${e.toString().replaceFirst("Exception: ", "")}'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
@@ -1125,7 +1178,29 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                   ],
                 );
               }),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _sending ? null : _sendTest,
+                icon: _sending
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.send, size: 18),
+                label: Text(_sending ? 'Sending...' : 'Send Test Notification (10s)', style: GoogleFonts.hankenGrotesk(
+                  fontSize: 14, fontWeight: FontWeight.w700,
+                )),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.scheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 52,

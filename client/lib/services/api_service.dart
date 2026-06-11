@@ -175,4 +175,14 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to get unread count');
     return (body['count'] ?? 0) as int;
   }
+
+  static Future<void> sendTestNotification(String workerId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/notifications/test-send'),
+      headers: await _headers(),
+      body: jsonEncode({'worker_id': workerId}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to send test notification');
+  }
 }

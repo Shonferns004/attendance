@@ -3,6 +3,7 @@ import {
   getWorkerNotifications,
   markNotificationRead,
   getUnreadNotificationCount,
+  logNotification,
 } from '../models/notificationModel.js';
 
 export const registerToken = async (req, res) => {
@@ -41,6 +42,26 @@ export const getUnreadCount = async (req, res) => {
   try {
     const count = await getUnreadNotificationCount(req.params.worker_id);
     return res.json({ count });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const sendTestNotification = async (req, res) => {
+  try {
+    const { worker_id } = req.body;
+    if (!worker_id) {
+      return res.status(400).json({ message: 'Worker ID is required' });
+    }
+
+    await logNotification({
+      worker_id,
+      type: 'notice',
+      title: '🔔 Test Notification',
+      body: 'This is a manual test notification sent from the app!',
+    });
+
+    return res.json({ message: 'Test notification sent' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
