@@ -85,7 +85,7 @@ class MiniCalendar extends StatelessWidget {
                   hasBorder = true;
                 }
 
-                if (!filled && (isWeekend || isFuture)) {
+                if (!filled && (wd == DateTime.sunday || isFuture)) {
                   fg = const Color(0xFF74777e).withValues(alpha: 0.3);
                 }
 
