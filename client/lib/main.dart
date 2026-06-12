@@ -29,7 +29,7 @@ void main() async {
     statusBarBrightness: Brightness.light,
   ));
   final navigatorKey = GlobalKey<NavigatorState>();
-  runApp(AttendXApp(navigatorKey: navigatorKey));
+  runApp(UfsAttendApp(navigatorKey: navigatorKey));
 }
 
 class AppColors extends ThemeExtension<AppColors> {
@@ -205,15 +205,15 @@ class AppColors extends ThemeExtension<AppColors> {
   );
 }
 
-class AttendXApp extends StatelessWidget {
+class UfsAttendApp extends StatelessWidget {
   final GlobalKey<NavigatorState> navigatorKey;
-  const AttendXApp({super.key, required this.navigatorKey});
+  const UfsAttendApp({super.key, required this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'AttendX',
+      title: 'UFS Attend',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

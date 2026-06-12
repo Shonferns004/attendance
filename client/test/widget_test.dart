@@ -4,7 +4,7 @@ import 'package:ufs_attendance/main.dart';
 
 void main() {
   testWidgets('App renders', (WidgetTester tester) async {
-    await tester.pumpWidget(AttendXApp(navigatorKey: GlobalKey<NavigatorState>()));
+    await tester.pumpWidget(UfsAttendApp(navigatorKey: GlobalKey<NavigatorState>()));
     expect(find.text('Scan'), findsOneWidget);
   });
 }

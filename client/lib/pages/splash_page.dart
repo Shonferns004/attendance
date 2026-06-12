@@ -143,7 +143,7 @@ class _SplashPageState extends State<SplashPage>
             colors: [Color(0xFFd1e4ff), Color(0xFF7a92b0)],
           ).createShader(bounds),
           child: Text(
-            'AttendX',
+            'UFS Attend',
             style: GoogleFonts.hankenGrotesk(
               fontSize: 36,
               fontWeight: FontWeight.w700,

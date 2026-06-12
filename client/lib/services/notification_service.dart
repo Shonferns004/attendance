@@ -78,15 +78,15 @@ class NotificationService {
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    final title = message.notification?.title ?? 'AttendX';
+    final title = message.notification?.title ?? 'UFS Attend';
     final body = message.notification?.body ?? '';
 
     if (title.isEmpty && body.isEmpty) return;
 
     const androidDetails = AndroidNotificationDetails(
       'attendx_channel',
-      'AttendX Notifications',
-      channelDescription: 'Push notifications from AttendX',
+      'UFS Attend Notifications',
+      channelDescription: 'Push notifications from UFS Attend',
       importance: Importance.high,
       priority: Priority.high,
     );
