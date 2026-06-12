@@ -89,53 +89,13 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_workerId != null && _workerId!.isNotEmpty) {
       SupabaseService.subscribeToHistory(
         workerId: _workerId!,
-        onHistoryChange: _handleRealtimeHistoryUpdate,
+        onHistoryChange: _onRealtimeChange,
       );
     }
   }
 
-  void _handleRealtimeHistoryUpdate(List<dynamic> history) {
-    int p = 0, a = 0, l = 0, lv = 0;
-    final statusMap = <String, String>{};
-    final monthlyStats = <int, Map<String, int>>{};
-    final hoursMap = <String, String>{};
-    final detailMap = <String, Map<String, dynamic>>{};
-
-    for (final rec in history) {
-      final date = rec['date'] ?? '';
-      final status = rec['status'] ?? 'present';
-      statusMap[date.toString()] = status.toString();
-      final hw = rec['hours_worked'];
-      if (hw != null) hoursMap[date.toString()] = hw.toString();
-      detailMap[date.toString()] = {
-        'date': date,
-        'status': status,
-        'punch_in_time': rec['punch_in_time'],
-        'punch_out_time': rec['punch_out_time'],
-        'hours_worked': hw,
-        'late_minutes': rec['late_minutes'],
-      };
-      final dt = DateTime.tryParse(date.toString());
-      if (dt != null) {
-        final ym = dt.year * 100 + dt.month;
-        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0});
-        final st = status.toString();
-        if (monthlyStats[ym]!.containsKey(st)) {
-          monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
-        }
-      }
-      switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; p++; break; case 'leave': lv++; break; }
-    }
-
-    setState(() {
-      _history = history;
-      _present = p; _absent = a; _late = l; _leave = lv;
-      _statusByDate = statusMap;
-      _hoursByDate = hoursMap;
-      _historyByDate = detailMap;
-      _monthlyStats.clear();
-      _monthlyStats.addAll(monthlyStats);
-    });
+  void _onRealtimeChange() {
+    _refreshHistoryFromNetwork();
   }
 
   Future<void> _applyCachedHistory(Future<List<dynamic>?> future) async {

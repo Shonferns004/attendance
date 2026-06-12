@@ -22,40 +22,26 @@ class SupabaseService {
 
   static void subscribeToHistory({
     required String workerId,
-    required Function(List<dynamic>) onHistoryChange,
+    required void Function() onHistoryChange,
   }) {
     _historyChannel?.unsubscribe();
 
     _historyChannel = client
-        .channel('history_changes_$workerId')
+        .channel('attendance_changes_$workerId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'attendance_history',
+          table: 'attendance',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'worker_id',
             value: workerId,
           ),
-          callback: (payload) {
-            _fetchAndNotify(workerId, onHistoryChange);
+          callback: (_) {
+            onHistoryChange();
           },
         )
         .subscribe();
-  }
-
-  static Future<void> _fetchAndNotify(String workerId, Function(List<dynamic>) callback) async {
-    try {
-      final response = await client
-          .from('attendance_history')
-          .select()
-          .eq('worker_id', workerId)
-          .order('date', ascending: false);
-
-      callback(response);
-    } catch (e) {
-      print('Error fetching history: $e');
-    }
   }
 
   static void unsubscribeFromHistory() {
