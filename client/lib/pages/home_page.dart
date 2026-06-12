@@ -206,54 +206,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _punchIn() async {
-    try {
-      bool service = await Geolocator.isLocationServiceEnabled();
-      if (!service) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('GPS is disabled'),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        return;
-      }
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) {
-          if (mounted)
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Location permission denied'),
-                backgroundColor: Colors.red.shade700,
-              ),
-            );
-          return;
-        }
-      }
-      if (perm == LocationPermission.deniedForever) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Location permission permanently denied'),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        return;
-      }
-      await Geolocator.getCurrentPosition();
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to get location: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      return;
-    }
-
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(builder: (_) => const ScannerPage()),
@@ -296,6 +248,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _punchOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Confirm Punch Out'),
+        content: const Text('Are you sure you want to punch out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Punch Out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
       bool service = await Geolocator.isLocationServiceEnabled();
       if (!service) {
