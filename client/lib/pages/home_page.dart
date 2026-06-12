@@ -148,14 +148,16 @@ class _HomePageState extends State<HomePage> {
       });
       for (final rec in history) {
         final s = rec['status']?.toString() ?? '';
-        if (s == 'present')
+        if (s == 'present') {
           p++;
-        else if (s == 'absent')
+        } else if (s == 'absent') {
           a++;
-        else if (s == 'late')
+        } else if (s == 'late') {
           l++;
-        else if (s == 'leave')
+          p++;
+        } else if (s == 'leave') {
           lv++;
+        }
       }
     } catch (_) {}
 
@@ -641,7 +643,7 @@ class _HomePageState extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                _isPunchedIn ? Icons.logout : Icons.fingerprint,
+                                _isPunchedIn ? Icons.logout : Icons.qr_code_scanner,
                                 size: 48,
                                 color: Colors.white,
                               ),
