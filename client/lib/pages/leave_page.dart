@@ -528,34 +528,55 @@ class _LeavePageState extends State<LeavePage> {
   }
 
   Widget _buildProofUploader(AppColors colors, ColorScheme scheme) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFDDDDDD)),
-      ),
-      child: _proofBase64 != null
-          ? Row(
+    return _proofBase64 != null
+        ? Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDDDDDD)),
+            ),
+            child: Column(
               children: [
-                const SizedBox(width: 12),
-                Icon(Icons.image, size: 20, color: scheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(_proofFileName ?? 'Proof attached',
-                    style: TextStyle(fontSize: 13, color: scheme.onSurface), overflow: TextOverflow.ellipsis),
-                ),
-                GestureDetector(
-                  onTap: _removeProof,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Icon(Icons.close, size: 18, color: scheme.onSurfaceVariant),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.memory(
+                    base64Decode(_proofBase64!),
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(height: 140,
+                      child: Center(child: Text('Failed to load preview'))),
                   ),
                 ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(_proofFileName ?? 'Proof attached',
+                        style: TextStyle(fontSize: 13, color: scheme.onSurface), overflow: TextOverflow.ellipsis),
+                    ),
+                    GestureDetector(
+                      onTap: _removeProof,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Icon(Icons.close, size: 18, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            )
-          : GestureDetector(
-              onTap: _pickProof,
+            ),
+          )
+        : GestureDetector(
+            onTap: _pickProof,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFDDDDDD)),
+              ),
               child: Row(
                 children: [
                   const SizedBox(width: 12),
@@ -566,7 +587,7 @@ class _LeavePageState extends State<LeavePage> {
                 ],
               ),
             ),
-    );
+          );
   }
 
   Widget _buildHistory(AppColors colors, ColorScheme scheme, TextTheme tt) {
