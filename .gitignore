@@ -5,3 +5,5 @@ ufs crm/dist/
 .DS_Store
 backend/private-key.json
 app-debug.apk
+app-release.apk
+*.apk
