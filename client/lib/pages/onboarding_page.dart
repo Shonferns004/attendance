@@ -38,6 +38,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _ifscCtrl = TextEditingController();
   final _accountNoCtrl = TextEditingController();
 
+  // Declaration
+  DateTime _declarationDate = DateTime.now();
+  final _declarationPlaceCtrl = TextEditingController();
+  final _declarationSignCtrl = TextEditingController();
+
   // Personal Details
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -66,6 +71,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'References',
     'Photo',
     'Documents & Bank',
+    'Declaration',
     'Policies',
     'Review',
     'Complete',
@@ -113,6 +119,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     for (final e in _educationList) e.dispose();
     for (final f in _familyList) f.dispose();
     for (final r in _referenceList) r.dispose();
+    _declarationPlaceCtrl.dispose();
+    _declarationSignCtrl.dispose();
     super.dispose();
   }
 
@@ -295,6 +303,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     return true;
   }
 
+  bool _validateDeclaration() {
+    if (_declarationPlaceCtrl.text.trim().isEmpty) { _showError('Please enter the place'); return false; }
+    if (_declarationSignCtrl.text.trim().isEmpty) { _showError('Please enter your signature'); return false; }
+    return true;
+  }
+
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -330,6 +344,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'account_holder_name': _accountHolderCtrl.text.trim(),
           'ifsc_code': _ifscCtrl.text.trim(),
           'account_number': _accountNoCtrl.text.trim(),
+          'declaration_date': _declarationDate.toIso8601String().split('T')[0],
+          'declaration_place': _declarationPlaceCtrl.text.trim(),
+          'declaration_sign': _declarationSignCtrl.text.trim(),
         },
         education: _educationList
             .where((e) => e.degreeCtrl.text.trim().isNotEmpty)
@@ -377,6 +394,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       case 1: if (!_validateEducation()) return; break;
       case 2: if (!_validateFamily()) return; break;
       case 3: if (!_validateReferences()) return; break;
+      case 6: if (!_validateDeclaration()) return; break;
     }
     if (_currentStep < _steps.length - 1) {
       _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
@@ -417,6 +435,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   _buildReferences(),
                   _buildPhotoUpload(),
                   _buildDocumentsBank(),
+                  _buildDeclaration(),
                   _buildPolicies(),
               _buildReview(),
               _buildSuccessScreen(),
@@ -1068,7 +1087,93 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 7: POLICIES ----
+  // ---- STEP 7: DECLARATION ----
+
+  Widget _buildDeclaration() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Declaration'),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFdfe3e7)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.description, size: 20, color: const Color(0xFF00152a)),
+                    const SizedBox(width: 8),
+                    Text('DECLARATION',
+                      style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF00152a))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text('Contact No: ${_phoneCtrl.text.isNotEmpty ? _phoneCtrl.text : '________'}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF43474d))),
+                const SizedBox(height: 8),
+                Text(
+                  'I hereby declare that the above statements made in my application form are true, complete and correct to the best of my knowledge and belief. In the event of any information being found false or incorrect at any stage, my services are liable to be terminated without notice.',
+                  style: TextStyle(fontSize: 13, height: 1.6, color: const Color(0xFF43474d)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _declarationDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) setState(() => _declarationDate = date);
+                  },
+                  child: Container(
+                    height: 50,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFc3c6ce)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 18, color: const Color(0xFF74777e)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Date: ${_declarationDate.day}/${_declarationDate.month}/${_declarationDate.year}',
+                          style: TextStyle(fontSize: 14, color: const Color(0xFF171c1f)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _textField(_declarationPlaceCtrl, 'Place *', Icons.location_on, 'Enter place'),
+          const SizedBox(height: 12),
+          _textField(_declarationSignCtrl, 'Sign *', Icons.edit, 'Enter your full name as signature'),
+        ],
+      ),
+    );
+  }
+
+  // ---- STEP 8: POLICIES ----
 
   Widget _buildPolicies() {
     return Column(
@@ -1238,6 +1343,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
             if (_accountHolderCtrl.text.isNotEmpty) _reviewItem('Account Holder', _accountHolderCtrl.text),
             if (_ifscCtrl.text.isNotEmpty) _reviewItem('IFSC', _ifscCtrl.text),
             if (_accountNoCtrl.text.isNotEmpty) _reviewItem('Account No', _accountNoCtrl.text),
+          ]),
+          const SizedBox(height: 12),
+          _reviewCard('Declaration', Icons.description, [
+            _reviewItem('Contact No', _phoneCtrl.text),
+            _reviewItem('Date', '${_declarationDate.day}/${_declarationDate.month}/${_declarationDate.year}'),
+            _reviewItem('Place', _declarationPlaceCtrl.text),
+            _reviewItem('Sign', _declarationSignCtrl.text),
           ]),
           const SizedBox(height: 12),
           _reviewCard('Photo & Policies', Icons.check_circle, [

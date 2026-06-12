@@ -153,7 +153,19 @@ class _PrintFormPageState extends State<PrintFormPage> {
           _infoRow('Bank Account', profile['account_holder_name'] ?? '-', gray),
           _infoRow('IFSC', profile['ifsc_code'] ?? '-', gray),
           _infoRow('Account No', profile['account_number'] ?? '-', gray),
-          _section('6. Company Policies & Norms', darkBlue),
+          _section('6. Declaration', darkBlue),
+          pw.SizedBox(height: 8),
+          pw.Text('Contact No: ${profile['phone'] ?? '________'}',
+            style: pw.TextStyle(fontSize: 11, color: darkBlue)),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'I hereby declare that the above statements made in my application form are true, complete and correct to the best of my knowledge and belief. In the event of any information being found false or incorrect at any stage, my services are liable to be terminated without notice.',
+            style: pw.TextStyle(fontSize: 10, lineSpacing: 1.6, color: darkBlue)),
+          pw.SizedBox(height: 8),
+          _infoRow('Date', profile['declaration_date'] ?? '-', gray),
+          _infoRow('Place', profile['declaration_place'] ?? '-', gray),
+          _infoRow('Sign', profile['declaration_sign'] ?? '-', gray),
+          _section('7. Company Policies & Norms', darkBlue),
           ...policies.asMap().entries.map((e) {
             final p = e.value as Map<String, dynamic>;
             return pw.Column(
