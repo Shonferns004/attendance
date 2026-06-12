@@ -46,7 +46,7 @@ async function sendBirthdayNotifications(tokens, dateStr, dayOffset) {
   const isTomorrow = dayOffset === 1;
   if (!isToday && !isTomorrow) return;
 
-  const ngoIds = [...new Set(tokens.map((t) => t.ngo_id).filter(Boolean))];
+  const ngoIds = [...new Set(tokens.map((t) => t.workers?.ngo_id).filter(Boolean))];
   for (const ngoId of ngoIds) {
     const workers = await getAllWorkers(ngoId);
     const birthdayWorkers = workers.filter((w) => {
@@ -84,11 +84,11 @@ async function sendBirthdayNotifications(tokens, dateStr, dayOffset) {
 }
 
 async function sendEventNotifications(tokens, dateStr, dayOffset) {
-  const ngoIds = [...new Set(tokens.map((t) => t.ngo_id).filter(Boolean))];
+  const ngoIds = [...new Set(tokens.map((t) => t.workers?.ngo_id).filter(Boolean))];
   for (const ngoId of ngoIds) {
     const events = await getUpcomingEvents(ngoId, dateStr, dateStr);
     for (const event of events) {
-      const ngoTokens = tokens.filter((t) => t.ngo_id === ngoId);
+      const ngoTokens = tokens.filter((t) => t.workers?.ngo_id === ngoId);
       const notifications = [];
       for (const t of ngoTokens) {
         let title, body;
@@ -115,11 +115,11 @@ async function sendEventNotifications(tokens, dateStr, dayOffset) {
 }
 
 async function sendNoticeNotifications(tokens) {
-  const ngoIds = [...new Set(tokens.map((t) => t.ngo_id).filter(Boolean))];
+  const ngoIds = [...new Set(tokens.map((t) => t.workers?.ngo_id).filter(Boolean))];
   for (const ngoId of ngoIds) {
     const notices = await getRecentNotices(ngoId, lastNoticeCheck);
     for (const notice of notices) {
-      const ngoTokens = tokens.filter((t) => t.ngo_id === ngoId);
+      const ngoTokens = tokens.filter((t) => t.workers?.ngo_id === ngoId);
       const notifications = [];
       for (const t of ngoTokens) {
         const title = '📢 New Notice';
@@ -138,12 +138,12 @@ async function sendNoticeNotifications(tokens) {
 }
 
 async function sendAchievementNotifications(tokens) {
-  const ngoIds = [...new Set(tokens.map((t) => t.ngo_id).filter(Boolean))];
+  const ngoIds = [...new Set(tokens.map((t) => t.workers?.ngo_id).filter(Boolean))];
   for (const ngoId of ngoIds) {
     const achievements = await getRecentAchievements(ngoId, lastAchievementCheck);
     for (const ach of achievements) {
       const workerName = ach.workers?.name || 'A worker';
-      const ngoTokens = tokens.filter((t) => t.ngo_id === ngoId);
+      const ngoTokens = tokens.filter((t) => t.workers?.ngo_id === ngoId);
       const notifications = [];
       for (const t of ngoTokens) {
         const title = '🏆 Achievement Unlocked!';
@@ -278,8 +278,73 @@ async function sendPunchInReminders() {
   }
 }
 
+async function sendPunchOutReminders() {
+  try {
+    const officeEnd = await getSetting('office_end_time');
+    if (!officeEnd) return;
+    const [endHour, endMinute] = officeEnd.split(':').map(Number);
+    const endTotalMinutes = endHour * 60 + endMinute;
+
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const ist = new Date(new Date().getTime() + istOffset);
+    const currentTotalMinutes = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+
+    const diff = endTotalMinutes - currentTotalMinutes;
+    const minsAfter = -diff;
+    let window;
+    if (minsAfter >= 5 && minsAfter < 6) window = '5';
+    else if (minsAfter >= 10 && minsAfter < 11) window = '10';
+    else return;
+
+    const todayDateStr = getDateString(ist);
+    const tokens = await getAllFcmTokens();
+    if (!tokens || tokens.length === 0) return;
+
+    for (const t of tokens) {
+      const title = `⏰ Shift ended ${window} min ago!`;
+
+      const { data: existing } = await supabase
+        .from('notification_log')
+        .select('id')
+        .eq('worker_id', t.worker_id)
+        .eq('type', 'punch_out_reminder')
+        .eq('title', title)
+        .gte('sent_at', `${todayDateStr}T00:00:00+05:30`)
+        .lte('sent_at', `${todayDateStr}T23:59:59+05:30`)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const { data: attendanceRecord } = await supabase
+        .from('attendance')
+        .select('id, punch_in_time, punch_out_time')
+        .eq('worker_id', t.worker_id)
+        .eq('date', todayDateStr)
+        .maybeSingle();
+
+      if (!attendanceRecord || !attendanceRecord.punch_in_time || attendanceRecord.punch_out_time) continue;
+
+      const workerName = t.name || t.workers?.name || 'there';
+      const prompt = `${workerName}'s shift ended ${window} minutes ago and they haven't punched out. Write a brief playful reminder like "oops looks like you forgot to punch out". Keep it under 100 characters. Warm tone.`;
+      const aiMsg = await generateAiMessage(prompt);
+      const body = aiMsg || `Oops ${workerName}, shift ended ${window} min ago! Please punch out!`;
+
+      await sendPushToMultiple([{
+        workerId: t.worker_id, title, body, type: 'punch_out_reminder', referenceId: null,
+      }]);
+    }
+
+    console.log(`Punch-out ${window}min reminders sent at ${ist.toISOString()}`);
+  } catch (error) {
+    console.error('Punch-out reminder error:', error.message);
+  }
+}
+
 cron.schedule('* * * * *', () => sendScheduledNotifications());
 console.log('Scheduled: every-minute check for admin-scheduled notifications');
 
 cron.schedule('* * * * *', () => sendPunchInReminders());
 console.log('Scheduled: every-minute check for punch-in reminders');
+
+cron.schedule('* * * * *', () => sendPunchOutReminders());
+console.log('Scheduled: every-minute check for punch-out reminders');
