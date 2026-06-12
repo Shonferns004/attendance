@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../services/api_service.dart';
 
 class PrintFormPage extends StatefulWidget {
@@ -37,8 +39,8 @@ class _PrintFormPageState extends State<PrintFormPage> {
     }
   }
 
-  String _buildHtml() {
-    if (_data == null) return '';
+  Future<Uint8List> _buildPdf(PdfPageFormat format) async {
+    if (_data == null) return Uint8List(0);
 
     final profile = _data!['profile'] as Map<String, dynamic>? ?? {};
     final policies = _data!['policies'] as List<dynamic>? ?? [];
@@ -46,120 +48,193 @@ class _PrintFormPageState extends State<PrintFormPage> {
     final family = profile['family'] as List<dynamic>? ?? [];
     final references = profile['references'] as List<dynamic>? ?? [];
 
-    final String educationRows = education.asMap().entries.map((e) {
-      final i = e.key + 1;
-      final ed = e.value as Map<String, dynamic>;
-      return '''
-      <tr>
-        <td style="border: 1px solid #ccc; padding: 8px;">$i</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${_esc(ed['degree'] ?? '')}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${_esc(ed['institution'] ?? '')}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${_esc(ed['university'] ?? '-')}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${ed['year_of_passing'] ?? '-'}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${_esc(ed['percentage'] ?? '-')}</td>
-      </tr>''';
-    }).join('\n');
+    final darkBlue = PdfColor.fromInt(0xFF00152a);
+    final gray = PdfColor.fromInt(0xFF74777e);
+    final borderGray = PdfColor.fromInt(0xFFcccccc);
+    final headerBg = PdfColor.fromInt(0xFFf0f4f8);
 
-    final String familyRows = family.asMap().entries.map((e) {
-      final i = e.key + 1;
-      final f = e.value as Map<String, dynamic>;
-      return '''<tr><td style="border:1px solid #ccc;padding:8px;">$i</td><td style="border:1px solid #ccc;padding:8px;">${_esc(f['name'] ?? '')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(f['relationship'] ?? '')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(f['occupation'] ?? '-')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(f['phone'] ?? '-')}</td></tr>''';
-    }).join('\n');
+    final doc = pw.Document();
 
-    final String refRows = references.asMap().entries.map((e) {
-      final i = e.key + 1;
-      final r = e.value as Map<String, dynamic>;
-      return '''<tr><td style="border:1px solid #ccc;padding:8px;">$i</td><td style="border:1px solid #ccc;padding:8px;">${_esc(r['name'] ?? '')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(r['designation'] ?? '-')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(r['organization'] ?? '-')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(r['phone'] ?? '-')}</td><td style="border:1px solid #ccc;padding:8px;">${_esc(r['email'] ?? '-')}</td></tr>''';
-    }).join('\n');
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: format,
+        margin: const pw.EdgeInsets.all(40),
+        header: (context) => pw.Column(
+          children: [
+            pw.Text('Employee Onboarding Form',
+              style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: darkBlue)),
+            if (profile['name'] != null)
+              pw.Text('${profile['name']}${profile['login_id'] != null ? ' · ${profile['login_id']}' : ''}',
+                style: pw.TextStyle(fontSize: 12, color: gray)),
+          ],
+        ),
+        footer: (context) => pw.Text('Generated on ${DateTime.now().toLocal().toString().split('.')[0]}',
+          style: pw.TextStyle(fontSize: 9, color: gray)),
+        build: (context) => [
+          _section('1. Personal Details', darkBlue),
+          _infoRow('Full Name', profile['name'] ?? '', gray),
+          _infoRow('Email', profile['email'] ?? '', gray),
+          _infoRow('Phone', profile['phone'] ?? '-', gray),
+          _infoRow('Alt Phone', profile['alternate_phone'] ?? '-', gray),
+          _infoRow('Gender', profile['gender'] ?? '-', gray),
+          _infoRow('DOB', profile['dob']?.toString() ?? '-', gray),
+          _infoRow('Address', profile['address'] ?? '-', gray),
+          _infoRow('City', profile['city'] ?? '-', gray),
+          _infoRow('State', profile['state'] ?? '-', gray),
+          _infoRow('Pincode', profile['pincode'] ?? '-', gray),
+          _section('2. Educational Qualifications', darkBlue),
+          if (education.isNotEmpty)
+            pw.Table(
+              border: pw.TableBorder.all(color: borderGray),
+              children: [
+                _tableHeader(['#', 'Degree', 'Institution', 'University', 'Year', '% / Grade'], headerBg),
+                ...education.asMap().entries.map((e) {
+                  final ed = e.value as Map<String, dynamic>;
+                  return _tableRow([
+                    '${e.key + 1}',
+                    ed['degree'] ?? '',
+                    ed['institution'] ?? '',
+                    ed['university'] ?? '-',
+                    ed['year_of_passing']?.toString() ?? '-',
+                    ed['percentage'] ?? '-',
+                  ]);
+                }),
+              ],
+            )
+          else
+            _empty('No education details provided.', gray),
+          _section('3. Family Details', darkBlue),
+          if (family.isNotEmpty)
+            pw.Table(
+              border: pw.TableBorder.all(color: borderGray),
+              children: [
+                _tableHeader(['#', 'Name', 'Relationship', 'Occupation', 'Phone'], headerBg),
+                ...family.asMap().entries.map((e) {
+                  final f = e.value as Map<String, dynamic>;
+                  return _tableRow([
+                    '${e.key + 1}',
+                    f['name'] ?? '',
+                    f['relationship'] ?? '',
+                    f['occupation'] ?? '-',
+                    f['phone'] ?? '-',
+                  ]);
+                }),
+              ],
+            )
+          else
+            _empty('No family details provided.', gray),
+          _section('4. Professional References', darkBlue),
+          if (references.isNotEmpty)
+            pw.Table(
+              border: pw.TableBorder.all(color: borderGray),
+              children: [
+                _tableHeader(['#', 'Name', 'Designation', 'Organization', 'Phone', 'Email'], headerBg),
+                ...references.asMap().entries.map((e) {
+                  final r = e.value as Map<String, dynamic>;
+                  return _tableRow([
+                    '${e.key + 1}',
+                    r['name'] ?? '',
+                    r['designation'] ?? '-',
+                    r['organization'] ?? '-',
+                    r['phone'] ?? '-',
+                    r['email'] ?? '-',
+                  ]);
+                }),
+              ],
+            )
+          else
+            _empty('No references provided.', gray),
+          _section('5. Documents & Bank', darkBlue),
+          _infoRow('Aadhaar Front', profile['aadhar_front_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
+          _infoRow('Aadhaar Back', profile['aadhar_back_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
+          _infoRow('PAN Card', profile['pan_card_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
+          _infoRow('Bank Proof', profile['bank_proof_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
+          _infoRow('Bank Account', profile['account_holder_name'] ?? '-', gray),
+          _infoRow('IFSC', profile['ifsc_code'] ?? '-', gray),
+          _infoRow('Account No', profile['account_number'] ?? '-', gray),
+          _section('6. Company Policies & Norms', darkBlue),
+          ...policies.asMap().entries.map((e) {
+            final p = e.value as Map<String, dynamic>;
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.SizedBox(height: 12),
+                pw.Text('${e.key + 1}. ${p['title'] ?? ''}',
+                  style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: darkBlue)),
+                pw.SizedBox(height: 4),
+                pw.Text(p['content'] ?? '',
+                  style: pw.TextStyle(fontSize: 10, lineSpacing: 1.5)),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
 
-    final String policyBlocks = policies.asMap().entries.map((e) {
-      final i = e.key + 1;
-      final p = e.value as Map<String, dynamic>;
-      return '''<div style="margin-bottom: 24px;"><h3 style="color:#00152a;font-size:16px;margin-bottom:8px;">$i. ${_esc(p['title'] ?? '')}</h3><div style="font-size:13px;line-height:1.7;white-space:pre-wrap;">${_esc(p['content'] ?? '')}</div></div>''';
-    }).join('\n');
-
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Employee Onboarding Form</title>
-      <style>
-        body { font-family: 'Inter', Arial, sans-serif; margin: 40px; color: #333; font-size: 12px; }
-        h1 { font-size: 24px; color: #00152a; border-bottom: 2px solid #00152a; padding-bottom: 8px; }
-        h2 { font-size: 18px; color: #00152a; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th { background: #f0f4f8; text-align: left; }
-        .info-row { margin-bottom: 4px; }
-        .label { font-weight: 600; color: #74777e; display: inline-block; width: 140px; }
-        .value { font-weight: 500; }
-        .header { text-align: center; margin-bottom: 32px; }
-        .header h1 { border: none; margin-bottom: 4px; }
-        .header p { color: #74777e; font-size: 14px; }
-        .photo { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #00152a; margin-bottom: 16px; }
-        .footer { margin-top: 40px; text-align: center; color: #74777e; font-size: 11px; border-top: 1px solid #ddd; padding-top: 16px; }
-        @media print { body { margin: 20px; } }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        ${profile['photo_url'] != null ? '<img src="${_esc(profile['photo_url'])}" class="photo" />' : ''}
-        <h1>Employee Onboarding Form</h1>
-        <p>${_esc(profile['name'] ?? '')} · ${_esc(profile['login_id'] ?? '')}</p>
-      </div>
-
-      <h2>1. Personal Details</h2>
-      <div class="info-row"><span class="label">Full Name:</span> <span class="value">${_esc(profile['name'] ?? '')}</span></div>
-      <div class="info-row"><span class="label">Email:</span> <span class="value">${_esc(profile['email'] ?? '')}</span></div>
-      <div class="info-row"><span class="label">Phone:</span> <span class="value">${_esc(profile['phone'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">Alternate Phone:</span> <span class="value">${_esc(profile['alternate_phone'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">Gender:</span> <span class="value">${_esc(profile['gender'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">Date of Birth:</span> <span class="value">${profile['dob'] ?? '-'}</span></div>
-      <div class="info-row"><span class="label">Address:</span> <span class="value">${_esc(profile['address'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">City:</span> <span class="value">${_esc(profile['city'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">State:</span> <span class="value">${_esc(profile['state'] ?? '-')}</span></div>
-      <div class="info-row"><span class="label">Pincode:</span> <span class="value">${_esc(profile['pincode'] ?? '-')}</span></div>
-
-      <h2>2. Educational Qualifications</h2>
-      ${education.isNotEmpty ? '''
-      <table>
-        <tr><th>#</th><th>Degree</th><th>Institution</th><th>University</th><th>Year</th><th>% / Grade</th></tr>
-        $educationRows
-      </table>''' : '<p style="color:#74777e;">No education details provided.</p>'}
-
-      <h2>3. Family Details</h2>
-      ${family.isNotEmpty ? '''
-      <table>
-        <tr><th>#</th><th>Name</th><th>Relationship</th><th>Occupation</th><th>Phone</th></tr>
-        $familyRows
-      </table>''' : '<p style="color:#74777e;">No family details provided.</p>'}
-
-      <h2>4. Professional References</h2>
-      ${references.isNotEmpty ? '''
-      <table>
-        <tr><th>#</th><th>Name</th><th>Designation</th><th>Organization</th><th>Phone</th><th>Email</th></tr>
-        $refRows
-      </table>''' : '<p style="color:#74777e;">No references provided.</p>'}
-
-      <h2>5. Company Policies & Norms</h2>
-      $policyBlocks
-
-      <div class="footer">
-        <p>This form was completed electronically by the employee during onboarding.</p>
-        <p>Generated on ${DateTime.now().toLocal().toString().split('.')[0]}</p>
-      </div>
-    </body>
-    </html>
-    ''';
+    return doc.save();
   }
 
-  String _esc(String s) {
-    return s
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+  pw.Widget _section(String title, PdfColor color) {
+    return pw.Column(
+      children: [
+        pw.SizedBox(height: 20),
+        pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 4),
+          decoration: pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(color: PdfColor.fromInt(0xFFdddddd))),
+          ),
+          child: pw.Text(title,
+            style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: color)),
+        ),
+        pw.SizedBox(height: 8),
+      ],
+    );
+  }
+
+  pw.Widget _infoRow(String label, String value, PdfColor labelColor) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(
+            width: 120,
+            child: pw.Text(label,
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: labelColor)),
+          ),
+          pw.Text(value.isEmpty ? '-' : value,
+            style: pw.TextStyle(fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
+  pw.TableRow _tableHeader(List<String> headers, PdfColor bgColor) {
+    return pw.TableRow(
+      decoration: pw.BoxDecoration(color: bgColor),
+      children: headers.map((h) => _cell(h, bold: true)).toList(),
+    );
+  }
+
+  pw.TableRow _tableRow(List<String> cells) {
+    return pw.TableRow(
+      children: cells.map((c) => _cell(c)).toList(),
+    );
+  }
+
+  pw.Widget _cell(String text, {bool bold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(text,
+        style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+    );
+  }
+
+  pw.Widget _empty(String msg, PdfColor gray) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 8),
+      child: pw.Text(msg,
+        style: pw.TextStyle(fontSize: 10, color: gray, fontStyle: pw.FontStyle.italic)),
+    );
   }
 
   @override
@@ -204,11 +279,7 @@ class _PrintFormPageState extends State<PrintFormPage> {
     }
 
     return PdfPreview(
-      build: (format) => Printing.convertHtml(
-        // ignore: deprecated_member_use
-        format: format,
-        html: _buildHtml(),
-      ),
+      build: (format) => _buildPdf(format),
       pdfFileName: 'onboarding_form_${_data!['profile']?['name'] ?? 'employee'}',
       loadingWidget: const Center(child: CircularProgressIndicator()),
       canChangeOrientation: true,
