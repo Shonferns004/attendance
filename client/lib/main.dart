@@ -298,34 +298,25 @@ class _AuthGateState extends State<AuthGate> {
         await NotificationService().init();
       }
       if (token != null) {
-        // Check both local cache and server-side onboarding status
+        // Always query server; use local cache only as fallback
         final prefs = await SharedPreferences.getInstance();
-        final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
-
-        if (locallySeen) {
+        try {
+          final status = await ApiService.checkOnboardingStatus();
+          final serverCompleted = status['onboarding_completed'] == true;
+          if (serverCompleted) {
+            await prefs.setBool('has_seen_onboarding', true);
+          }
           setState(() {
             _loggedIn = true;
-            _showOnboarding = false;
+            _showOnboarding = !serverCompleted;
           });
-        } else {
-          // Fallback to server-side check
-          try {
-            final status = await ApiService.checkOnboardingStatus();
-            final serverCompleted = status['onboarding_completed'] == true;
-            if (serverCompleted) {
-              await prefs.setBool('has_seen_onboarding', true);
-            }
-            setState(() {
-              _loggedIn = true;
-              _showOnboarding = !serverCompleted;
-            });
-          } catch (_) {
-            // If server is unreachable, show onboarding just in case
-            setState(() {
-              _loggedIn = true;
-              _showOnboarding = true;
-            });
-          }
+        } catch (_) {
+          // Server unreachable — fall back to local cache
+          final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
+          setState(() {
+            _loggedIn = true;
+            _showOnboarding = !locallySeen;
+          });
         }
       } else {
         setState(() => _loggedIn = false);
@@ -339,20 +330,8 @@ class _AuthGateState extends State<AuthGate> {
     if (firebaseInitialized) {
       NotificationService().init();
     }
-    // Always show onboarding on first login if server says not completed
+    // Always query server; use local cache only as fallback
     final prefs = await SharedPreferences.getInstance();
-    final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
-
-    if (locallySeen) {
-      if (!mounted) return;
-      setState(() {
-        _loggedIn = true;
-        _showOnboarding = false;
-      });
-      return;
-    }
-
-    // Check server status
     try {
       final status = await ApiService.checkOnboardingStatus();
       final serverCompleted = status['onboarding_completed'] == true;
@@ -365,11 +344,12 @@ class _AuthGateState extends State<AuthGate> {
         _showOnboarding = !serverCompleted;
       });
     } catch (_) {
-      // If server unreachable on first login, show onboarding
+      // Server unreachable — fall back to local cache
+      final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
       if (!mounted) return;
       setState(() {
         _loggedIn = true;
-        _showOnboarding = true;
+        _showOnboarding = !locallySeen;
       });
     }
   }
