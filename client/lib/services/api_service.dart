@@ -285,6 +285,17 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>> uploadDocument(String documentType, String fileBase64, String mimeType) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/onboarding/upload-document'),
+      headers: await _headers(),
+      body: jsonEncode({'document_type': documentType, 'file_base64': fileBase64, 'mime_type': mimeType}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to upload document');
+    return body;
+  }
+
   static Future<Map<String, dynamic>> submitOnboarding({
     required Map<String, dynamic> personalDetails,
     required List<Map<String, dynamic>> education,

@@ -180,6 +180,13 @@ export const updateWorkerPersonalDetails = async (workerId, details) => {
   if (details.email !== undefined) updates.email = details.email;
   if (details.gender !== undefined) updates.gender = details.gender;
   if (details.dob !== undefined) updates.dob = details.dob;
+  if (details.aadhar_front_url !== undefined) updates.aadhar_front_url = details.aadhar_front_url;
+  if (details.aadhar_back_url !== undefined) updates.aadhar_back_url = details.aadhar_back_url;
+  if (details.pan_card_url !== undefined) updates.pan_card_url = details.pan_card_url;
+  if (details.bank_proof_url !== undefined) updates.bank_proof_url = details.bank_proof_url;
+  if (details.account_holder_name !== undefined) updates.account_holder_name = details.account_holder_name;
+  if (details.ifsc_code !== undefined) updates.ifsc_code = details.ifsc_code;
+  if (details.account_number !== undefined) updates.account_number = details.account_number;
 
   const { data, error } = await supabase
     .from('workers')

@@ -26,6 +26,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
   bool _policiesAccepted = false;
   bool _alreadyCompleted = false;
 
+  // Documents
+  String? _aadharFrontUrl;
+  String? _aadharBackUrl;
+  String? _panCardUrl;
+  String? _bankProofUrl;
+
+  // Bank Details
+  final _accountHolderCtrl = TextEditingController();
+  final _ifscCtrl = TextEditingController();
+  final _accountNoCtrl = TextEditingController();
 
   // Personal Details
   final _nameCtrl = TextEditingController();
@@ -48,12 +58,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // Reference entries
   final List<_ReferenceEntry> _referenceList = [];
 
-  final  List<String> _steps = [
+  final List<String> _steps = [
     'Personal Details',
     'Education',
     'Family',
     'References',
     'Photo',
+    'Documents & Bank',
     'Policies',
     'Review',
     'Complete',
@@ -95,6 +106,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pincodeCtrl.dispose();
+    _accountHolderCtrl.dispose();
+    _ifscCtrl.dispose();
+    _accountNoCtrl.dispose();
     for (final e in _educationList) e.dispose();
     for (final f in _familyList) f.dispose();
     for (final r in _referenceList) r.dispose();
@@ -168,6 +182,55 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
       setState(() => _selectedImage = File(image.path));
       _uploadPhoto();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: Colors.red.shade700),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadDocument(String documentType, String fileBase64, String mimeType) async {
+    try {
+      final result = await ApiService.uploadDocument(documentType, fileBase64, mimeType);
+      final url = result['document_url'] as String?;
+      if (url != null && mounted) {
+        setState(() {
+          switch (documentType) {
+            case 'aadhar_front': _aadharFrontUrl = url; break;
+            case 'aadhar_back': _aadharBackUrl = url; break;
+            case 'pan_card': _panCardUrl = url; break;
+            case 'bank_proof': _bankProofUrl = url; break;
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${documentType.replaceAll('_', ' ').toUpperCase()} uploaded'), backgroundColor: const Color(0xFF2a6a4b)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red.shade700),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickDocument(String documentType) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      final base64 = base64Encode(bytes);
+      final mime = image.mimeType ?? 'image/jpeg';
+      await _uploadDocument(documentType, base64, mime);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -257,6 +320,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'state': _stateCtrl.text.trim(),
           'pincode': _pincodeCtrl.text.trim(),
           'photo_url': _uploadedPhotoUrl,
+          'aadhar_front_url': _aadharFrontUrl,
+          'aadhar_back_url': _aadharBackUrl,
+          'pan_card_url': _panCardUrl,
+          'bank_proof_url': _bankProofUrl,
+          'account_holder_name': _accountHolderCtrl.text.trim(),
+          'ifsc_code': _ifscCtrl.text.trim(),
+          'account_number': _accountNoCtrl.text.trim(),
         },
         education: _educationList
             .where((e) => e.degreeCtrl.text.trim().isNotEmpty)
@@ -343,6 +413,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   _buildFamily(),
                   _buildReferences(),
                   _buildPhotoUpload(),
+                  _buildDocumentsBank(),
                   _buildPolicies(),
               _buildReview(),
               _buildSuccessScreen(),
@@ -878,7 +949,119 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 6: POLICIES ----
+  // ---- STEP 6: DOCUMENTS & BANK ----
+
+  Widget _buildDocumentsBank() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Identity Documents'),
+          const SizedBox(height: 4),
+          Text('Upload clear photos of your documents', style: TextStyle(fontSize: 13, color: const Color(0xFF74777e))),
+          const SizedBox(height: 16),
+          _docUploadCard(
+            'Aadhaar Card (Front)',
+            'Upload front side of Aadhaar',
+            Icons.credit_card,
+            _aadharFrontUrl,
+            () => _pickDocument('aadhar_front'),
+          ),
+          const SizedBox(height: 12),
+          _docUploadCard(
+            'Aadhaar Card (Back)',
+            'Upload back side of Aadhaar',
+            Icons.credit_card,
+            _aadharBackUrl,
+            () => _pickDocument('aadhar_back'),
+          ),
+          const SizedBox(height: 12),
+          _docUploadCard(
+            'PAN Card',
+            'Upload your PAN card',
+            Icons.assignment,
+            _panCardUrl,
+            () => _pickDocument('pan_card'),
+          ),
+          const SizedBox(height: 12),
+          _docUploadCard(
+            'Bank Passbook / Cheque',
+            'Upload bank passbook or cancelled cheque',
+            Icons.account_balance,
+            _bankProofUrl,
+            () => _pickDocument('bank_proof'),
+          ),
+          const SizedBox(height: 24),
+          _sectionTitle('Bank Account Details'),
+          const SizedBox(height: 12),
+          _textField(_accountHolderCtrl, 'Account Holder Name *', Icons.person, 'As per bank records'),
+          const SizedBox(height: 12),
+          _textField(_ifscCtrl, 'IFSC Code *', Icons.code, 'e.g., SBIN0001234'),
+          const SizedBox(height: 12),
+          _textField(_accountNoCtrl, 'Account Number *', Icons.pin, 'Your bank account number', keyboardType: TextInputType.number),
+          const SizedBox(height: 8),
+          Text('These details will be used for salary disbursement',
+            style: TextStyle(fontSize: 12, color: const Color(0xFF74777e))),
+        ],
+      ),
+    );
+  }
+
+  Widget _docUploadCard(String title, String subtitle, IconData icon, String? uploadedUrl, VoidCallback onPick) {
+    final isUploaded = uploadedUrl != null && uploadedUrl.isNotEmpty;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isUploaded ? const Color(0xFF2a6a4b) : const Color(0xFFdfe3e7)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: isUploaded ? const Color(0xFFaff1ca) : const Color(0xFFdfe3e7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: isUploaded
+                ? const Icon(Icons.check_circle, color: Color(0xFF2a6a4b), size: 24)
+                : Icon(icon, size: 22, color: const Color(0xFF74777e)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f))),
+                Text(isUploaded ? 'Uploaded ✓' : subtitle,
+                  style: TextStyle(fontSize: 12, color: isUploaded ? const Color(0xFF2a6a4b) : const Color(0xFF74777e))),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onPick,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isUploaded ? const Color(0xFFd1e4ff) : const Color(0xFF00152a),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isUploaded ? 'Change' : 'Upload',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                  color: isUploaded ? const Color(0xFF00152a) : Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- STEP 7: POLICIES ----
 
   Widget _buildPolicies() {
     return Column(
@@ -1038,6 +1221,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 '${r.designationCtrl.text.isNotEmpty ? '${r.designationCtrl.text} at ' : ''}${r.organizationCtrl.text}',
               )).toList(),
             ),
+          const SizedBox(height: 12),
+          _reviewCard('Documents & Bank', Icons.folder, [
+            _reviewItem('Aadhaar Front', _aadharFrontUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            _reviewItem('Aadhaar Back', _aadharBackUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            _reviewItem('PAN Card', _panCardUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            _reviewItem('Bank Proof', _bankProofUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            if (_accountHolderCtrl.text.isNotEmpty) _reviewItem('Account Holder', _accountHolderCtrl.text),
+            if (_ifscCtrl.text.isNotEmpty) _reviewItem('IFSC', _ifscCtrl.text),
+            if (_accountNoCtrl.text.isNotEmpty) _reviewItem('Account No', _accountNoCtrl.text),
+          ]),
           const SizedBox(height: 12),
           _reviewCard('Photo & Policies', Icons.check_circle, [
             _reviewItem('Photo', _uploadedPhotoUrl != null ? 'Uploaded ✓' : 'Not uploaded'),

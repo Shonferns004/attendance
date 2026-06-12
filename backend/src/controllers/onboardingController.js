@@ -135,6 +135,63 @@ export const uploadPhoto = async (req, res) => {
   }
 };
 
+// ---- Upload document (aadhar front/back, pan card, bank proof) ----
+
+export const uploadDocument = async (req, res) => {
+  try {
+    const workerId = req.user.id;
+    const { document_type, file_base64, mime_type } = req.body;
+
+    if (!document_type || !file_base64) {
+      return res.status(400).json({ message: 'Document type and file data are required' });
+    }
+
+    const allowedTypes = ['aadhar_front', 'aadhar_back', 'pan_card', 'bank_proof'];
+    if (!allowedTypes.includes(document_type)) {
+      return res.status(400).json({ message: 'Invalid document type' });
+    }
+
+    const buffer = Buffer.from(file_base64, 'base64');
+    const contentType = mime_type || 'image/jpeg';
+    const ext = contentType.split('/')[1] || 'jpg';
+    const fileName = `worker_documents/${workerId}/${document_type}_${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('worker-documents')
+      .upload(fileName, buffer, { contentType, upsert: true });
+
+    if (uploadError) {
+      if (uploadError.message?.includes('bucket')) {
+        const { error: bucketError } = await supabase.storage.createBucket('worker-documents', { public: true });
+        if (bucketError) {
+          return res.status(500).json({ message: 'Failed to create storage bucket: ' + bucketError.message });
+        }
+        const { error: retryError } = await supabase.storage
+          .from('worker-documents')
+          .upload(fileName, buffer, { contentType, upsert: true });
+        if (retryError) {
+          return res.status(500).json({ message: 'Upload failed: ' + retryError.message });
+        }
+      } else {
+        return res.status(500).json({ message: 'Upload failed: ' + uploadError.message });
+      }
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('worker-documents')
+      .getPublicUrl(fileName);
+
+    const documentUrl = publicUrlData?.publicUrl || `${process.env.SUPABASE_URL}/storage/v1/object/public/worker-documents/${fileName}`;
+
+    return res.json({
+      message: 'Document uploaded successfully',
+      document_url: documentUrl,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 // ---- Get Company Policies (worker-facing) ----
 
 export const getPolicies = async (req, res) => {

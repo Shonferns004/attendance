@@ -3,6 +3,7 @@ import {
   submitOnboarding,
   checkOnboardingStatus,
   uploadPhoto,
+  uploadDocument,
   getPolicies,
   getProfileForPrint,
   adminGetPolicies,
@@ -18,6 +19,7 @@ const router = Router();
 router.post('/submit', authenticateWorker, submitOnboarding);
 router.get('/status', authenticateWorker, checkOnboardingStatus);
 router.post('/upload-photo', authenticateWorker, uploadPhoto);
+router.post('/upload-document', authenticateWorker, uploadDocument);
 router.get('/policies', authenticateWorker, getPolicies);
 router.get('/print-profile', authenticateWorker, getProfileForPrint);
 

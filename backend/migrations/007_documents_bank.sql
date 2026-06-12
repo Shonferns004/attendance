@@ -1,0 +1,7 @@
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS aadhar_front_url TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS aadhar_back_url TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS pan_card_url TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS bank_proof_url TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS account_holder_name TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS ifsc_code TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS account_number TEXT;
