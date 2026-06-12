@@ -36,8 +36,15 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: const Scaffold(
-        backgroundColor: Color(0xFFFFFFFF),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFFFF),
+        body: Center(
+          child: Image.asset(
+            'assets/logo/logo.png',
+            width: 120,
+            height: 120,
+          ),
+        ),
       ),
     );
   }
