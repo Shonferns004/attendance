@@ -352,7 +352,7 @@ class _HomePageState extends State<HomePage> {
         builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Color(0xFFffffff),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(56)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: LeavePage(scrollController: scrollController),
         ),
