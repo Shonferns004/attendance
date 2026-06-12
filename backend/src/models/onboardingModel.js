@@ -190,7 +190,6 @@ export const updateWorkerPersonalDetails = async (workerId, details) => {
   if (details.account_number !== undefined) updates.account_number = details.account_number;
   if (details.declaration_date !== undefined) updates.declaration_date = details.declaration_date;
   if (details.declaration_place !== undefined) updates.declaration_place = details.declaration_place;
-  if (details.declaration_sign !== undefined) updates.declaration_sign = details.declaration_sign;
 
   const { data, error } = await supabase
     .from('workers')

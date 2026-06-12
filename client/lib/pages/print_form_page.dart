@@ -164,7 +164,6 @@ class _PrintFormPageState extends State<PrintFormPage> {
           pw.SizedBox(height: 8),
           _infoRow('Date', profile['declaration_date'] ?? '-', gray),
           _infoRow('Place', profile['declaration_place'] ?? '-', gray),
-          _infoRow('Sign', profile['declaration_sign'] ?? '-', gray),
           _section('7. Company Policies & Norms', darkBlue),
           ...policies.asMap().entries.map((e) {
             final p = e.value as Map<String, dynamic>;

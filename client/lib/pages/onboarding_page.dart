@@ -41,7 +41,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // Declaration
   DateTime _declarationDate = DateTime.now();
   final _declarationPlaceCtrl = TextEditingController();
-  final _declarationSignCtrl = TextEditingController();
 
   // Personal Details
   final _nameCtrl = TextEditingController();
@@ -120,7 +119,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     for (final f in _familyList) f.dispose();
     for (final r in _referenceList) r.dispose();
     _declarationPlaceCtrl.dispose();
-    _declarationSignCtrl.dispose();
     super.dispose();
   }
 
@@ -305,7 +303,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   bool _validateDeclaration() {
     if (_declarationPlaceCtrl.text.trim().isEmpty) { _showError('Please enter the place'); return false; }
-    if (_declarationSignCtrl.text.trim().isEmpty) { _showError('Please enter your signature'); return false; }
     return true;
   }
 
@@ -346,7 +343,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'account_number': _accountNoCtrl.text.trim(),
           'declaration_date': _declarationDate.toIso8601String().split('T')[0],
           'declaration_place': _declarationPlaceCtrl.text.trim(),
-          'declaration_sign': _declarationSignCtrl.text.trim(),
+
         },
         education: _educationList
             .where((e) => e.degreeCtrl.text.trim().isNotEmpty)
@@ -1166,8 +1163,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 12),
           _textField(_declarationPlaceCtrl, 'Place *', Icons.location_on, 'Enter place'),
-          const SizedBox(height: 12),
-          _textField(_declarationSignCtrl, 'Sign *', Icons.edit, 'Enter your full name as signature'),
         ],
       ),
     );
@@ -1349,7 +1344,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
             _reviewItem('Contact No', _phoneCtrl.text),
             _reviewItem('Date', '${_declarationDate.day}/${_declarationDate.month}/${_declarationDate.year}'),
             _reviewItem('Place', _declarationPlaceCtrl.text),
-            _reviewItem('Sign', _declarationSignCtrl.text),
           ]),
           const SizedBox(height: 12),
           _reviewCard('Photo & Policies', Icons.check_circle, [
