@@ -4,15 +4,21 @@ import {
   cancelScheduledNotification,
   deleteScheduledNotification,
 } from '../models/notificationAdminModel.js';
-import { getAllFcmTokens } from '../models/notificationModel.js';
-import { sendPushToMultiple } from '../services/fcmService.js';
+import { getAllFcmTokens, getFcmToken } from '../models/notificationModel.js';
+import { sendPushToMultiple, sendPushNotification } from '../services/fcmService.js';
 
 export const sendNow = async (req, res) => {
   try {
-    const { title, body } = req.body;
+    const { title, body, worker_id } = req.body;
     if (!title || !body) {
       return res.status(400).json({ message: 'Title and body are required' });
     }
+
+    if (worker_id) {
+      const result = await sendPushNotification(worker_id, title, body, 'admin');
+      return res.json({ message: 'Notification sent', sent: result ? 1 : 0 });
+    }
+
     const tokens = await getAllFcmTokens();
     if (!tokens || tokens.length === 0) {
       return res.status(200).json({ message: 'No workers with FCM tokens', sent: 0 });
