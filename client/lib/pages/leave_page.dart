@@ -156,7 +156,9 @@ class _LeavePageState extends State<LeavePage> {
       firstDate: first,
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (d != null) ctrl.text = DateFormat('yyyy-MM-dd').format(d);
+    if (d != null) {
+      setState(() => ctrl.text = DateFormat('yyyy-MM-dd').format(d));
+    }
   }
 
   Future<void> _pickTime(TimeOfDay? current, bool isStart) async {
