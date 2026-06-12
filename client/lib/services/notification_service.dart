@@ -8,8 +8,6 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
   } catch (_) {}
-  final service = NotificationService();
-  await service._showLocalNotification(message);
 }
 
 class NotificationService {
@@ -19,8 +17,12 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  bool _initialized = false;
 
   Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+
     try {
       await Firebase.initializeApp();
     } catch (_) {}
@@ -57,10 +59,6 @@ class NotificationService {
     });
 
     FirebaseMessaging.onMessage.listen(_showLocalNotification);
-
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      _showLocalNotification(message);
-    });
   }
 
   Future<void> _registerToken(String token) async {
