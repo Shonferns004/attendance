@@ -5,6 +5,7 @@ import { getUpcomingEvents } from '../models/eventModel.js';
 import { getRecentNotices } from '../models/noticeModel.js';
 import { getRecentAchievements } from '../models/achievementModel.js';
 import { getAllFcmTokens } from '../models/notificationModel.js';
+import { getPendingScheduledNotifications, markNotificationSent } from '../models/notificationAdminModel.js';
 import { sendPushToMultiple } from './fcmService.js';
 
 let lastNoticeCheck = new Date(0).toISOString();
@@ -190,3 +191,29 @@ console.log('Scheduled: 1:00 PM notification check');
 
 cron.schedule('0 18 * * *', () => runNotificationCycle());
 console.log('Scheduled: 6:00 PM notification check');
+
+async function sendScheduledNotifications() {
+  try {
+    const pending = await getPendingScheduledNotifications();
+    if (!pending || pending.length === 0) return;
+    const tokens = await getAllFcmTokens();
+    if (!tokens || tokens.length === 0) return;
+    for (const notification of pending) {
+      const notifications = tokens.map((t) => ({
+        workerId: t.worker_id,
+        title: notification.title,
+        body: notification.body,
+        type: 'admin',
+        referenceId: null,
+      }));
+      await sendPushToMultiple(notifications);
+      await markNotificationSent(notification.id);
+      console.log(`Scheduled notification "${notification.title}" sent at ${new Date().toISOString()}`);
+    }
+  } catch (error) {
+    console.error('Send scheduled notifications error:', error.message);
+  }
+}
+
+cron.schedule('* * * * *', () => sendScheduledNotifications());
+console.log('Scheduled: every-minute check for admin-scheduled notifications');

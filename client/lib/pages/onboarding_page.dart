@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../data/volunteer_policies.dart';
 import 'print_form_page.dart';
 
 class OnboardingPage extends StatefulWidget {
@@ -48,14 +49,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _phoneCtrl = TextEditingController();
   final _altPhoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _permanentAddressCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
   final _pincodeCtrl = TextEditingController();
+  final _fatherHusbandCtrl = TextEditingController();
+  final _panNumberCtrl = TextEditingController();
+  final _aadharNumberCtrl = TextEditingController();
+  final _emergencyNameCtrl = TextEditingController();
+  final _emergencyRelationCtrl = TextEditingController();
+  final _emergencyPhoneCtrl = TextEditingController();
   String _gender = 'Male';
+  String _maritalStatus = 'Single';
   DateTime? _dob;
 
   // Education entries
   final List<_EducationEntry> _educationList = [_EducationEntry()];
+
+  // Previous organization entries
+  final List<_OrganizationEntry> _organizationList = [];
 
   // Family entries
   final List<_FamilyEntry> _familyList = [];
@@ -66,6 +78,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final List<String> _steps = [
     'Personal Details',
     'Education',
+    'Previous Organizations',
     'Family',
     'References',
     'Photo',
@@ -109,13 +122,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _phoneCtrl.dispose();
     _altPhoneCtrl.dispose();
     _addressCtrl.dispose();
+    _permanentAddressCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pincodeCtrl.dispose();
+    _fatherHusbandCtrl.dispose();
+    _panNumberCtrl.dispose();
+    _aadharNumberCtrl.dispose();
+    _emergencyNameCtrl.dispose();
+    _emergencyRelationCtrl.dispose();
+    _emergencyPhoneCtrl.dispose();
     _accountHolderCtrl.dispose();
     _ifscCtrl.dispose();
     _accountNoCtrl.dispose();
     for (final e in _educationList) e.dispose();
+    for (final o in _organizationList) o.dispose();
     for (final f in _familyList) f.dispose();
     for (final r in _referenceList) r.dispose();
     _declarationPlaceCtrl.dispose();
@@ -131,11 +152,27 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (worker['phone'] != null) _phoneCtrl.text = worker['phone'];
       if (worker['alternate_phone'] != null) _altPhoneCtrl.text = worker['alternate_phone'];
       if (worker['address'] != null) _addressCtrl.text = worker['address'];
+      if (worker['permanent_address'] != null) _permanentAddressCtrl.text = worker['permanent_address'];
       if (worker['city'] != null) _cityCtrl.text = worker['city'];
       if (worker['state'] != null) _stateCtrl.text = worker['state'];
       if (worker['pincode'] != null) _pincodeCtrl.text = worker['pincode'];
       if (worker['photo_url'] != null) _uploadedPhotoUrl = worker['photo_url'];
       if (worker['dob'] != null) _dob = DateTime.tryParse(worker['dob'].toString());
+      if (worker['father_husband_name'] != null) _fatherHusbandCtrl.text = worker['father_husband_name'];
+      if (worker['marital_status'] != null) _maritalStatus = worker['marital_status'];
+      if (worker['pan_number'] != null) _panNumberCtrl.text = worker['pan_number'];
+      if (worker['aadhar_number'] != null) _aadharNumberCtrl.text = worker['aadhar_number'];
+      if (worker['emergency_contact_name'] != null) _emergencyNameCtrl.text = worker['emergency_contact_name'];
+      if (worker['emergency_contact_relation'] != null) _emergencyRelationCtrl.text = worker['emergency_contact_relation'];
+      if (worker['emergency_contact_phone'] != null) _emergencyPhoneCtrl.text = worker['emergency_contact_phone'];
+      final organizations = worker['previous_organizations'];
+      if (organizations is List) {
+        for (final organization in organizations) {
+          if (organization is Map) {
+            _organizationList.add(_OrganizationEntry.fromMap(organization));
+          }
+        }
+      }
     }
     setState(() {});
   }
@@ -144,11 +181,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
     try {
       final policies = await ApiService.getOnboardingPolicies();
       setState(() {
-        _policies = policies;
+        _policies = policies.length >= volunteerPolicies.length ? policies : volunteerPolicies;
         _loadingPolicies = false;
       });
     } catch (_) {
-      setState(() => _loadingPolicies = false);
+      setState(() {
+        _policies = volunteerPolicies;
+        _loadingPolicies = false;
+      });
     }
   }
 
@@ -188,7 +228,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (image == null) return;
 
       setState(() => _selectedImage = File(image.path));
-      _uploadPhoto();
+      await _uploadPhoto();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +383,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'account_number': _accountNoCtrl.text.trim(),
           'declaration_date': _declarationDate.toIso8601String().split('T')[0],
           'declaration_place': _declarationPlaceCtrl.text.trim(),
-
+          'father_husband_name': _fatherHusbandCtrl.text.trim(),
+          'marital_status': _maritalStatus,
+          'pan_number': _panNumberCtrl.text.trim(),
+          'aadhar_number': _aadharNumberCtrl.text.trim(),
+          'permanent_address': _permanentAddressCtrl.text.trim(),
+          'emergency_contact_name': _emergencyNameCtrl.text.trim(),
+          'emergency_contact_relation': _emergencyRelationCtrl.text.trim(),
+          'emergency_contact_phone': _emergencyPhoneCtrl.text.trim(),
         },
         education: _educationList
             .where((e) => e.degreeCtrl.text.trim().isNotEmpty)
@@ -374,6 +421,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
               'phone': r.phoneCtrl.text.trim(),
             })
             .toList(),
+        previousOrganizations: _organizationList
+            .where((o) => o.nameCtrl.text.trim().isNotEmpty)
+            .map((o) => {
+              'organization_name': o.nameCtrl.text.trim(),
+              'role': o.roleCtrl.text.trim(),
+              'from_year': o.fromYearCtrl.text.trim(),
+              'to_year': o.toYearCtrl.text.trim(),
+            })
+            .toList(),
       );
       if (!mounted) return;
       _pageController.jumpToPage(_steps.length - 1);
@@ -389,9 +445,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     switch (_currentStep) {
       case 0: if (!_validatePersonal()) return; break;
       case 1: if (!_validateEducation()) return; break;
-      case 2: if (!_validateFamily()) return; break;
-      case 3: if (!_validateReferences()) return; break;
-      case 6: if (!_validateDeclaration()) return; break;
+      case 3: if (!_validateFamily()) return; break;
+      case 4: if (!_validateReferences()) return; break;
+      case 7: if (!_validateDeclaration()) return; break;
     }
     if (_currentStep < _steps.length - 1) {
       _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
@@ -428,14 +484,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 children: [
                   _buildPersonalDetails(),
                   _buildEducation(),
+                  _buildPreviousOrganizations(),
                   _buildFamily(),
                   _buildReferences(),
                   _buildPhotoUpload(),
                   _buildDocumentsBank(),
                   _buildDeclaration(),
                   _buildPolicies(),
-              _buildReview(),
-              _buildSuccessScreen(),
+                  _buildReview(),
+                  _buildSuccessScreen(),
             ],
               ),
             ),
@@ -595,6 +652,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
               Expanded(child: _textField(_altPhoneCtrl, 'Alt. Phone', Icons.phone, 'Optional', keyboardType: TextInputType.phone)),
             ],
           ),
+          const SizedBox(height: 12),
+          _textField(_fatherHusbandCtrl, 'Father / Husband Name', Icons.person, 'Enter father or husband name'),
           const SizedBox(height: 16),
           _sectionTitle('Personal Info'),
           const SizedBox(height: 12),
@@ -638,6 +697,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _dropdownField('Marital Status', _maritalStatus, ['Single', 'Married', 'Divorced', 'Widowed'], (v) => setState(() => _maritalStatus = v!)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
           const SizedBox(height: 16),
           _sectionTitle('Address'),
           const SizedBox(height: 12),
@@ -652,6 +721,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 12),
           _textField(_pincodeCtrl, 'Pincode', Icons.pin, '6-digit pincode', keyboardType: TextInputType.number, maxLength: 6),
+          const SizedBox(height: 16),
+          _sectionTitle('Identity Numbers'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _textField(_panNumberCtrl, 'PAN Number', Icons.assignment, 'e.g., ABCDE1234F')),
+              const SizedBox(width: 12),
+              Expanded(child: _textField(_aadharNumberCtrl, 'Aadhaar Number', Icons.credit_card, '12-digit number', keyboardType: TextInputType.number, maxLength: 12)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _textField(_permanentAddressCtrl, 'Permanent Address', Icons.home, 'If different from current address'),
+          const SizedBox(height: 16),
+          _sectionTitle('Emergency Contact'),
+          const SizedBox(height: 12),
+          _textField(_emergencyNameCtrl, 'Contact Person Name', Icons.person, 'Full name'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _textField(_emergencyRelationCtrl, 'Relationship', Icons.people, 'e.g., Spouse, Parent')),
+              const SizedBox(width: 12),
+              Expanded(child: _textField(_emergencyPhoneCtrl, 'Phone', Icons.phone, 'Contact number', keyboardType: TextInputType.phone)),
+            ],
+          ),
         ],
       ),
     );
@@ -730,7 +823,96 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 3: FAMILY ----
+  // ---- STEP 3: PREVIOUS ORGANIZATIONS ----
+
+  Widget _buildPreviousOrganizations() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Previous Organizations'),
+          const SizedBox(height: 4),
+          Text('Add your previous work experience (if any)',
+            style: TextStyle(fontSize: 13, color: const Color(0xFF74777e))),
+          const SizedBox(height: 12),
+          if (_organizationList.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              width: double.infinity,
+              child: Column(
+                children: [
+                  Icon(Icons.work_history, size: 48, color: const Color(0xFFc3c6ce)),
+                  const SizedBox(height: 12),
+                  Text('No previous organizations added',
+                    style: TextStyle(fontSize: 14, color: const Color(0xFF74777e))),
+                ],
+              ),
+            )
+          else
+            ..._organizationList.asMap().entries.map((entry) {
+              final i = entry.key;
+              final o = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFdfe3e7)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Organization ${i + 1}',
+                          style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF00152a))),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            o.dispose();
+                            setState(() => _organizationList.removeAt(i));
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.delete_outline, size: 20, color: const Color(0xFFba1a1a)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _textField(o.nameCtrl, 'Organization Name *', Icons.business, 'Company / Organization name'),
+                    const SizedBox(height: 10),
+                    _textField(o.roleCtrl, 'Role / Designation', Icons.badge, 'Your job title'),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: _textField(o.fromYearCtrl, 'From Year', Icons.calendar_today, 'e.g., 2020', keyboardType: TextInputType.number)),
+                        const SizedBox(width: 10),
+                        Expanded(child: _textField(o.toYearCtrl, 'To Year', Icons.calendar_today, 'e.g., 2023', keyboardType: TextInputType.number)),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _organizationList.add(_OrganizationEntry())),
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00152a)),
+              label: Text('Add Organization',
+                style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF00152a))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- STEP 4: FAMILY ----
+
+
 
   Widget _buildFamily() {
     return SingleChildScrollView(
@@ -815,7 +997,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 4: REFERENCES ----
+  // ---- STEP 5: REFERENCES ----
 
   Widget _buildReferences() {
     return SingleChildScrollView(
@@ -898,7 +1080,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 5: PHOTO UPLOAD ----
+  // ---- STEP 6: PHOTO UPLOAD ----
 
   Widget _buildPhotoUpload() {
     return SingleChildScrollView(
@@ -964,7 +1146,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 6: DOCUMENTS & BANK ----
+  // ---- STEP 7: DOCUMENTS & BANK ----
 
   Widget _buildDocumentsBank() {
     return SingleChildScrollView(
@@ -1084,7 +1266,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 7: DECLARATION ----
+  // ---- STEP 8: DECLARATION ----
 
   Widget _buildDeclaration() {
     return SingleChildScrollView(
@@ -1168,7 +1350,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 8: POLICIES ----
+  // ---- STEP 9: POLICIES ----
 
   Widget _buildPolicies() {
     return Column(
@@ -1280,7 +1462,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ---- STEP 7: REVIEW & SUBMIT ----
+  // ---- STEP 10: REVIEW & SUBMIT ----
 
   Widget _buildReview() {
     return SingleChildScrollView(
@@ -1299,10 +1481,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
             if (_altPhoneCtrl.text.isNotEmpty) _reviewItem('Alt Phone', _altPhoneCtrl.text),
             _reviewItem('Gender', _gender),
             if (_dob != null) _reviewItem('DOB', '${_dob!.day}/${_dob!.month}/${_dob!.year}'),
+            if (_fatherHusbandCtrl.text.isNotEmpty) _reviewItem('Father/Husband', _fatherHusbandCtrl.text),
+            _reviewItem('Marital Status', _maritalStatus),
+            if (_panNumberCtrl.text.isNotEmpty) _reviewItem('PAN', _panNumberCtrl.text),
+            if (_aadharNumberCtrl.text.isNotEmpty) _reviewItem('Aadhaar', _aadharNumberCtrl.text),
             if (_addressCtrl.text.isNotEmpty) _reviewItem('Address', _addressCtrl.text),
             if (_cityCtrl.text.isNotEmpty) _reviewItem('City', _cityCtrl.text),
             if (_stateCtrl.text.isNotEmpty) _reviewItem('State', _stateCtrl.text),
             if (_pincodeCtrl.text.isNotEmpty) _reviewItem('Pincode', _pincodeCtrl.text),
+            if (_permanentAddressCtrl.text.isNotEmpty) _reviewItem('Perm. Address', _permanentAddressCtrl.text),
+            if (_emergencyNameCtrl.text.isNotEmpty) _reviewItem('Emergency Contact', '${_emergencyNameCtrl.text}${_emergencyRelationCtrl.text.isNotEmpty ? ' (${_emergencyRelationCtrl.text})' : ''}${_emergencyPhoneCtrl.text.isNotEmpty ? ' · ${_emergencyPhoneCtrl.text}' : ''}'),
           ]),
           const SizedBox(height: 12),
           if (_educationList.any((e) => e.degreeCtrl.text.isNotEmpty))
@@ -1310,6 +1498,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
               _educationList.where((e) => e.degreeCtrl.text.isNotEmpty).map((e) => _reviewItem(
                 e.degreeCtrl.text,
                 '${e.institutionCtrl.text}${e.yearCtrl.text.isNotEmpty ? ' (${e.yearCtrl.text})' : ''}',
+              )).toList(),
+            ),
+          if (_organizationList.any((o) => o.nameCtrl.text.isNotEmpty))
+            _reviewCard('Previous Organizations', Icons.work_history,
+              _organizationList.where((o) => o.nameCtrl.text.isNotEmpty).map((o) => _reviewItem(
+                o.nameCtrl.text,
+                '${o.roleCtrl.text.isNotEmpty ? '${o.roleCtrl.text} · ' : ''}${o.fromYearCtrl.text.isNotEmpty ? '${o.fromYearCtrl.text}' : ''}${o.toYearCtrl.text.isNotEmpty ? ' - ${o.toYearCtrl.text}' : ''}',
               )).toList(),
             ),
           const SizedBox(height: 12),
@@ -1586,6 +1781,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ],
       ),
     );
+  }
+}
+
+class _OrganizationEntry {
+  final nameCtrl = TextEditingController();
+  final roleCtrl = TextEditingController();
+  final fromYearCtrl = TextEditingController();
+  final toYearCtrl = TextEditingController();
+
+  _OrganizationEntry();
+
+  _OrganizationEntry.fromMap(Map map) {
+    nameCtrl.text = map['organization_name'] ?? map['name'] ?? '';
+    roleCtrl.text = map['role'] ?? map['designation'] ?? '';
+    fromYearCtrl.text = map['from_year']?.toString() ?? '';
+    toYearCtrl.text = map['to_year']?.toString() ?? '';
+  }
+
+  void dispose() {
+    nameCtrl.dispose();
+    roleCtrl.dispose();
+    fromYearCtrl.dispose();
+    toYearCtrl.dispose();
   }
 }
 

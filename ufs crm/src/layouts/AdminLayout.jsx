@@ -40,6 +40,8 @@ import GenerateQR from '../panels/HOAdmin/pages/GenerateQR';
 import HRNoticeForm from '../panels/HR/pages/NoticeForm';
 import HRAchievementList from '../panels/HR/pages/AchievementList';
 import HRAchievementForm from '../panels/HR/pages/AchievementForm';
+import HRSendNotification from '../panels/HR/pages/SendNotification';
+import HRNotificationList from '../panels/HR/pages/NotificationList';
 import AccountsDashboard from '../panels/Accounts/pages/Dashboard';
 import AccountsSalary from '../panels/Accounts/pages/Salary';
 import AccountsReports from '../panels/Accounts/pages/Reports';
@@ -173,6 +175,8 @@ function AdminLayout({ user, onLogout }) {
               <Route path="/notices/:id/edit" element={<HRNoticeForm />} />
               <Route path="/achievements" element={<HRAchievementList />} />
               <Route path="/achievements/new" element={<HRAchievementForm />} />
+              <Route path="/notifications/new" element={<HRSendNotification />} />
+              <Route path="/notifications/scheduled" element={<HRNotificationList />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

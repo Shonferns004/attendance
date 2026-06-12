@@ -29,6 +29,9 @@ export const saveWorkerEducation = async (workerId, educationList) => {
     university: e.university || null,
     year_of_passing: e.year_of_passing ? parseInt(e.year_of_passing, 10) : null,
     percentage: e.percentage || null,
+    from_year: e.from_year || null,
+    to_year: e.to_year || null,
+    specialization: e.specialization || null,
   }));
 
   const { data, error } = await supabase
@@ -190,6 +193,15 @@ export const updateWorkerPersonalDetails = async (workerId, details) => {
   if (details.account_number !== undefined) updates.account_number = details.account_number;
   if (details.declaration_date !== undefined) updates.declaration_date = details.declaration_date;
   if (details.declaration_place !== undefined) updates.declaration_place = details.declaration_place;
+  if (details.father_husband_name !== undefined) updates.father_husband_name = details.father_husband_name;
+  if (details.permanent_address !== undefined) updates.permanent_address = details.permanent_address;
+  if (details.marital_status !== undefined) updates.marital_status = details.marital_status;
+  if (details.pan_number !== undefined) updates.pan_number = details.pan_number;
+  if (details.aadhar_number !== undefined) updates.aadhar_number = details.aadhar_number;
+  if (details.emergency_contact_name !== undefined) updates.emergency_contact_name = details.emergency_contact_name;
+  if (details.emergency_contact_relation !== undefined) updates.emergency_contact_relation = details.emergency_contact_relation;
+  if (details.emergency_contact_phone !== undefined) updates.emergency_contact_phone = details.emergency_contact_phone;
+  if (details.previous_organizations !== undefined) updates.previous_organizations = details.previous_organizations;
 
   const { data, error } = await supabase
     .from('workers')

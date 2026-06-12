@@ -18,6 +18,7 @@ import eventRoutes from './routes/eventRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
 import achievementRoutes from './routes/achievementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import notificationAdminRoutes from './routes/notificationAdminRoutes.js';
 import onboardingRoutes from './routes/onboardingRoutes.js';
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin/notifications', notificationAdminRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 
 app.get('/', (req, res) => {

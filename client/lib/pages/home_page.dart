@@ -18,7 +18,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   Timer? _clockTimer;
   DateTime _now = DateTime.now();
@@ -33,6 +33,8 @@ class _HomePageState extends State<HomePage> {
   String _workerName = '';
   String _workerId = '';
   String _officeStartTime = '10:00';
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
   String _officeEndTime = '19:00';
   List<Map<String, dynamic>> _notifications = [];
   int _unreadCount = 0;
@@ -40,6 +42,13 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    _pulseAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut),
+    );
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() => _now = DateTime.now());
       if (_isPunchedIn && !_isPunchedOut) {
@@ -63,6 +72,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _clockTimer?.cancel();
     _scrollController.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
@@ -585,57 +595,88 @@ class _HomePageState extends State<HomePage> {
                         ],
                       )
                     else
-                      GestureDetector(
-                        onTap: _isPunchedIn ? _punchOut : _punchIn,
-                        child: InkWell(
-                          onTap: _isPunchedIn ? _punchOut : _punchIn,
-                          borderRadius: BorderRadius.circular(100),
-                          splashColor: Colors.white.withValues(alpha: 0.3),
-                          highlightColor: Colors.white.withValues(alpha: 0.1),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            width: 192,
-                            height: 192,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: _isPunchedIn
-                                    ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
-                                    : [const Color(0xFF00152a), const Color(0xFF102a43)],
+                      SizedBox(
+                        width: 192,
+                        height: 192,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            for (final i in [0, 1, 2])
+                              AnimatedBuilder(
+                                animation: _pulseAnim,
+                                builder: (context, child) {
+                                  final phase = i * 0.33;
+                                  final t = (_pulseAnim.value + phase) % 1.0;
+                                  final scale = 1.0 + t * 0.6;
+                                  final opacity = (1.0 - t) * 0.2;
+                                  return Transform.scale(
+                                    scale: scale,
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: Container(
+                                        width: 192,
+                                        height: 192,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: _isPunchedIn
+                                                ? const Color(0xFF2a6a4b).withValues(alpha: 0.5)
+                                                : const Color(0xFF00152a).withValues(alpha: 0.5),
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              borderRadius: BorderRadius.circular(100),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _isPunchedIn
-                                      ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
-                                      : const Color(0xFF00152a).withValues(alpha: 0.4),
-                                  blurRadius: 40,
-                                  offset: const Offset(0, 20),
+                            GestureDetector(
+                              onTap: _isPunchedIn ? _punchOut : _punchIn,
+                              child: Container(
+                                width: 192,
+                                height: 192,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: _isPunchedIn
+                                        ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
+                                        : [const Color(0xFF00152a), const Color(0xFF102a43)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(100),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _isPunchedIn
+                                          ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
+                                          : const Color(0xFF00152a).withValues(alpha: 0.4),
+                                      blurRadius: 40,
+                                      offset: const Offset(0, 20),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      _isPunchedIn ? Icons.logout : Icons.qr_code_scanner,
+                                      size: 48,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _isPunchedIn ? 'Punch Out' : 'Punch In',
+                                      style: const TextStyle(
+                                        fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _isPunchedIn ? Icons.logout : Icons.qr_code_scanner,
-                                size: 48,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _isPunchedIn ? 'Punch Out' : 'Punch In',
-                                style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.5,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
-                    ),
                     const SizedBox(height: 40),
                     Row(
                       children: [

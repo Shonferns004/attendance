@@ -46,6 +46,7 @@ const navMap = {
     { path: '/events', label: 'Events', icon: 'event' },
     { path: '/notices', label: 'Notices', icon: 'campaign' },
     { path: '/achievements', label: 'Achievements', icon: 'emoji_events' },
+    { path: '/notifications/scheduled', label: 'Send Notification', icon: 'notifications' },
   ],
   accounts: [
     { path: '/', label: 'Dashboard', icon: 'dashboard' },

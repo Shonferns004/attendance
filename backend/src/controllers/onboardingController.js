@@ -24,10 +24,14 @@ export const submitOnboarding = async (req, res) => {
       education,
       family,
       references,
+      previous_organizations,
     } = req.body;
 
     // 1. Save personal details
     if (personal_details) {
+      if (previous_organizations) {
+        personal_details.previous_organizations = previous_organizations;
+      }
       await updateWorkerPersonalDetails(workerId, personal_details);
     }
 
@@ -88,7 +92,7 @@ export const uploadPhoto = async (req, res) => {
     const fileName = `worker_photos/${workerId}_${Date.now()}.${ext}`;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    let { data: uploadData, error: uploadError } = await supabase.storage
       .from('worker-documents')
       .upload(fileName, buffer, {
         contentType,
@@ -111,6 +115,7 @@ export const uploadPhoto = async (req, res) => {
         if (retryError) {
           return res.status(500).json({ message: 'Upload failed: ' + retryError.message });
         }
+        uploadData = retryData;
       } else {
         return res.status(500).json({ message: 'Upload failed: ' + uploadError.message });
       }
@@ -156,7 +161,7 @@ export const uploadDocument = async (req, res) => {
     const ext = contentType.split('/')[1] || 'jpg';
     const fileName = `worker_documents/${workerId}/${document_type}_${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
+    let { data: uploadData, error: uploadError } = await supabase.storage
       .from('worker-documents')
       .upload(fileName, buffer, { contentType, upsert: true });
 
@@ -166,12 +171,13 @@ export const uploadDocument = async (req, res) => {
         if (bucketError) {
           return res.status(500).json({ message: 'Failed to create storage bucket: ' + bucketError.message });
         }
-        const { error: retryError } = await supabase.storage
+        const { data: retryData, error: retryError } = await supabase.storage
           .from('worker-documents')
           .upload(fileName, buffer, { contentType, upsert: true });
         if (retryError) {
           return res.status(500).json({ message: 'Upload failed: ' + retryError.message });
         }
+        uploadData = retryData;
       } else {
         return res.status(500).json({ message: 'Upload failed: ' + uploadError.message });
       }

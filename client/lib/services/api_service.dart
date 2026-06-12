@@ -301,6 +301,7 @@ class ApiService {
     required List<Map<String, dynamic>> education,
     required List<Map<String, dynamic>> family,
     required List<Map<String, dynamic>> references,
+    List<Map<String, dynamic>> previousOrganizations = const [],
   }) async {
     final res = await http.post(
       Uri.parse('$baseUrl/onboarding/submit'),
@@ -310,6 +311,7 @@ class ApiService {
         'education': education,
         'family': family,
         'references': references,
+        'previous_organizations': previousOrganizations,
       }),
     );
     final body = jsonDecode(res.body);
