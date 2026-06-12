@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'services/supabase_service.dart';
 import 'pages/login_page.dart';
 import 'pages/onboarding_page.dart';
 import 'pages/home_page.dart';
@@ -19,6 +20,7 @@ void main() async {
   } catch (e) {
     print('Firebase init error: $e');
   }
+  await SupabaseService.initialize();
   final navigatorKey = GlobalKey<NavigatorState>();
   runApp(AttendXApp(navigatorKey: navigatorKey));
 }

@@ -616,30 +616,35 @@ class _HomePageState extends State<HomePage> {
                     else
                       GestureDetector(
                         onTap: _isPunchedIn ? _punchOut : _punchIn,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 192,
-                          height: 192,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: _isPunchedIn
-                                  ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
-                                  : [const Color(0xFF00152a), const Color(0xFF102a43)],
-                            ),
-                            borderRadius: BorderRadius.circular(100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _isPunchedIn
-                                    ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
-                                    : const Color(0xFF00152a).withValues(alpha: 0.4),
-                                blurRadius: 40,
-                                offset: const Offset(0, 20),
+                        child: InkWell(
+                          onTap: _isPunchedIn ? _punchOut : _punchIn,
+                          borderRadius: BorderRadius.circular(100),
+                          splashColor: Colors.white.withValues(alpha: 0.3),
+                          highlightColor: Colors.white.withValues(alpha: 0.1),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: 192,
+                            height: 192,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: _isPunchedIn
+                                    ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
+                                    : [const Color(0xFF00152a), const Color(0xFF102a43)],
                               ),
-                            ],
-                          ),
-                          child: Column(
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _isPunchedIn
+                                      ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
+                                      : const Color(0xFF00152a).withValues(alpha: 0.4),
+                                  blurRadius: 40,
+                                  offset: const Offset(0, 20),
+                                ),
+                              ],
+                            ),
+                            child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
@@ -863,7 +868,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1149,7 +1155,6 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                           ),
                         ),
                       ),
-                    ),
                     if (!isLast) const SizedBox(height: 12),
                   ],
                 );

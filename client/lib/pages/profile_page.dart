@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/supabase_service.dart';
 import '../main.dart';
 import '../widgets/mini_calendar.dart';
 import '../widgets/progress_circle.dart';
@@ -32,6 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _selectedDateKey;
   final Map<int, Map<String, int>> _monthlyStats = {};
   int _calYear = 0, _calMonth = 0;
+  String? _workerId;
 
   @override
   void initState() {
@@ -52,11 +54,15 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    if (_workerId != null) {
+      SupabaseService.unsubscribeFromHistory();
+    }
     super.dispose();
   }
 
   Future<void> _loadData() async {
     _worker = await ApiService.getWorkerData();
+    _workerId = _worker?['id']?.toString();
     final n = DateTime.now();
     if (_calYear == 0) { _calYear = n.year; _calMonth = n.month; }
 
@@ -74,9 +80,62 @@ class _ProfilePageState extends State<ProfilePage> {
       final profile = await ApiService.getMyProfile();
       _worker = profile;
       await ApiService.saveWorkerData(profile);
+      _workerId = profile['id']?.toString();
     } catch (_) {}
 
     await _refreshHistoryFromNetwork();
+
+    // Subscribe to realtime updates
+    if (_workerId != null && _workerId!.isNotEmpty) {
+      SupabaseService.subscribeToHistory(
+        workerId: _workerId!,
+        onHistoryChange: _handleRealtimeHistoryUpdate,
+      );
+    }
+  }
+
+  void _handleRealtimeHistoryUpdate(List<dynamic> history) {
+    int p = 0, a = 0, l = 0, lv = 0;
+    final statusMap = <String, String>{};
+    final monthlyStats = <int, Map<String, int>>{};
+    final hoursMap = <String, String>{};
+    final detailMap = <String, Map<String, dynamic>>{};
+
+    for (final rec in history) {
+      final date = rec['date'] ?? '';
+      final status = rec['status'] ?? 'present';
+      statusMap[date.toString()] = status.toString();
+      final hw = rec['hours_worked'];
+      if (hw != null) hoursMap[date.toString()] = hw.toString();
+      detailMap[date.toString()] = {
+        'date': date,
+        'status': status,
+        'punch_in_time': rec['punch_in_time'],
+        'punch_out_time': rec['punch_out_time'],
+        'hours_worked': hw,
+        'late_minutes': rec['late_minutes'],
+      };
+      final dt = DateTime.tryParse(date.toString());
+      if (dt != null) {
+        final ym = dt.year * 100 + dt.month;
+        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0});
+        final st = status.toString();
+        if (monthlyStats[ym]!.containsKey(st)) {
+          monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
+        }
+      }
+      switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; p++; break; case 'leave': lv++; break; }
+    }
+
+    setState(() {
+      _history = history;
+      _present = p; _absent = a; _late = l; _leave = lv;
+      _statusByDate = statusMap;
+      _hoursByDate = hoursMap;
+      _historyByDate = detailMap;
+      _monthlyStats.clear();
+      _monthlyStats.addAll(monthlyStats);
+    });
   }
 
   Future<void> _applyCachedHistory(Future<List<dynamic>?> future) async {
@@ -111,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
           monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
         }
       }
-      switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; break; case 'leave': lv++; break; }
+        switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; p++; break; case 'leave': lv++; break; }
     }
 
     setState(() {
@@ -163,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
             monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
           }
         }
-        switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; break; case 'leave': lv++; break; }
+      switch (status) { case 'present': p++; break; case 'absent': a++; break; case 'late': l++; p++; break; case 'leave': lv++; break; }
       }
 
       setState(() {
@@ -499,7 +558,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _legendDot('Present', const Color(0xFFaff1ca)),
               _legendDot('Absent', const Color(0xFFffdad6)),
               _legendDot('Leave', const Color(0xFFd1e4ff)),
-              _legendDot('Half Day', const Color(0xFFffddb8)),
+              _legendDot('Late', const Color(0xFFffddb8)),
             ],
           ),
         ],
