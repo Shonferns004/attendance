@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../main.dart';
 
@@ -24,10 +26,15 @@ class _LeavePageState extends State<LeavePage> {
   List<dynamic> _leaves = [];
   bool _loadingLeaves = true;
 
+  String? _proofBase64;
+  String? _proofMime;
+  String? _proofFileName;
+
   final Map<String, String> _typeLabels = {
     'full_day': 'Full Day',
     'half_day': 'Half Day',
     'vacational': 'Vacational',
+    'emergency': 'Emergency',
   };
 
   @override
@@ -86,8 +93,11 @@ class _LeavePageState extends State<LeavePage> {
       if (sd == null || ed == null) return 'Invalid dates';
       if (ed.isBefore(sd)) return 'End date must be on or after start date';
       if (_daysFromNow(sd) < 30) return 'Vacational leave must be applied at least 1 month prior';
+    } else if (_selectedType == 'emergency') {
+      if (_leaveDateCtrl.text.isEmpty) return 'Please select a leave date';
+      final date = DateTime.tryParse(_leaveDateCtrl.text);
+      if (date == null) return 'Invalid date';
     }
-
     if (_reasonCtrl.text.trim().isEmpty) return 'Please provide a reason';
     return null;
   }
@@ -113,7 +123,15 @@ class _LeavePageState extends State<LeavePage> {
       } else if (_selectedType == 'vacational') {
         data['start_date'] = _startDateCtrl.text;
         data['end_date'] = _endDateCtrl.text;
+      } else if (_selectedType == 'emergency') {
+        data['leave_date'] = _leaveDateCtrl.text;
       }
+
+      if (_proofBase64 != null) {
+        data['proof_data'] = _proofBase64;
+        data['proof_mime'] = _proofMime;
+      }
+
       await ApiService.applyLeave(data);
       if (!mounted) return;
       setState(() { _showSuccess = true; _submitting = false; });
@@ -137,6 +155,9 @@ class _LeavePageState extends State<LeavePage> {
       _reasonCtrl.clear();
       _halfStartTime = null;
       _halfEndTime = null;
+      _proofBase64 = null;
+      _proofMime = null;
+      _proofFileName = null;
     });
   }
 
@@ -145,7 +166,7 @@ class _LeavePageState extends State<LeavePage> {
     if (_selectedType == 'full_day') return today.add(const Duration(days: 2));
     if (_selectedType == 'half_day') return today.add(const Duration(days: 1));
     if (_selectedType == 'vacational') return today.add(const Duration(days: 30));
-    return today;
+    return today; // emergency and others can be immediate
   }
 
   Future<void> _pickDate(TextEditingController ctrl, {DateTime? minDate}) async {
@@ -174,6 +195,26 @@ class _LeavePageState extends State<LeavePage> {
     }
   }
 
+  Future<void> _pickProof() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1920);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    setState(() {
+      _proofBase64 = base64Encode(bytes);
+      _proofMime = file.mimeType ?? 'image/jpeg';
+      _proofFileName = file.name;
+    });
+  }
+
+  void _removeProof() {
+    setState(() {
+      _proofBase64 = null;
+      _proofMime = null;
+      _proofFileName = null;
+    });
+  }
+
   Color _statusColor(String status) {
     switch (status) {
       case 'approved': return const Color(0xFF1D7A4F);
@@ -200,6 +241,7 @@ class _LeavePageState extends State<LeavePage> {
   String _leaveDates(dynamic l) {
     final type = l['type'] ?? '';
     if (type == 'vacational') return '${_formatDate(l['start_date'])} – ${_formatDate(l['end_date'])}';
+    if (type == 'emergency') return '🔴 ${_formatDate(l['leave_date'])}';
     if (type == 'half_day') {
       final st = l['half_start_time']?.toString().substring(0, 5) ?? '';
       final et = l['half_end_time']?.toString().substring(0, 5) ?? '';
@@ -315,7 +357,7 @@ class _LeavePageState extends State<LeavePage> {
             ),
             suffixIcon: Icon(Icons.expand_more, color: scheme.onSurfaceVariant),
           ),
-          items: ['full_day', 'half_day', 'vacational'].map((t) => DropdownMenuItem(
+          items: ['full_day', 'half_day', 'vacational', 'emergency'].map((t) => DropdownMenuItem(
             value: t,
             child: Text(_typeLabels[t]!, style: TextStyle(fontSize: 14, color: scheme.onSurface)),
           )).toList(),
@@ -326,6 +368,9 @@ class _LeavePageState extends State<LeavePage> {
             _endDateCtrl.clear();
             _halfStartTime = null;
             _halfEndTime = null;
+            _proofBase64 = null;
+            _proofMime = null;
+            _proofFileName = null;
           }),
         ),
         if (_selectedType == 'full_day') ...[
@@ -361,6 +406,21 @@ class _LeavePageState extends State<LeavePage> {
             child: Text('Must be applied at least 1 month prior',
               style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
           ),
+        ],
+        if (_selectedType == 'emergency') ...[
+          const SizedBox(height: 16), _label(tt, 'Leave date', colors), const SizedBox(height: 8),
+          _dateField(_leaveDateCtrl, colors, scheme),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('Immediate emergency leave — no prior notice required',
+              style: TextStyle(fontSize: 11, color: const Color(0xFFC0392B))),
+          ),
+        ],
+        if (_selectedType != null && _selectedType != 'half_day') ...[
+          const SizedBox(height: 16),
+          _label(tt, 'Proof (optional)', colors),
+          const SizedBox(height: 8),
+          _buildProofUploader(colors, scheme),
         ],
         const SizedBox(height: 16),
         _label(tt, 'Reason', colors),
@@ -467,6 +527,48 @@ class _LeavePageState extends State<LeavePage> {
     );
   }
 
+  Widget _buildProofUploader(AppColors colors, ColorScheme scheme) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFDDDDDD)),
+      ),
+      child: _proofBase64 != null
+          ? Row(
+              children: [
+                const SizedBox(width: 12),
+                Icon(Icons.image, size: 20, color: scheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(_proofFileName ?? 'Proof attached',
+                    style: TextStyle(fontSize: 13, color: scheme.onSurface), overflow: TextOverflow.ellipsis),
+                ),
+                GestureDetector(
+                  onTap: _removeProof,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(Icons.close, size: 18, color: scheme.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            )
+          : GestureDetector(
+              onTap: _pickProof,
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  Icon(Icons.upload_file, size: 20, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Text('Upload proof (image)',
+                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+    );
+  }
+
   Widget _buildHistory(AppColors colors, ColorScheme scheme, TextTheme tt) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -522,6 +624,8 @@ class _LeavePageState extends State<LeavePage> {
         icon = Icons.flight; iconColor = scheme.primary; iconBg = colors.primaryFixed; break;
       case 'half_day':
         icon = Icons.access_time; iconColor = colors.onTertiaryFixedVariant; iconBg = colors.tertiaryFixed; break;
+      case 'emergency':
+        icon = Icons.warning_amber; iconColor = const Color(0xFFC0392B); iconBg = const Color(0xFFFDEAEA); break;
       default:
         icon = Icons.event; iconColor = scheme.primary; iconBg = colors.primaryFixed; break;
     }

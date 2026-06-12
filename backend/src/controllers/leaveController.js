@@ -28,14 +28,14 @@ function daysBetween(a, b) {
 
 export const apply = async (req, res) => {
   try {
-    const { type, leave_date, start_date, end_date, half_start_time, half_end_time, reason } = req.body;
+    const { type, leave_date, start_date, end_date, half_start_time, half_end_time, reason, proof_data, proof_mime } = req.body;
     const workerId = req.user.id;
 
     if (!type || !reason || !reason.trim()) {
       return res.status(400).json({ message: 'Type and reason are required' });
     }
 
-    if (!['full_day', 'half_day', 'vacational'].includes(type)) {
+    if (!['full_day', 'half_day', 'vacational', 'emergency'].includes(type)) {
       return res.status(400).json({ message: 'Invalid leave type' });
     }
 
@@ -104,7 +104,20 @@ export const apply = async (req, res) => {
       days = daysBetween(sd, ed) + 1;
       record.start_date = start_date;
       record.end_date = end_date;
+    } else if (type === 'emergency') {
+      if (!leave_date) {
+        return res.status(400).json({ message: 'Leave date is required for emergency leave' });
+      }
+      const ld = new Date(leave_date + 'T00:00:00+05:30');
+      if (isNaN(ld.getTime())) {
+        return res.status(400).json({ message: 'Invalid leave date' });
+      }
+      days = 1;
+      record.leave_date = leave_date;
     }
+
+    if (proof_data) record.proof_data = proof_data;
+    if (proof_mime) record.proof_mime = proof_mime;
 
     record.days = days;
     const result = await applyLeave(record);
