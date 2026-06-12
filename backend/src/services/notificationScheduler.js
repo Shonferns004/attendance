@@ -1,11 +1,13 @@
 import cron from 'node-cron';
 import groq from '../config/groq.js';
+import supabase from '../config/supabase.js';
 import { getAllWorkers } from '../models/workerModel.js';
 import { getUpcomingEvents } from '../models/eventModel.js';
 import { getRecentNotices } from '../models/noticeModel.js';
 import { getRecentAchievements } from '../models/achievementModel.js';
 import { getAllFcmTokens } from '../models/notificationModel.js';
 import { getPendingScheduledNotifications, markNotificationSent } from '../models/notificationAdminModel.js';
+import { getSetting } from '../models/settingsModel.js';
 import { sendPushToMultiple } from './fcmService.js';
 
 let lastNoticeCheck = new Date(0).toISOString();
@@ -215,5 +217,69 @@ async function sendScheduledNotifications() {
   }
 }
 
+async function sendPunchInReminders() {
+  try {
+    const officeStart = await getSetting('office_start_time');
+    if (!officeStart) return;
+    const [startHour, startMinute] = officeStart.split(':').map(Number);
+    const shiftTotalMinutes = startHour * 60 + startMinute;
+
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const ist = new Date(new Date().getTime() + istOffset);
+    const currentTotalMinutes = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+
+    const diff = shiftTotalMinutes - currentTotalMinutes;
+    let window;
+    if (diff >= 20 && diff < 21) window = '20';
+    else if (diff >= 10 && diff < 11) window = '10';
+    else return;
+
+    const todayDateStr = getDateString(ist);
+    const tokens = await getAllFcmTokens();
+    if (!tokens || tokens.length === 0) return;
+
+    for (const t of tokens) {
+      const title = `⏰ ${window} min to shift!`;
+
+      const { data: existing } = await supabase
+        .from('notification_log')
+        .select('id')
+        .eq('worker_id', t.worker_id)
+        .eq('type', 'punch_reminder')
+        .eq('title', title)
+        .gte('sent_at', `${todayDateStr}T00:00:00+05:30`)
+        .lte('sent_at', `${todayDateStr}T23:59:59+05:30`)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const { data: attendance } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('worker_id', t.worker_id)
+        .eq('date', todayDateStr)
+        .maybeSingle();
+
+      if (attendance) continue;
+
+      const workerName = t.name || t.workers?.name || 'there';
+      const prompt = `Remind ${workerName} that their shift starts in ${window} minutes. Tell them to get ready and punch in on time. Keep it under 100 characters. Warm and motivating.`;
+      const aiMsg = await generateAiMessage(prompt);
+      const body = aiMsg || `Hey ${workerName}, your shift starts in ${window} minutes! Please punch in on time.`;
+
+      await sendPushToMultiple([{
+        workerId: t.worker_id, title, body, type: 'punch_reminder', referenceId: null,
+      }]);
+    }
+
+    console.log(`Punch-in ${window}min reminders sent at ${ist.toISOString()}`);
+  } catch (error) {
+    console.error('Punch-in reminder error:', error.message);
+  }
+}
+
 cron.schedule('* * * * *', () => sendScheduledNotifications());
 console.log('Scheduled: every-minute check for admin-scheduled notifications');
+
+cron.schedule('* * * * *', () => sendPunchInReminders());
+console.log('Scheduled: every-minute check for punch-in reminders');
