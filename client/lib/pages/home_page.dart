@@ -664,6 +664,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
+                    ),
                     const SizedBox(height: 40),
                     Row(
                       children: [
@@ -869,11 +870,10 @@ class _HomePageState extends State<HomePage> {
                             ),
                             Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
                             ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                           ),
+                         ),
+                       ),
+                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -1153,11 +1153,12 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                               ),
                             ],
                           ),
+                         ),
                         ),
                       ),
-                    if (!isLast) const SizedBox(height: 12),
-                  ],
-                );
+                      if (!isLast) const SizedBox(height: 12),
+                    ],
+                  );
               }),
             const SizedBox(height: 8),
             SizedBox(
