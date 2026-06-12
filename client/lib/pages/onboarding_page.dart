@@ -345,6 +345,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               'relationship': f.relationshipCtrl.text.trim(),
               'occupation': f.occupationCtrl.text.trim(),
               'phone': f.phoneCtrl.text.trim(),
+              'dob': f.dob?.toIso8601String().split('T')[0],
             })
             .toList(),
         references: _referenceList
@@ -354,7 +355,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
               'designation': r.designationCtrl.text.trim(),
               'organization': r.organizationCtrl.text.trim(),
               'phone': r.phoneCtrl.text.trim(),
-              'email': r.emailCtrl.text.trim(),
             })
             .toList(),
       );
@@ -778,6 +778,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                     const SizedBox(height: 10),
                     _textField(f.phoneCtrl, 'Phone', Icons.phone, 'Optional', keyboardType: TextInputType.phone),
+                    const SizedBox(height: 10),
+                    _familyDateField(f),
                   ],
                 ),
               );
@@ -860,13 +862,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: _textField(r.phoneCtrl, 'Phone', Icons.phone, 'Contact number', keyboardType: TextInputType.phone)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _textField(r.emailCtrl, 'Email', Icons.email, 'Email address')),
-                      ],
-                    ),
+                    _textField(r.phoneCtrl, 'Phone', Icons.phone, 'Contact number', keyboardType: TextInputType.phone),
                   ],
                 ),
               );
@@ -1210,7 +1206,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             _reviewCard('Family', Icons.family_restroom,
               _familyList.where((f) => f.nameCtrl.text.isNotEmpty).map((f) => _reviewItem(
                 f.nameCtrl.text,
-                '${f.relationshipCtrl.text}${f.occupationCtrl.text.isNotEmpty ? ' · ${f.occupationCtrl.text}' : ''}',
+                '${f.relationshipCtrl.text}${f.occupationCtrl.text.isNotEmpty ? ' · ${f.occupationCtrl.text}' : ''}${f.dob != null ? ' · ${f.dob!.day}/${f.dob!.month}/${f.dob!.year}' : ''}',
               )).toList(),
             ),
           const SizedBox(height: 12),
@@ -1397,6 +1393,39 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
+  Widget _familyDateField(_FamilyEntry f) {
+    return GestureDetector(
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: f.dob ?? DateTime(2000, 1, 1),
+          firstDate: DateTime(1950),
+          lastDate: DateTime.now(),
+        );
+        if (date != null) setState(() => f.dob = date);
+      },
+      child: Container(
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFc3c6ce)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, size: 18, color: const Color(0xFF74777e)),
+            const SizedBox(width: 8),
+            Text(
+              f.dob != null ? '${f.dob!.day}/${f.dob!.month}/${f.dob!.year}' : 'Date of Birth',
+              style: TextStyle(fontSize: 14, color: f.dob != null ? const Color(0xFF171c1f) : const Color(0xFF74777e)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _reviewCard(String title, IconData icon, List<Widget> items) {
     return Container(
       width: double.infinity,
@@ -1466,6 +1495,7 @@ class _FamilyEntry {
   final relationshipCtrl = TextEditingController();
   final occupationCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
+  DateTime? dob;
 
   void dispose() {
     nameCtrl.dispose();
@@ -1480,13 +1510,11 @@ class _ReferenceEntry {
   final designationCtrl = TextEditingController();
   final organizationCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
 
   void dispose() {
     nameCtrl.dispose();
     designationCtrl.dispose();
     organizationCtrl.dispose();
     phoneCtrl.dispose();
-    emailCtrl.dispose();
   }
 }

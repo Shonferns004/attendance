@@ -108,7 +108,7 @@ class _PrintFormPageState extends State<PrintFormPage> {
             pw.Table(
               border: pw.TableBorder.all(color: borderGray),
               children: [
-                _tableHeader(['#', 'Name', 'Relationship', 'Occupation', 'Phone'], headerBg),
+                _tableHeader(['#', 'Name', 'Relationship', 'Occupation', 'Phone', 'DOB'], headerBg),
                 ...family.asMap().entries.map((e) {
                   final f = e.value as Map<String, dynamic>;
                   return _tableRow([
@@ -117,6 +117,7 @@ class _PrintFormPageState extends State<PrintFormPage> {
                     f['relationship'] ?? '',
                     f['occupation'] ?? '-',
                     f['phone'] ?? '-',
+                    f['dob'] ?? '-',
                   ]);
                 }),
               ],
@@ -128,7 +129,7 @@ class _PrintFormPageState extends State<PrintFormPage> {
             pw.Table(
               border: pw.TableBorder.all(color: borderGray),
               children: [
-                _tableHeader(['#', 'Name', 'Designation', 'Organization', 'Phone', 'Email'], headerBg),
+                _tableHeader(['#', 'Name', 'Designation', 'Organization', 'Phone'], headerBg),
                 ...references.asMap().entries.map((e) {
                   final r = e.value as Map<String, dynamic>;
                   return _tableRow([
@@ -137,7 +138,6 @@ class _PrintFormPageState extends State<PrintFormPage> {
                     r['designation'] ?? '-',
                     r['organization'] ?? '-',
                     r['phone'] ?? '-',
-                    r['email'] ?? '-',
                   ]);
                 }),
               ],

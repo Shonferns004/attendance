@@ -66,6 +66,7 @@ export const saveWorkerFamily = async (workerId, familyList) => {
     relationship: f.relationship,
     occupation: f.occupation || null,
     phone: f.phone || null,
+    dob: f.dob || null,
   }));
 
   const { data, error } = await supabase
@@ -103,7 +104,6 @@ export const saveWorkerReferences = async (workerId, referenceList) => {
     designation: r.designation || null,
     organization: r.organization || null,
     phone: r.phone || null,
-    email: r.email || null,
   }));
 
   const { data, error } = await supabase
