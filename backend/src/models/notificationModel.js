@@ -67,3 +67,12 @@ export const getUnreadNotificationCount = async (worker_id) => {
   if (error) throw error;
   return count || 0;
 };
+
+export const deleteNotification = async (id) => {
+  const { error } = await supabase
+    .from('notification_log')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return { message: 'Notification deleted' };
+};

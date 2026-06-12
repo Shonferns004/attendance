@@ -213,6 +213,17 @@ class ApiService {
     return list;
   }
 
+  static Future<void> deleteNotification(String id) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/notifications/$id'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to delete notification');
+    }
+  }
+
   static Future<void> markNotificationRead(String id) async {
     final res = await http.put(
       Uri.parse('$baseUrl/notifications/$id/read'),

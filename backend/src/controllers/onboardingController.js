@@ -14,6 +14,21 @@ import {
   getFullWorkerProfile,
 } from '../models/onboardingModel.js';
 
+const BUCKET_NAME = 'worker-documents';
+
+const ensureWorkerDocumentsBucket = async () => {
+  const { data: buckets } = await supabase.storage.listBuckets();
+  const exists = buckets?.some((b) => b.name === BUCKET_NAME);
+  if (!exists) {
+    const { error } = await supabase.storage.createBucket(BUCKET_NAME, { public: true });
+    if (error) {
+      console.warn('Could not create storage bucket:', error.message);
+    } else {
+      console.log('Created storage bucket:', BUCKET_NAME);
+    }
+  }
+};
+
 // ---- Submit complete onboarding data ----
 
 export const submitOnboarding = async (req, res) => {
@@ -78,6 +93,7 @@ export const checkOnboardingStatus = async (req, res) => {
 
 export const uploadPhoto = async (req, res) => {
   try {
+    await ensureWorkerDocumentsBucket();
     const workerId = req.user.id;
     const { photo_base64, mime_type } = req.body;
 
@@ -144,6 +160,7 @@ export const uploadPhoto = async (req, res) => {
 
 export const uploadDocument = async (req, res) => {
   try {
+    await ensureWorkerDocumentsBucket();
     const workerId = req.user.id;
     const { document_type, file_base64, mime_type } = req.body;
 

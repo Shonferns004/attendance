@@ -3,6 +3,7 @@ import {
   getWorkerNotifications,
   markNotificationRead,
   getUnreadNotificationCount,
+  deleteNotification as deleteNotificationModel,
 } from '../models/notificationModel.js';
 
 export const registerToken = async (req, res) => {
@@ -41,6 +42,15 @@ export const getUnreadCount = async (req, res) => {
   try {
     const count = await getUnreadNotificationCount(req.params.worker_id);
     return res.json({ count });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteNotification = async (req, res) => {
+  try {
+    const result = await deleteNotificationModel(req.params.id);
+    return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

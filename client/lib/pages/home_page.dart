@@ -397,6 +397,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           } catch (_) {}
         },
         onDelete: (id) async {
+          try {
+            await ApiService.deleteNotification(id);
+          } catch (_) {}
           setState(() {
             _notifications.removeWhere((n) => n['id'] == id);
             _unreadCount = _notifications.where((n) => n['read_at'] == null).length;
