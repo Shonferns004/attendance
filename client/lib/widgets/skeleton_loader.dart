@@ -73,8 +73,8 @@ class HomeSkeleton extends StatelessWidget {
       child: Scaffold(
         backgroundColor: const Color(0xFFf6fafe),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -111,8 +111,8 @@ class ProfileSkeleton extends StatelessWidget {
       child: Scaffold(
         backgroundColor: const Color(0xFFf6fafe),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
