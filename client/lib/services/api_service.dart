@@ -80,16 +80,22 @@ class ApiService {
     return body;
   }
 
+  static String _todayCacheKey() {
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return 'cache_today_status_$dateStr';
+  }
+
   static Future<Map<String, dynamic>?> getCachedTodayStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('cache_today_status');
+    final data = prefs.getString(_todayCacheKey());
     if (data != null) return jsonDecode(data);
     return null;
   }
 
   static Future<void> _cacheTodayStatus(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('cache_today_status', jsonEncode(data));
+    await prefs.setString(_todayCacheKey(), jsonEncode(data));
   }
 
   static Future<Map<String, dynamic>> getTodayStatus() async {
@@ -244,5 +250,69 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to send test notification');
+  }
+
+  // ---- Onboarding API ----
+
+  static Future<Map<String, dynamic>> checkOnboardingStatus() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/onboarding/status'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to check onboarding status');
+    return body;
+  }
+
+  static Future<List<dynamic>> getOnboardingPolicies() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/onboarding/policies'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get policies');
+    return body is List ? body : [];
+  }
+
+  static Future<Map<String, dynamic>> uploadPhoto(String base64Photo, String mimeType) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/onboarding/upload-photo'),
+      headers: await _headers(),
+      body: jsonEncode({'photo_base64': base64Photo, 'mime_type': mimeType}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to upload photo');
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> submitOnboarding({
+    required Map<String, dynamic> personalDetails,
+    required List<Map<String, dynamic>> education,
+    required List<Map<String, dynamic>> family,
+    required List<Map<String, dynamic>> references,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/onboarding/submit'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'personal_details': personalDetails,
+        'education': education,
+        'family': family,
+        'references': references,
+      }),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to submit onboarding');
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> getPrintProfile() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/onboarding/print-profile'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get print profile');
+    return body;
   }
 }

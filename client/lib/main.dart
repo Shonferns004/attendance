@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'pages/login_page.dart';
+import 'pages/onboarding_page.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 
@@ -273,6 +275,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool? _loggedIn;
+  bool _showOnboarding = false;
 
   @override
   void initState() {
@@ -286,22 +289,95 @@ class _AuthGateState extends State<AuthGate> {
       if (token != null && firebaseInitialized) {
         await NotificationService().init();
       }
-      setState(() => _loggedIn = token != null);
+      if (token != null) {
+        // Check both local cache and server-side onboarding status
+        final prefs = await SharedPreferences.getInstance();
+        final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
+
+        if (locallySeen) {
+          setState(() {
+            _loggedIn = true;
+            _showOnboarding = false;
+          });
+        } else {
+          // Fallback to server-side check
+          try {
+            final status = await ApiService.checkOnboardingStatus();
+            final serverCompleted = status['onboarding_completed'] == true;
+            if (serverCompleted) {
+              await prefs.setBool('has_seen_onboarding', true);
+            }
+            setState(() {
+              _loggedIn = true;
+              _showOnboarding = !serverCompleted;
+            });
+          } catch (_) {
+            // If server is unreachable, show onboarding just in case
+            setState(() {
+              _loggedIn = true;
+              _showOnboarding = true;
+            });
+          }
+        }
+      } else {
+        setState(() => _loggedIn = false);
+      }
     } catch (_) {
       setState(() => _loggedIn = false);
     }
   }
 
-  void _onLogin() {
+  void _onLogin() async {
     if (firebaseInitialized) {
       NotificationService().init();
     }
-    setState(() => _loggedIn = true);
+    // Always show onboarding on first login if server says not completed
+    final prefs = await SharedPreferences.getInstance();
+    final locallySeen = prefs.getBool('has_seen_onboarding') ?? false;
+
+    if (locallySeen) {
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = true;
+        _showOnboarding = false;
+      });
+      return;
+    }
+
+    // Check server status
+    try {
+      final status = await ApiService.checkOnboardingStatus();
+      final serverCompleted = status['onboarding_completed'] == true;
+      if (serverCompleted) {
+        await prefs.setBool('has_seen_onboarding', true);
+      }
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = true;
+        _showOnboarding = !serverCompleted;
+      });
+    } catch (_) {
+      // If server unreachable on first login, show onboarding
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = true;
+        _showOnboarding = true;
+      });
+    }
+  }
+
+  Future<void> _onOnboardingComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_onboarding', true);
+    setState(() => _showOnboarding = false);
   }
 
   void _onLogout() async {
     await ApiService.clearAuth();
-    setState(() => _loggedIn = false);
+    setState(() {
+      _loggedIn = false;
+      _showOnboarding = false;
+    });
   }
 
   @override
@@ -310,6 +386,9 @@ class _AuthGateState extends State<AuthGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_loggedIn == true) {
+      if (_showOnboarding) {
+        return OnboardingPage(onComplete: _onOnboardingComplete);
+      }
       return MainShell(onLogout: _onLogout);
     }
     return LoginPage(onLogin: _onLogin);

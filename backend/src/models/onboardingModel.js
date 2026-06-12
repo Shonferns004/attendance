@@ -1,0 +1,240 @@
+import supabase from '../config/supabase.js';
+
+// ---- Education ----
+
+export const getWorkerEducation = async (workerId) => {
+  const { data, error } = await supabase
+    .from('worker_education')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('year_of_passing', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const saveWorkerEducation = async (workerId, educationList) => {
+  // Delete existing records and insert new ones
+  const { error: delError } = await supabase
+    .from('worker_education')
+    .delete()
+    .eq('worker_id', workerId);
+  if (delError) throw delError;
+
+  if (!educationList || educationList.length === 0) return [];
+
+  const records = educationList.map((e) => ({
+    worker_id: workerId,
+    degree: e.degree,
+    institution: e.institution,
+    university: e.university || null,
+    year_of_passing: e.year_of_passing ? parseInt(e.year_of_passing, 10) : null,
+    percentage: e.percentage || null,
+  }));
+
+  const { data, error } = await supabase
+    .from('worker_education')
+    .insert(records)
+    .select();
+  if (error) throw error;
+  return data;
+};
+
+// ---- Family ----
+
+export const getWorkerFamily = async (workerId) => {
+  const { data, error } = await supabase
+    .from('worker_family')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
+export const saveWorkerFamily = async (workerId, familyList) => {
+  const { error: delError } = await supabase
+    .from('worker_family')
+    .delete()
+    .eq('worker_id', workerId);
+  if (delError) throw delError;
+
+  if (!familyList || familyList.length === 0) return [];
+
+  const records = familyList.map((f) => ({
+    worker_id: workerId,
+    name: f.name,
+    relationship: f.relationship,
+    occupation: f.occupation || null,
+    phone: f.phone || null,
+  }));
+
+  const { data, error } = await supabase
+    .from('worker_family')
+    .insert(records)
+    .select();
+  if (error) throw error;
+  return data;
+};
+
+// ---- References ----
+
+export const getWorkerReferences = async (workerId) => {
+  const { data, error } = await supabase
+    .from('worker_references')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
+export const saveWorkerReferences = async (workerId, referenceList) => {
+  const { error: delError } = await supabase
+    .from('worker_references')
+    .delete()
+    .eq('worker_id', workerId);
+  if (delError) throw delError;
+
+  if (!referenceList || referenceList.length === 0) return [];
+
+  const records = referenceList.map((r) => ({
+    worker_id: workerId,
+    name: r.name,
+    designation: r.designation || null,
+    organization: r.organization || null,
+    phone: r.phone || null,
+    email: r.email || null,
+  }));
+
+  const { data, error } = await supabase
+    .from('worker_references')
+    .insert(records)
+    .select();
+  if (error) throw error;
+  return data;
+};
+
+// ---- Company Policies ----
+
+export const getActivePolicies = async () => {
+  const { data, error } = await supabase
+    .from('company_policies')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
+export const getAllPolicies = async () => {
+  const { data, error } = await supabase
+    .from('company_policies')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
+export const createPolicy = async (policyData) => {
+  const { data, error } = await supabase
+    .from('company_policies')
+    .insert([policyData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updatePolicy = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('company_policies')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deletePolicy = async (id) => {
+  const { error } = await supabase
+    .from('company_policies')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return { message: 'Policy deleted successfully' };
+};
+
+// ---- Worker personal details update ----
+
+export const updateWorkerPersonalDetails = async (workerId, details) => {
+  const updates = {};
+  if (details.phone !== undefined) updates.phone = details.phone;
+  if (details.alternate_phone !== undefined) updates.alternate_phone = details.alternate_phone;
+  if (details.address !== undefined) updates.address = details.address;
+  if (details.city !== undefined) updates.city = details.city;
+  if (details.state !== undefined) updates.state = details.state;
+  if (details.pincode !== undefined) updates.pincode = details.pincode;
+  if (details.photo_url !== undefined) updates.photo_url = details.photo_url;
+  if (details.name !== undefined) updates.name = details.name;
+  if (details.email !== undefined) updates.email = details.email;
+  if (details.gender !== undefined) updates.gender = details.gender;
+  if (details.dob !== undefined) updates.dob = details.dob;
+
+  const { data, error } = await supabase
+    .from('workers')
+    .update(updates)
+    .eq('id', workerId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+// ---- Complete onboarding submission ----
+
+export const markOnboardingComplete = async (workerId) => {
+  const { data, error } = await supabase
+    .from('workers')
+    .update({ onboarding_completed: true })
+    .eq('id', workerId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const getOnboardingStatus = async (workerId) => {
+  const { data, error } = await supabase
+    .from('workers')
+    .select('onboarding_completed')
+    .eq('id', workerId)
+    .single();
+  if (error) throw error;
+  return data?.onboarding_completed ?? false;
+};
+
+// ---- Get full worker profile with all onboarding data ----
+
+export const getFullWorkerProfile = async (workerId) => {
+  const worker = await supabase
+    .from('workers')
+    .select('*')
+    .eq('id', workerId)
+    .single();
+
+  if (worker.error) throw worker.error;
+
+  const [education, family, references] = await Promise.all([
+    getWorkerEducation(workerId),
+    getWorkerFamily(workerId),
+    getWorkerReferences(workerId),
+  ]);
+
+  return {
+    ...worker.data,
+    education: education || [],
+    family: family || [],
+    references: references || [],
+  };
+};

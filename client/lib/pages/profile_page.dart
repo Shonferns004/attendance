@@ -8,6 +8,7 @@ import '../widgets/progress_circle.dart';
 import '../widgets/consistency_bar.dart';
 import '../widgets/menu_item.dart';
 import '../widgets/skeleton_loader.dart';
+import 'print_form_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -536,6 +537,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 label: 'Help Center',
                 iconColor: const Color(0xFF43474d),
                 onTap: () {},
+              ),
+              const Divider(height: 1, color: Color(0xFFc3c6ce)),
+              MenuItem(
+                icon: Icons.description,
+                label: 'My Form & Policies',
+                iconColor: const Color(0xFF00152a),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrintFormPage()),
+                  );
+                },
               ),
               const Divider(height: 1, color: Color(0xFFc3c6ce)),
               MenuItem(
