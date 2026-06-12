@@ -10,6 +10,7 @@ import 'pages/login_page.dart';
 import 'pages/onboarding_page.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/splash_page.dart';
 
 bool firebaseInitialized = false;
 
@@ -371,7 +372,7 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_loggedIn == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const SplashPage();
     }
     if (_loggedIn == true) {
       if (_showOnboarding) {
