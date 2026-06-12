@@ -399,7 +399,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         onDelete: (id) async {
           try {
             await ApiService.deleteNotification(id);
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('deleteNotification error: $e');
+          }
           setState(() {
             _notifications.removeWhere((n) => n['id'] == id);
             _unreadCount = _notifications.where((n) => n['read_at'] == null).length;
@@ -1116,11 +1118,11 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                       ),
                       confirmDismiss: (direction) async {
                         if (direction == DismissDirection.startToEnd) {
-                          widget.onMarkRead(n['id'].toString());
+                          await widget.onMarkRead(n['id'].toString());
                           setState(() => n['read_at'] = DateTime.now().toIso8601String());
                           return false;
                         } else {
-                          widget.onDelete(n['id'].toString());
+                          await widget.onDelete(n['id'].toString());
                           setState(() => _items.removeAt(i));
                           return true;
                         }
