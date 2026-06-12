@@ -146,7 +146,7 @@ export const uploadDocument = async (req, res) => {
       return res.status(400).json({ message: 'Document type and file data are required' });
     }
 
-    const allowedTypes = ['aadhar_front', 'aadhar_back', 'pan_card', 'bank_proof'];
+    const allowedTypes = ['aadhar_front', 'aadhar_back', 'pan_card', 'bank_proof', 'light_bill'];
     if (!allowedTypes.includes(document_type)) {
       return res.status(400).json({ message: 'Invalid document type' });
     }

@@ -149,6 +149,7 @@ class _PrintFormPageState extends State<PrintFormPage> {
           _infoRow('Aadhaar Back', profile['aadhar_back_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
           _infoRow('PAN Card', profile['pan_card_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
           _infoRow('Bank Proof', profile['bank_proof_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
+          _infoRow('Light Bill', profile['light_bill_url'] != null ? 'Uploaded' : 'Not uploaded', gray),
           _infoRow('Bank Account', profile['account_holder_name'] ?? '-', gray),
           _infoRow('IFSC', profile['ifsc_code'] ?? '-', gray),
           _infoRow('Account No', profile['account_number'] ?? '-', gray),

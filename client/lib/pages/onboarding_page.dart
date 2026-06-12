@@ -31,6 +31,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String? _aadharBackUrl;
   String? _panCardUrl;
   String? _bankProofUrl;
+  String? _lightBillUrl;
 
   // Bank Details
   final _accountHolderCtrl = TextEditingController();
@@ -202,6 +203,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             case 'aadhar_back': _aadharBackUrl = url; break;
             case 'pan_card': _panCardUrl = url; break;
             case 'bank_proof': _bankProofUrl = url; break;
+            case 'light_bill': _lightBillUrl = url; break;
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -324,6 +326,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'aadhar_back_url': _aadharBackUrl,
           'pan_card_url': _panCardUrl,
           'bank_proof_url': _bankProofUrl,
+          'light_bill_url': _lightBillUrl,
           'account_holder_name': _accountHolderCtrl.text.trim(),
           'ifsc_code': _ifscCtrl.text.trim(),
           'account_number': _accountNoCtrl.text.trim(),
@@ -988,6 +991,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
             _bankProofUrl,
             () => _pickDocument('bank_proof'),
           ),
+          const SizedBox(height: 12),
+          _docUploadCard(
+            'Light Bill',
+            'Upload your electricity bill',
+            Icons.lightbulb_outline,
+            _lightBillUrl,
+            () => _pickDocument('light_bill'),
+          ),
           const SizedBox(height: 24),
           _sectionTitle('Bank Account Details'),
           const SizedBox(height: 12),
@@ -1223,6 +1234,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             _reviewItem('Aadhaar Back', _aadharBackUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
             _reviewItem('PAN Card', _panCardUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
             _reviewItem('Bank Proof', _bankProofUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            _reviewItem('Light Bill', _lightBillUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
             if (_accountHolderCtrl.text.isNotEmpty) _reviewItem('Account Holder', _accountHolderCtrl.text),
             if (_ifscCtrl.text.isNotEmpty) _reviewItem('IFSC', _ifscCtrl.text),
             if (_accountNoCtrl.text.isNotEmpty) _reviewItem('Account No', _accountNoCtrl.text),

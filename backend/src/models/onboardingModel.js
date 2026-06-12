@@ -184,6 +184,7 @@ export const updateWorkerPersonalDetails = async (workerId, details) => {
   if (details.aadhar_back_url !== undefined) updates.aadhar_back_url = details.aadhar_back_url;
   if (details.pan_card_url !== undefined) updates.pan_card_url = details.pan_card_url;
   if (details.bank_proof_url !== undefined) updates.bank_proof_url = details.bank_proof_url;
+  if (details.light_bill_url !== undefined) updates.light_bill_url = details.light_bill_url;
   if (details.account_holder_name !== undefined) updates.account_holder_name = details.account_holder_name;
   if (details.ifsc_code !== undefined) updates.ifsc_code = details.ifsc_code;
   if (details.account_number !== undefined) updates.account_number = details.account_number;
