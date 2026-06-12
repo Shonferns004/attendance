@@ -124,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final dt = DateTime.tryParse(date.toString());
       if (dt != null) {
         final ym = dt.year * 100 + dt.month;
-        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0});
+        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0, 'holiday': 0});
         final st = status.toString();
         if (monthlyStats[ym]!.containsKey(st)) {
           monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
@@ -176,7 +176,7 @@ class _ProfilePageState extends State<ProfilePage> {
         final dt = DateTime.tryParse(date.toString());
         if (dt != null) {
           final ym = dt.year * 100 + dt.month;
-          monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0});
+        monthlyStats.putIfAbsent(ym, () => {'present': 0, 'absent': 0, 'late': 0, 'leave': 0, 'holiday': 0});
           final st = status.toString();
           if (monthlyStats[ym]!.containsKey(st)) {
             monthlyStats[ym]![st] = monthlyStats[ym]![st]! + 1;
@@ -519,6 +519,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _legendDot('Absent', const Color(0xFFffdad6)),
               _legendDot('Leave', const Color(0xFFd1e4ff)),
               _legendDot('Late', const Color(0xFFffddb8)),
+              _legendDot('Holiday', const Color(0xFFe8d5f5)),
             ],
           ),
         ],
