@@ -84,9 +84,10 @@ class NotificationService {
     if (title.isEmpty && body.isEmpty) return;
 
     const androidDetails = AndroidNotificationDetails(
-      'attendx_channel',
+      'ufs_attend_channel',
       'UFS Attend Notifications',
       channelDescription: 'Push notifications from UFS Attend',
+      icon: 'notification_icon',
       importance: Importance.high,
       priority: Priority.high,
     );
