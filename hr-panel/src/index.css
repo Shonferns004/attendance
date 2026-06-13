@@ -217,6 +217,9 @@ tr:hover td { background: #faf8f2; }
 .hol-add-bordered { border-top: 1px solid var(--line); padding-top: 12px; }
 .hol-field { margin-bottom: 8px; }
 .hol-add-btn { width: 100%; justify-content: center; margin-top: 4px; }
+.hol-add-trigger { width: 100%; justify-content: center; }
+.hol-btn-row { display: flex; gap: 10px; margin-top: 6px; }
+.hol-btn-row .btn { flex: 1; justify-content: center; }
 .cal-nav { font-size: 18px; line-height: 1; width: 28px; height: 28px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 8px 16px 16px; }
 .cal-dow { text-align: center; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; padding: 4px 0 10px; letter-spacing: .06em; }

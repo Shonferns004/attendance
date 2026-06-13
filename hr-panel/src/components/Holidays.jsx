@@ -162,7 +162,7 @@ export default function Holidays() {
           )}
 
           {!showForm ? (
-            <button className="btn btn-primary" onClick={() => { setShowForm(true); setName(''); setType('holiday'); setRecurring(true); }} style={{ width: '100%', justifyContent: 'center' }}>
+            <button className="btn btn-primary hol-add-trigger" onClick={() => { setShowForm(true); setName(''); setType('holiday'); setRecurring(true); }}>
               <Plus width={16} /> Add
             </button>
           ) : (
@@ -184,11 +184,9 @@ export default function Holidays() {
                   </span>
                 </label>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" onClick={() => setShowForm(false)} style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
-                <button className="btn btn-primary" onClick={submit} style={{ flex: 1, justifyContent: 'center' }}>
-                  <Plus width={16} /> Save
-                </button>
+              <div className="hol-btn-row">
+                <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={submit}><Plus width={16} /> Save</button>
               </div>
             </div>
           )}
