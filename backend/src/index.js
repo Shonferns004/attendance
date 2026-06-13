@@ -26,6 +26,7 @@ import holidayRoutes from './routes/holidayRoutes.js';
 import calendarRoutes from './routes/calendarRoutes.js';
 import salaryRoutes from './routes/salaryRoutes.js';
 import telecallingTargetRoutes from './routes/telecallingTargetRoutes.js';
+import templateBuilderRoutes from './routes/templateBuilderRoutes.js';
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/salary', salaryRoutes);
 app.use('/api/telecaller-targets', telecallingTargetRoutes);
+app.use('/api/template', templateBuilderRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });

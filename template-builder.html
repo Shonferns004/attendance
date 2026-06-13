@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Template Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#f5f7fa;color:#1a1a2e;min-height:100vh}
@@ -13,137 +14,440 @@ header p{font-size:13px;color:#94a3b8;margin-top:4px}
 .container{max-width:960px;margin:0 auto;padding:24px}
 .card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px}
 .card h2{font-size:16px;font-weight:600;margin-bottom:12px;color:#00152a}
+.hide{display:none}
 textarea{width:100%;min-height:400px;padding:16px;border:1px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:13px;line-height:1.7;resize:vertical;background:#fafbfc}
-textarea:focus{outline:none;border-color:#00152a;box-shadow:0 0 0 3px rgba(0,21,42,0.1)}
-.actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
-.btn{background:#00152a;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer;margin-top:8px;display:inline-block}
+textarea:focus{outline:none;border-color:#00152a;box-shadow:0 0 0 3px rgba(0,21,42,.1)}
+.actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.btn{background:#00152a;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .btn:hover{background:#00264d}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .btn2{background:#e2e8f0;color:#1a1a2e}
 .btn2:hover{background:#cbd5e1}
+.btn-ai{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.btn-ai:hover{background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+.tabs{display:flex;margin-bottom:16px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+.tab{flex:1;padding:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#f8fafc;color:#64748b;transition:.15s}
+.tab.active{background:#00152a;color:#fff}
+.drop-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:40px 24px;text-align:center;cursor:pointer;transition:.2s;color:#64748b;font-size:14px}
+.drop-zone:hover,.drop-zone.over{border-color:#00152a;background:#f0f4f8}
 details{margin-top:12px}
 summary{font-size:13px;font-weight:600;color:#64748b;cursor:pointer;padding:4px 0}
 .grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .grid code{background:#f1f5f9;padding:4px 10px;border-radius:4px;font-size:12px;color:#00152a;cursor:pointer}
 .grid code:hover{background:#e2e8f0}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#00152a;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;opacity:0;transition:0.3s;pointer-events:none;z-index:999}
+.ai-bar{background:#f8f7ff;border:1px solid #e0e7ff;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ai-bar span{font-size:12px;font-weight:600;color:#6366f1;white-space:nowrap}
+.ai-bar input[type=password]{flex:1;min-width:180px;padding:6px 10px;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;color:#1a1a2e}
+.ai-bar input[type=password]:focus{outline:none;border-color:#6366f1}
+.chk-label{font-size:12px;color:#64748b;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#00152a;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:999}
 .toast.show{opacity:1}
+.toast.err{background:#dc2626}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
 <header>
   <h1>Template Builder</h1>
-  <p>Paste your form content, add <code style="background:#ffffff22;padding:2px 6px;border-radius:3px">{{placeholders}}</code>, download the Word-ready template.</p>
+  <p>Upload or paste your form &rarr; AI auto-fills placeholders &rarr; download Word-ready template.</p>
 </header>
 
 <div class="container">
+
+  <!-- STEP 1 -->
   <div class="card" id="step1">
-    <h2>1. Paste your form text</h2>
-    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Open your .docx in Word, copy the content, and paste it below.</p>
-    <textarea id="pasteArea" placeholder="Paste the text of your form here..."></textarea>
+    <h2>1. Load your form</h2>
+    <div class="tabs">
+      <button class="tab active" id="tabPaste" onclick="switchTab('paste')">Paste Text</button>
+      <button class="tab" id="tabFile" onclick="switchTab('file')">Upload .docx</button>
+    </div>
+
+    <div id="panePaste">
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">Open your .docx in Word, copy all content, paste it below.</p>
+      <textarea id="pasteArea" placeholder="Paste the text of your form here..."></textarea>
+    </div>
+
+    <div id="paneFile" class="hide">
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">Upload a <strong>.docx</strong> file — text will be extracted automatically.</p>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".docx" style="display:none">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 12px">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <div id="dropLabel">Click to choose a .docx file, or drag and drop it here</div>
+        <div id="dropSub" style="font-size:12px;margin-top:6px;color:#94a3b8"></div>
+      </div>
+    </div>
+
     <div class="actions">
-      <button class="btn" id="startBtn" disabled>Next: Add Placeholders &rarr;</button>
+      <button class="btn" id="startBtn" disabled>Next: Add Placeholders &#8594;</button>
     </div>
   </div>
 
+  <!-- STEP 2 -->
   <div class="card hide" id="step2">
     <h2>2. Insert placeholders</h2>
-    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Edit the text. Click a placeholder below to insert it at cursor position.</p>
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Use AI to auto-fill, or click a placeholder chip to insert at cursor.</p>
+
+    <div class="ai-bar">
+      <span>&#x2728; Groq API Key</span>
+      <input type="password" id="groqKey" placeholder="gsk_..." autocomplete="off">
+      <label class="chk-label">
+        <input type="checkbox" id="saveKey"> Remember
+      </label>
+      <button class="btn btn-ai" id="btnAI">
+        <span id="aiLabel">Auto-Fill Placeholders</span>
+        <span id="aiSpinner" class="spinner hide"></span>
+      </button>
+    </div>
+
     <textarea id="editor" spellcheck="false"></textarea>
+
     <details>
       <summary>Available placeholders (click to insert)</summary>
       <div class="grid" id="grid"></div>
     </details>
+
     <div class="actions">
       <button class="btn" id="btnDl">Download Template (.doc)</button>
-      <button class="btn btn2" onclick="reset()">Start Over</button>
+      <button class="btn btn2" onclick="doReset()">Start Over</button>
     </div>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 var PLACEHOLDERS = [
-  ['Personal',['{{name}}','{{email}}','{{phone}}','{{alternate_phone}}','{{father_husband_name}}','{{gender}}','{{dob}}','{{marital_status}}']],
-  ['Address',['{{address}}','{{permanent_address}}','{{city}}','{{state}}','{{pincode}}']],
-  ['Emergency',['{{emergency_contact_name}}','{{emergency_contact_relation}}','{{emergency_contact_phone}}']],
-  ['Bank',['{{account_holder_name}}','{{ifsc_code}}','{{account_number}}']],
-  ['Declaration',['{{declaration_date}}','{{declaration_place}}']],
-  ['Tables',['{{#education}}','{{degree}}','{{institution}}','{{university}}','{{year_of_passing}}','{{percentage}}','{{/education}}','{{#family}}','{{family_name}}','{{relationship}}','{{occupation}}','{{family_phone}}','{{/family}}','{{#references}}','{{ref_name}}','{{designation}}','{{organization}}','{{ref_phone}}','{{/references}}']],
-  ['General',['{{login_id}}','{{department}}','{{photo_url}}']]
+  ['Personal', [
+    '{{name}}','{{email}}','{{phone}}','{{alternate_phone}}',
+    '{{father_husband_name}}','{{gender}}','{{dob}}','{{marital_status}}'
+  ]],
+  ['Address', [
+    '{{address}}','{{permanent_address}}','{{city}}','{{state}}','{{pincode}}'
+  ]],
+  ['Emergency', [
+    '{{emergency_contact_name}}','{{emergency_contact_relation}}','{{emergency_contact_phone}}',
+    '{{emergency_contact_name2}}','{{emergency_contact_relation2}}','{{emergency_contact_phone2}}'
+  ]],
+  ['Bank', [
+    '{{account_holder_name}}','{{ifsc_code}}','{{account_number}}'
+  ]],
+  ['Documents', [
+    '{{aadhar_number}}','{{pan_number}}'
+  ]],
+  ['Declaration', [
+    '{{declaration_date}}','{{declaration_place}}'
+  ]],
+  ['Tables', [
+    '{{#education}}','{{degree}}','{{institution}}','{{university}}','{{year_of_passing}}','{{percentage}}','{{/education}}',
+    '{{#family}}','{{family_name}}','{{relationship}}','{{occupation}}','{{family_phone}}','{{/family}}',
+    '{{#references}}','{{ref_name}}','{{designation}}','{{organization}}','{{ref_phone}}','{{/references}}'
+  ]],
+  ['General', [
+    '{{login_id}}','{{department}}','{{photo_url}}'
+  ]]
 ];
 
-function msg(s) {
-  var t=document.getElementById('toast');t.textContent=s;t.classList.add('show');
-  clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},3000);
+var AI_PLACEHOLDER_LIST =
+  'PERSONAL: {{name}}, {{email}}, {{phone}}, {{alternate_phone}}, {{father_husband_name}}, {{gender}}, {{dob}}, {{marital_status}}\n' +
+  'ADDRESS: {{address}}, {{permanent_address}}, {{city}}, {{state}}, {{pincode}}\n' +
+  'EMERGENCY: {{emergency_contact_name}}, {{emergency_contact_relation}}, {{emergency_contact_phone}}, {{emergency_contact_name2}}, {{emergency_contact_relation2}}, {{emergency_contact_phone2}}\n' +
+  'BANK: {{account_holder_name}}, {{ifsc_code}}, {{account_number}}\n' +
+  'DOCUMENTS: {{aadhar_number}}, {{pan_number}}\n' +
+  'DECLARATION: {{declaration_date}}, {{declaration_place}}\n' +
+  'GENERAL: {{login_id}}, {{department}}, {{photo_url}}\n' +
+  'EDUCATION TABLE (repeating block): {{#education}} ... {{degree}}, {{institution}}, {{university}}, {{year_of_passing}}, {{percentage}} ... {{/education}}\n' +
+  'FAMILY TABLE (repeating block): {{#family}} ... {{family_name}}, {{relationship}}, {{occupation}}, {{family_phone}} ... {{/family}}\n' +
+  'REFERENCES TABLE (repeating block): {{#references}} ... {{ref_name}}, {{designation}}, {{organization}}, {{ref_phone}} ... {{/references}}';
+
+// ---- Toast ----
+function showMsg(text, isErr) {
+  var t = document.getElementById('toast');
+  t.textContent = text;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.classList.remove('show'); }, 3000);
 }
 
-var pa=document.getElementById('pasteArea');
-var sb=document.getElementById('startBtn');
-pa.addEventListener('input',function(){sb.disabled=!(pa.value.trim().length>0)});
-sb.addEventListener('click',function(){
-  document.getElementById('editor').value=pa.value;
+// ---- Tab switching ----
+var currentTab = 'paste';
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabPaste').classList.toggle('active', tab === 'paste');
+  document.getElementById('tabFile').classList.toggle('active', tab === 'file');
+  document.getElementById('panePaste').classList.toggle('hide', tab !== 'paste');
+  document.getElementById('paneFile').classList.toggle('hide', tab !== 'file');
+  updateStartBtn();
+}
+
+// ---- Paste tab ----
+var pasteArea = document.getElementById('pasteArea');
+pasteArea.addEventListener('input', updateStartBtn);
+
+// ---- File upload tab ----
+var extractedText = '';
+var fileInput = document.getElementById('fileInput');
+var dropZone = document.getElementById('dropZone');
+
+dropZone.addEventListener('click', function(e) {
+  // Only trigger from the zone itself or its non-input children
+  if (e.target === fileInput) return;
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', function() {
+  if (fileInput.files[0]) readDocx(fileInput.files[0]);
+});
+
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropZone.classList.add('over');
+});
+dropZone.addEventListener('dragleave', function() {
+  dropZone.classList.remove('over');
+});
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  var f = e.dataTransfer.files[0];
+  if (f && f.name.toLowerCase().endsWith('.docx')) {
+    readDocx(f);
+  } else {
+    showMsg('Please drop a .docx file', true);
+  }
+});
+
+function readDocx(file) {
+  if (typeof mammoth === 'undefined') {
+    showMsg('mammoth.js not loaded — check your internet connection', true);
+    return;
+  }
+  document.getElementById('dropLabel').textContent = 'Reading ' + file.name + '...';
+  document.getElementById('dropSub').textContent = '';
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    mammoth.extractRawText({ arrayBuffer: ev.target.result })
+      .then(function(result) {
+        extractedText = result.value;
+        document.getElementById('dropLabel').textContent = file.name;
+        document.getElementById('dropSub').textContent = extractedText.split('\n').length + ' lines extracted';
+        updateStartBtn();
+        showMsg('File loaded: ' + file.name);
+      })
+      .catch(function(err) {
+        showMsg('Could not read file: ' + err.message, true);
+        document.getElementById('dropLabel').textContent = 'Click to choose a .docx file, or drag and drop it here';
+      });
+  };
+  reader.onerror = function() {
+    showMsg('Failed to read file', true);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ---- Start button ----
+var startBtn = document.getElementById('startBtn');
+function updateStartBtn() {
+  if (currentTab === 'paste') {
+    startBtn.disabled = pasteArea.value.trim().length === 0;
+  } else {
+    startBtn.disabled = extractedText.trim().length === 0;
+  }
+}
+
+startBtn.addEventListener('click', function() {
+  var text = currentTab === 'paste' ? pasteArea.value : extractedText;
+  document.getElementById('editor').value = text;
   document.getElementById('step1').classList.add('hide');
   document.getElementById('step2').classList.remove('hide');
   buildGrid();
-  msg('Add placeholders, then download');
+  showMsg('Add placeholders, then download');
 });
 
+// ---- Placeholder grid ----
 function buildGrid() {
-  var g=document.getElementById('grid');
-  var ed=document.getElementById('editor');
-  g.innerHTML='';
-  for(var i=0;i<PLACEHOLDERS.length;i++){
-    var grp=PLACEHOLDERS[i];
-    var lbl=document.createElement('div');
-    lbl.style.cssText='width:100%;font-size:12px;font-weight:600;color:#64748b;margin-top:6px';
-    lbl.textContent=grp[0];
-    g.appendChild(lbl);
-    for(var j=0;j<grp[1].length;j++){
-      (function(ph){
-        var el=document.createElement('code');
-        el.textContent=ph;
-        el.onclick=function(){
-          var s=ed.selectionStart,e=ed.selectionEnd,t=ed.value;
-          ed.value=t.substring(0,s)+ph+t.substring(e);
-          ed.selectionStart=ed.selectionEnd=s+ph.length;
-          ed.focus();
+  var grid = document.getElementById('grid');
+  var editor = document.getElementById('editor');
+  grid.innerHTML = '';
+  for (var i = 0; i < PLACEHOLDERS.length; i++) {
+    var group = PLACEHOLDERS[i];
+    var lbl = document.createElement('div');
+    lbl.style.cssText = 'width:100%;font-size:12px;font-weight:600;color:#64748b;margin-top:6px';
+    lbl.textContent = group[0];
+    grid.appendChild(lbl);
+    for (var j = 0; j < group[1].length; j++) {
+      (function(ph) {
+        var chip = document.createElement('code');
+        chip.textContent = ph;
+        chip.onclick = function() {
+          var start = editor.selectionStart;
+          var end = editor.selectionEnd;
+          var val = editor.value;
+          editor.value = val.substring(0, start) + ph + val.substring(end);
+          editor.selectionStart = editor.selectionEnd = start + ph.length;
+          editor.focus();
         };
-        g.appendChild(el);
-      })(grp[1][j]);
+        grid.appendChild(chip);
+      })(group[1][j]);
     }
   }
 }
 
-document.getElementById('btnDl').addEventListener('click',function(){
-  var c=document.getElementById('editor').value;
-  if(!c.trim()){msg('No content');return}
-  var lines=c.split('\n'),body='';
-  for(var i=0;i<lines.length;i++){
-    var l=lines[i];
-    if(l.trim()===''){body+='<p>&nbsp;</p>';continue}
-    var e=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    e=e.replace(/{{(\/?\w+)}}/g,function(m){return '<span style=\"background:#eef2ff;color:#00152a;font-weight:700;padding:1px 4px\">'+m+'</span>'});
-    body+='<p style=\"margin:0;line-height:1.6;font-size:11pt;font-family:Calibri,sans-serif\">'+e+'</p>';
-  }
-  var h='<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Form Template</title><style>body{font-family:Calibri,sans-serif;font-size:11pt;line-height:1.5;margin:2cm}p{margin:0 0 4px 0;}</style></head><body>'+body+'</body></html>';
-  var b=new Blob([h],{type:'application/msword'});
-  var u=URL.createObjectURL(b);
-  var a=document.createElement('a');a.href=u;a.download='form_with_placeholders.doc';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(u);
-  msg('Downloaded! Open in Word, apply formatting, save as .docx.');
+// ---- Groq key persistence ----
+var groqKeyInput = document.getElementById('groqKey');
+var saveKeyChk = document.getElementById('saveKey');
+var savedKey = localStorage.getItem('groq_api_key') || '';
+if (savedKey) {
+  groqKeyInput.value = savedKey;
+  saveKeyChk.checked = true;
+}
+saveKeyChk.addEventListener('change', function() {
+  if (!saveKeyChk.checked) localStorage.removeItem('groq_api_key');
 });
 
-function reset() {
-  document.getElementById('editor').value='';
-  document.getElementById('pasteArea').value='';
+// ---- AI auto-fill ----
+document.getElementById('btnAI').addEventListener('click', function() {
+  var editor = document.getElementById('editor');
+  var text = editor.value.trim();
+  if (!text) { showMsg('Nothing to process', true); return; }
+
+  var apiKey = groqKeyInput.value.trim();
+  if (!apiKey) { showMsg('Enter your Groq API key first', true); return; }
+  if (saveKeyChk.checked) localStorage.setItem('groq_api_key', apiKey);
+
+  var aiLabel = document.getElementById('aiLabel');
+  var aiSpinner = document.getElementById('aiSpinner');
+  var btnAI = document.getElementById('btnAI');
+
+  btnAI.disabled = true;
+  aiLabel.textContent = 'Working...';
+  aiSpinner.classList.remove('hide');
+
+  var aiPrompt =
+    'You are a form template expert. I have a worker/employee onboarding form and a list of available placeholders.\n\n' +
+    'Your job: return the EXACT same form text but replace blank fields, underscores (___), dotted lines (....) ' +
+    'or empty answer areas with the most appropriate {{placeholder}} from the list below.\n\n' +
+    'AVAILABLE PLACEHOLDERS:\n' + AI_PLACEHOLDER_LIST + '\n\n' +
+    'RULES:\n' +
+    '1. Only use placeholders from the list above - do not invent new ones.\n' +
+    '2. Replace things like "Name: ___________" with "Name: {{name}}"\n' +
+    '3. Replace things like "Date of Birth: ................" with "Date of Birth: {{dob}}"\n' +
+    '4. For repeating table rows (Education, Family, References), wrap the section with {{#block}} ... {{/block}} tags.\n' +
+    '5. Do NOT change any labels, headings, punctuation, or layout - only replace blank/fill-in areas.\n' +
+    '6. If a field has no matching placeholder, leave it as-is.\n' +
+    '7. Return ONLY the modified form text. No explanation, no markdown, no code fences.\n\n' +
+    'FORM TEXT:\n' + text;
+
+  var requestBody = JSON.stringify({
+    model: 'llama-3.3-70b-versatile',
+    messages: [{ role: 'user', content: aiPrompt }],
+    temperature: 0.1,
+    max_tokens: 4096
+  });
+
+  fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: requestBody
+  })
+  .then(function(r) {
+    if (!r.ok) {
+      return r.json().then(function(e) {
+        throw new Error((e.error && e.error.message) || 'Request failed (' + r.status + ')');
+      });
+    }
+    return r.json();
+  })
+  .then(function(data) {
+    var result = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (result) {
+      editor.value = result;
+      showMsg('AI placeholders applied!');
+    } else {
+      showMsg('AI returned empty response', true);
+    }
+  })
+  .catch(function(e) {
+    showMsg('AI error: ' + e.message, true);
+  })
+  .finally(function() {
+    btnAI.disabled = false;
+    aiLabel.textContent = 'Auto-Fill Placeholders';
+    aiSpinner.classList.add('hide');
+  });
+});
+
+// ---- Download ----
+document.getElementById('btnDl').addEventListener('click', function() {
+  var content = document.getElementById('editor').value;
+  if (!content.trim()) { showMsg('No content', true); return; }
+
+  var lines = content.split('\n');
+  var bodyHtml = '';
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (line.trim() === '') {
+      bodyHtml += '<p>&nbsp;</p>';
+      continue;
+    }
+    var escaped = line
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    escaped = escaped.replace(/\{\{([#\/]?\w+)\}\}/g, function(m) {
+      return '<span style="background:#eef2ff;color:#00152a;font-weight:700;padding:1px 4px">' + m + '</span>';
+    });
+    bodyHtml += '<p style="margin:0;line-height:1.6;font-size:11pt;font-family:Calibri,sans-serif">' + escaped + '</p>';
+  }
+
+  var docHtml = [
+    '<!DOCTYPE html>',
+    '<html><head>',
+    '<meta charset="UTF-8">',
+    '<title>Form Template</title>',
+    '<style>',
+    'body{font-family:Calibri,sans-serif;font-size:11pt;line-height:1.5;margin:2cm}',
+    'p{margin:0 0 4px 0}',
+    '</style>',
+    '</head><body>',
+    bodyHtml,
+    '</body></html>'
+  ].join('');
+
+  var blob = new Blob([docHtml], { type: 'application/msword' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'form_with_placeholders.doc';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMsg('Downloaded! Open in Word, apply formatting, save as .docx.');
+});
+
+// ---- Reset ----
+function doReset() {
+  document.getElementById('editor').value = '';
+  pasteArea.value = '';
+  extractedText = '';
+  fileInput.value = '';
+  document.getElementById('dropLabel').textContent = 'Click to choose a .docx file, or drag and drop it here';
+  document.getElementById('dropSub').textContent = '';
   document.getElementById('step2').classList.add('hide');
   document.getElementById('step1').classList.remove('hide');
-  document.getElementById('btnDl').disabled=false;
-  sb.disabled=true;
-  msg('');
+  startBtn.disabled = true;
+  switchTab('paste');
 }
 </script>
 </body>
