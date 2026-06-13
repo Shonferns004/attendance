@@ -23,12 +23,13 @@ export default function Workers({ onSelect, onOffboard }) {
     fetch(API_BASE + '/salary/workers-summary', {
       headers: { Authorization: 'Bearer ' + token },
     })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : [])
       .then(data => {
         const map = {};
         for (const w of data) map[w.id] = w;
         setSalaryMap(map);
       })
+      .catch(() => {})
       .catch(() => {});
   }, []);
 

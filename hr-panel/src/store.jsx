@@ -68,8 +68,11 @@ export function HRProvider({ children }) {
         ...options,
       });
       if (res.status === 401 || res.status === 403) {
-        setToken(''); setUser(null);
-        localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
+        const currentToken = localStorage.getItem('hr_token');
+        if (currentToken === token) {
+          setToken(''); setUser(null);
+          localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
+        }
         throw new Error('Session expired. Please login again.');
       }
       if (!res.ok) {
