@@ -125,7 +125,6 @@ export default function EmployeeDetail({ worker, onBack }) {
     { key: 'attendance', label: `Attendance (${empAttendance.length})` },
     { key: 'salary', label: `Salary (${salaries.length})` },
     { key: 'leaves', label: `Leaves (${empLeaves.length})` },
-    { key: 'documents', label: 'Documents & Letters' },
   ];
 
   const now = new Date();
@@ -328,6 +327,40 @@ export default function EmployeeDetail({ worker, onBack }) {
               </div>
 
               <Field label="Onboarding" value={data.onboarding_completed ? 'Completed' : 'Pending'} />
+
+              {[data.aadhar_front_url, data.aadhar_back_url, data.pan_card_url, data.bank_proof_url, data.light_bill_url].some(Boolean) && (
+                <div className="card" style={{ marginTop:16 }}>
+                  <div className="card-head"><h3>Documents</h3></div>
+                  <div className="card-pad" style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {data.aadhar_front_url && <DocLink url={data.aadhar_front_url} label="Aadhar (Front)" />}
+                    {data.aadhar_back_url && <DocLink url={data.aadhar_back_url} label="Aadhar (Back)" />}
+                    {data.pan_card_url && <DocLink url={data.pan_card_url} label="PAN Card" />}
+                    {data.bank_proof_url && <DocLink url={data.bank_proof_url} label="Bank Proof" />}
+                    {data.light_bill_url && <DocLink url={data.light_bill_url} label="Light Bill" />}
+                  </div>
+                </div>
+              )}
+
+              {letters.length > 0 && (
+                <div className="card" style={{ marginTop:16 }}>
+                  <div className="card-head"><h3>Generated Letters</h3><span className="sub">{letters.length}</span></div>
+                  <div className="card-pad" style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {letters.map(l => (
+                      <div key={l.id} className="letter-row">
+                        <span style={{ fontWeight:500 }}>{l.template?.title || 'Letter'}</span>
+                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>
+                          {new Date(l.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+                        </span>
+                        <a className="btn btn-sm" href={API_BASE + '/letters/generated/' + l.id + '/download'}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ marginLeft:'auto', textDecoration:'none' }}>
+                          Download
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -711,45 +744,7 @@ export default function EmployeeDetail({ worker, onBack }) {
             </div>
           )}
 
-          {tab === 'documents' && (
-            <>
-              {[data.aadhar_front_url, data.aadhar_back_url, data.pan_card_url, data.bank_proof_url, data.light_bill_url].some(Boolean) && (
-                <div className="card" style={{ marginBottom:16 }}>
-                  <div className="card-head"><h3>Documents</h3></div>
-                  <div className="card-pad" style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {data.aadhar_front_url && <DocLink url={data.aadhar_front_url} label="Aadhar (Front)" />}
-                    {data.aadhar_back_url && <DocLink url={data.aadhar_back_url} label="Aadhar (Back)" />}
-                    {data.pan_card_url && <DocLink url={data.pan_card_url} label="PAN Card" />}
-                    {data.bank_proof_url && <DocLink url={data.bank_proof_url} label="Bank Proof" />}
-                    {data.light_bill_url && <DocLink url={data.light_bill_url} label="Light Bill" />}
-                  </div>
-                </div>
-              )}
-              {letters.length > 0 && (
-                <div className="card" style={{ marginBottom:16 }}>
-                  <div className="card-head"><h3>Generated Letters</h3><span className="sub">{letters.length}</span></div>
-                  <div className="card-pad" style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {letters.map(l => (
-                      <div key={l.id} className="letter-row">
-                        <span style={{ fontWeight:500 }}>{l.template?.title || 'Letter'}</span>
-                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>
-                          {new Date(l.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
-                        </span>
-                        <a className="btn btn-sm" href={API_BASE + '/letters/generated/' + l.id + '/download'}
-                          target="_blank" rel="noopener noreferrer"
-                          style={{ marginLeft:'auto', textDecoration:'none' }}>
-                          Download
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {![data.aadhar_front_url, data.aadhar_back_url, data.pan_card_url, data.bank_proof_url, data.light_bill_url].some(Boolean) && letters.length === 0 && (
-                <div className="card"><div className="card-pad"><div className="empty">No documents or letters available.</div></div></div>
-              )}
-            </>
-          )}
+
         </div>
       </div>
     </>
