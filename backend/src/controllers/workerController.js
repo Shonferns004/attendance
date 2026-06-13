@@ -296,7 +296,14 @@ export const removeWorker = async (req, res) => {
 
 export const updateMyProfile = async (req, res) => {
   try {
-    const allowed = ['name', 'phone', 'address', 'emergency_contact', 'emergency_phone'];
+    const allowed = [
+      'name', 'phone', 'alternate_phone', 'address', 'permanent_address',
+      'city', 'state', 'pincode', 'gender', 'dob',
+      'father_husband_name', 'marital_status', 'pan_number', 'aadhar_number',
+      'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
+      'account_holder_name', 'ifsc_code', 'account_number',
+      'photo_url',
+    ];
     const updates = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
