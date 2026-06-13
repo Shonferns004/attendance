@@ -142,6 +142,10 @@ export default function EmployeeDetail({ worker, onBack }) {
   const noAttendanceData = monthAttendance.length === 0;
   const absentDates = monthAttendance.filter(a => a.status === 'absent').map(a => a.date);
 
+  const joinDate = new Date(data.created_at);
+  const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
+  const joinedThisMonth = joinMonth === monthKey;
+  const joinDayNum = joinDate.getDate();
   const joinCutoff = data.created_at.slice(0, 10);
 
   const deducted = new Set();
@@ -172,10 +176,6 @@ export default function EmployeeDetail({ worker, onBack }) {
     }
   }
 
-  const joinDate = new Date(data.created_at);
-  const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
-  const joinedThisMonth = joinMonth === monthKey;
-  const joinDayNum = joinDate.getDate();
   const availableDays = joinedThisMonth ? (daysInMonth - joinDayNum + 1) : daysInMonth;
 
   const monSatAbsences = absentDates.filter(d => {
