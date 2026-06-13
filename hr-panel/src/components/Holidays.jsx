@@ -3,6 +3,7 @@ import { useHR } from '../store';
 import { Plus, Trash } from '../icons';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export default function Holidays() {
   const { holidays, workers, fetchWorkers, addHoliday, removeHoliday } = useHR();
@@ -10,8 +11,9 @@ export default function Holidays() {
   const [date, setDate] = useState('');
   const [type, setType] = useState('holiday');
   const [recurring, setRecurring] = useState(true);
-  const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState(null);
 
   useEffect(() => { fetchWorkers(); }, []);
 
@@ -33,48 +35,59 @@ export default function Holidays() {
     setName(''); setDate(''); setType('holiday'); setRecurring(true);
   };
 
-  const monthItems = useMemo(() => {
-    const items = [];
-
-    holidays.forEach(h => {
+  const monthHolidays = useMemo(() => {
+    return holidays.filter(h => {
       const d = new Date(h.date + 'T00:00:00');
-      if (h.is_recurring && d.getMonth() !== calMonth) return;
-      if (!h.is_recurring && (d.getFullYear() !== calYear || d.getMonth() !== calMonth)) return;
-      items.push({
-        id: h.id,
-        date: h.is_recurring ? `${calYear}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : h.date,
-        name: h.name,
-        type: h.type,
-        isRecurring: h.is_recurring,
-        kind: h.type === 'event' ? 'event' : 'holiday',
-      });
+      if (h.is_recurring) return d.getMonth() === calMonth;
+      return d.getFullYear() === calYear && d.getMonth() === calMonth;
     });
+  }, [holidays, calYear, calMonth]);
 
+  const dayHolidays = useMemo(() => {
+    const map = {};
+    monthHolidays.forEach(h => {
+      const d = new Date(h.date + 'T00:00:00');
+      const day = d.getDate();
+      if (!map[day]) map[day] = [];
+      map[day].push(h);
+    });
+    return map;
+  }, [monthHolidays]);
+
+  const dayBirthdays = useMemo(() => {
+    const map = {};
     Object.entries(birthdays).forEach(([md, names]) => {
       const [m, day] = md.split('-').map(Number);
-      if (m === calMonth) {
-        const ds = `${calYear}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        names.forEach(n => {
-          items.push({
-            id: 'bday-' + n,
-            date: ds,
-            name: n,
-            type: 'birthday',
-            isRecurring: true,
-            kind: 'birthday',
-          });
-        });
-      }
+      if (m === calMonth) map[day] = names;
     });
+    return map;
+  }, [birthdays, calMonth]);
 
-    items.sort((a, b) => a.date.localeCompare(b.date));
-    return items;
-  }, [holidays, birthdays, calMonth, calYear]);
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const prevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); };
   const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); };
 
-  const fmtDay = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+  const handleDayClick = (d) => {
+    setSelectedDay(selectedDay === d ? null : d);
+    const y = calYear;
+    const m = String(calMonth + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    setDate(`${y}-${m}-${day}`);
+  };
+
+  const isToday = (d) => calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate();
+
+  const selectedEvents = selectedDay ? [
+    ...(dayHolidays[selectedDay] || []).map(h => ({ ...h, kind: h.type === 'event' ? 'event' : 'holiday' })),
+    ...(dayBirthdays[selectedDay] || []).map(n => ({ id: 'b-' + n, name: n, kind: 'birthday' })),
+  ] : [];
 
   return (
     <>
@@ -103,53 +116,74 @@ export default function Holidays() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h3>{MONTHS[calMonth]} {calYear}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="sub">{monthItems.length} entries</span>
-            <button className="btn btn-icon" onClick={prevMonth} style={{ fontSize: 18, lineHeight: 1 }}>‹</button>
-            <button className="btn btn-icon" onClick={nextMonth} style={{ fontSize: 18, lineHeight: 1 }}>›</button>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        <div className="card" style={{ flex: 1 }}>
+          <div className="card-head">
+            <h3>{MONTHS[calMonth]} {calYear}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="sub">
+                {monthHolidays.length} {monthHolidays.length === 1 ? 'entry' : 'entries'}
+              </span>
+              <button className="btn btn-icon cal-nav" onClick={prevMonth}>‹</button>
+              <button className="btn btn-icon cal-nav" onClick={nextMonth}>›</button>
+            </div>
+          </div>
+          <div className="cal-grid">
+            {DAYS.map(d => <div key={d} className="cal-dow">{d}</div>)}
+            {cells.map((d, i) => (
+              <div
+                key={i}
+                className={`cal-cell ${d === null ? 'cal-empty' : ''} ${isToday(d) ? 'cal-today' : ''} ${selectedDay === d ? 'cal-selected' : ''}`}
+                onClick={() => d !== null && handleDayClick(d)}
+              >
+                {d !== null && (
+                  <>
+                    <div className="cal-day-num">{d}</div>
+                    <div className="cal-dots">
+                      {(dayHolidays[d] || []).map(h => (
+                        <span key={h.id} className={`cal-dot ${h.type === 'event' ? 'cal-dot-event' : 'cal-dot-holiday'}`} title={h.name} />
+                      ))}
+                      {(dayBirthdays[d] || []).map((_, i) => (
+                        <span key={`b-${i}`} className="cal-dot cal-dot-bday" title="Birthday" />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Day</th>
-                <th>Name</th>
-                <th>Type</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthItems.map(item => (
-                <tr key={item.id} className={item.kind === 'birthday' ? 'row-bday' : ''}>
-                  <td>{item.date}</td>
-                  <td className="ink-soft">{fmtDay(item.date)}</td>
-                  <td>
-                    {item.isRecurring && <span className="hol-rec-badge" title="Recurs every year">↻</span>}
-                    {item.name}
-                  </td>
-                  <td>
-                    {item.kind === 'holiday' && <span className="badge badge-present">Holiday</span>}
-                    {item.kind === 'event' && <span className="badge badge-leave">Event</span>}
-                    {item.kind === 'birthday' && <span className="badge" style={{ background:'#fce7f3', color:'#be4b7b' }}>🎂 Birthday</span>}
-                  </td>
-                  <td>
-                    {item.kind !== 'birthday' && (
-                      <button className="btn btn-icon" onClick={() => removeHoliday(item.id)} title="Remove"><Trash width={14} /></button>
-                    )}
-                  </td>
-                </tr>
+
+        {selectedDay && (
+          <div className="card" style={{ flex: '0 0 260px', alignSelf: 'stretch' }}>
+            <div className="card-head">
+              <h3>{selectedDay} {MONTHS[calMonth]}</h3>
+              <button className="btn btn-icon" onClick={() => setSelectedDay(null)}>×</button>
+            </div>
+            <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {selectedEvents.length === 0 && <div className="empty">No entries.</div>}
+              {selectedEvents.map(e => (
+                <div key={e.id} className={`cal-detail-item ${e.kind === 'birthday' ? 'cal-detail-bday' : e.kind === 'event' ? 'cal-detail-event' : ''}`}>
+                  <div className="cal-detail-name">
+                    {e.kind === 'birthday' && <span className="cal-detail-icon">🎂</span>}
+                    {e.is_recurring && <span className="cal-detail-rec">↻</span>}
+                    {e.name}
+                  </div>
+                  <div className="cal-detail-type">
+                    {e.kind === 'holiday' && <span className="badge badge-present">Holiday</span>}
+                    {e.kind === 'event' && <span className="badge badge-leave">Event</span>}
+                    {e.kind === 'birthday' && <span className="badge" style={{ background:'#fce7f3', color:'#be4b7b' }}>Birthday</span>}
+                  </div>
+                  {e.kind !== 'birthday' && (
+                    <button className="cal-detail-rm" onClick={() => removeHoliday(e.id)} title="Remove">
+                      <Trash width={13} />
+                    </button>
+                  )}
+                </div>
               ))}
-              {monthItems.length === 0 && (
-                <tr><td colSpan={5}><div className="empty">Nothing this month.</div></td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
