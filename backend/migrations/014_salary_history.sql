@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS salary_history (
   salary NUMERIC(12,2) NOT NULL,
   from_month DATE NOT NULL,
   to_month DATE,
-  created_by UUID REFERENCES users(id),
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

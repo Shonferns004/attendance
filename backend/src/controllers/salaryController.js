@@ -25,7 +25,7 @@ export const addSalary = async (req, res) => {
       salary,
       from_month,
       to_month: to_month || null,
-      created_by: req.user.id,
+      created_by: req.user?.id || null,
     });
     return res.status(201).json({ message: 'Salary added', record });
   } catch (error) {
