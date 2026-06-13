@@ -9,11 +9,11 @@ export default function Holidays() {
   const { holidays, workers, fetchWorkers, addHoliday, removeHoliday } = useHR();
   const [name, setName] = useState('');
   const [type, setType] = useState('holiday');
-  const [recurring, setRecurring] = useState(true);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const today = new Date();
   const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => { fetchWorkers(); }, []);
 
@@ -69,9 +69,9 @@ export default function Holidays() {
 
   const handleDayClick = (d) => {
     setSelectedDay(d);
+    setShowForm(false);
     setName('');
     setType('holiday');
-    setRecurring(true);
   };
 
   const submit = () => {
@@ -79,8 +79,9 @@ export default function Holidays() {
     const m = String(calMonth + 1).padStart(2, '0');
     const day = String(selectedDay).padStart(2, '0');
     const date = `${calYear}-${m}-${day}`;
-    addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
+    addHoliday({ name: name.trim(), date, is_recurring: true, type });
     setName('');
+    setShowForm(false);
   };
 
   const isToday = (d) => calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate();
@@ -97,8 +98,8 @@ export default function Holidays() {
           <h3>{MONTHS[calMonth]} {calYear}</h3>
           <div className="hol-head-right">
             <span className="sub">{monthHolidays.length} {monthHolidays.length === 1 ? 'entry' : 'entries'}</span>
-            <button className="btn btn-icon cal-nav" onClick={prevMonth}>‹</button>
-            <button className="btn btn-icon cal-nav" onClick={nextMonth}>›</button>
+            <button className="btn btn-icon cal-nav" onClick={prevMonth}>&lsaquo;</button>
+            <button className="btn btn-icon cal-nav" onClick={nextMonth}>&rsaquo;</button>
           </div>
         </div>
         <div className="cal-grid">
@@ -138,7 +139,7 @@ export default function Holidays() {
                 <div key={e.id} className={`cal-side-item ${e.kind === 'birthday' ? 'cal-side-bday' : e.kind === 'event' ? 'cal-side-event' : ''}`}>
                   <div className="hol-side-text">
                     <div className="hol-side-name">
-                      {e.kind === 'birthday' && '🎂 '}
+                      {e.kind === 'birthday' && '\uD83C\uDF82 '}
                       {e.is_recurring && <span className="hol-rec-icon">↻</span>}
                       {e.name}
                     </div>
@@ -158,26 +159,29 @@ export default function Holidays() {
             </div>
           )}
 
-          <div className={`hol-add-form ${sideEvents.length > 0 ? 'hol-add-bordered' : ''}`}>
-            <label className="field hol-field">Occasion
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
-            </label>
-            <div className="form-row" style={{ gap: 8 }}>
-              <label className="field" style={{ minWidth: 0, flex: 1 }}>Type
+          {!showForm ? (
+            <button className="btn btn-primary" onClick={() => { setShowForm(true); setName(''); setType('holiday'); }} style={{ width: '100%', justifyContent: 'center' }}>
+              <Plus width={16} /> Add
+            </button>
+          ) : (
+            <div className={`hol-add-form ${sideEvents.length > 0 ? 'hol-add-bordered' : ''}`}>
+              <label className="field hol-field">Occasion
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
+              </label>
+              <label className="field" style={{ marginBottom: 8 }}>Type
                 <select value={type} onChange={e => setType(e.target.value)}>
                   <option value="holiday">Holiday</option>
                   <option value="event">Event</option>
                 </select>
               </label>
-              <label className="field chk" style={{ marginTop: 22, whiteSpace: 'nowrap' }}>
-                <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />
-                Recurring
-              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn" onClick={() => setShowForm(false)} style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
+                <button className="btn btn-primary" onClick={submit} style={{ flex: 1, justifyContent: 'center' }}>
+                  <Plus width={16} /> Save
+                </button>
+              </div>
             </div>
-            <button className="btn btn-primary hol-add-btn" onClick={submit}>
-              <Plus width={16} /> Add
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
