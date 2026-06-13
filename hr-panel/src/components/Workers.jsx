@@ -18,7 +18,7 @@ export default function Workers({ onSelect, onOffboard }) {
 
   useEffect(() => {
     fetchWorkers();
-    fetchNGOs();
+    fetchNGOs().catch(() => {});
     const token = localStorage.getItem('hr_token');
     fetch(API_BASE + '/salary/workers-summary', {
       headers: { Authorization: 'Bearer ' + token },

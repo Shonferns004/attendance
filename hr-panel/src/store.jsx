@@ -67,13 +67,16 @@ export function HRProvider({ children }) {
         },
         ...options,
       });
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
         const currentToken = localStorage.getItem('hr_token');
         if (currentToken === token) {
           setToken(''); setUser(null);
           localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
         }
         throw new Error('Session expired. Please login again.');
+      }
+      if (res.status === 403) {
+        throw new Error('Access denied. You do not have permission.');
       }
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));

@@ -7,7 +7,7 @@ export default function Overview() {
   const { workers, attendance, leaves, feed, fetchWorkers, fetchAttendance, fetchLeaves } = useHR();
 
   useEffect(() => {
-    fetchWorkers(); fetchAttendance(); fetchLeaves();
+    fetchWorkers().catch(() => {}); fetchAttendance().catch(() => {}); fetchLeaves().catch(() => {});
   }, []);
 
   const todayDate = new Date().toISOString().slice(0, 10);
