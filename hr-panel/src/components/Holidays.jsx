@@ -9,6 +9,7 @@ export default function Holidays() {
   const { holidays, workers, fetchWorkers, addHoliday, removeHoliday } = useHR();
   const [name, setName] = useState('');
   const [type, setType] = useState('holiday');
+  const [recurring, setRecurring] = useState(true);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const today = new Date();
@@ -72,6 +73,7 @@ export default function Holidays() {
     setShowForm(false);
     setName('');
     setType('holiday');
+    setRecurring(true);
   };
 
   const submit = () => {
@@ -79,7 +81,7 @@ export default function Holidays() {
     const m = String(calMonth + 1).padStart(2, '0');
     const day = String(selectedDay).padStart(2, '0');
     const date = `${calYear}-${m}-${day}`;
-    addHoliday({ name: name.trim(), date, is_recurring: true, type });
+    addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
     setName('');
     setShowForm(false);
   };
@@ -160,7 +162,7 @@ export default function Holidays() {
           )}
 
           {!showForm ? (
-            <button className="btn btn-primary" onClick={() => { setShowForm(true); setName(''); setType('holiday'); }} style={{ width: '100%', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => { setShowForm(true); setName(''); setType('holiday'); setRecurring(true); }} style={{ width: '100%', justifyContent: 'center' }}>
               <Plus width={16} /> Add
             </button>
           ) : (
@@ -168,12 +170,20 @@ export default function Holidays() {
               <label className="field hol-field">Occasion
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
               </label>
-              <label className="field" style={{ marginBottom: 8 }}>Type
-                <select value={type} onChange={e => setType(e.target.value)}>
-                  <option value="holiday">Holiday</option>
-                  <option value="event">Event</option>
-                </select>
-              </label>
+              <div className="form-row" style={{ gap: 8 }}>
+                <label className="field" style={{ flex: 1 }}>Type
+                  <select value={type} onChange={e => setType(e.target.value)}>
+                    <option value="holiday">Holiday</option>
+                    <option value="event">Event</option>
+                  </select>
+                </label>
+                <label className="toggle-wrap">
+                  <span className="toggle-lbl">Recurring</span>
+                  <span className={`toggle ${recurring ? 'on' : ''}`} onClick={() => setRecurring(r => !r)}>
+                    <span className="toggle-knob" />
+                  </span>
+                </label>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn" onClick={() => setShowForm(false)} style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
                 <button className="btn btn-primary" onClick={submit} style={{ flex: 1, justifyContent: 'center' }}>
