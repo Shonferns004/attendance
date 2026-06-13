@@ -6,9 +6,10 @@ import { Plus, Trash } from '../icons';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function Workers({ onSelect, onOffboard }) {
-  const { workers, addWorker, DEPTS, fetchWorkers } = useHR();
+  const { workers, addWorker, DEPTS, ngos, fetchWorkers, fetchNGOs } = useHR();
   const [name, setName] = useState('');
   const [dept, setDept] = useState(DEPTS[0]);
+  const [ngoId, setNgoId] = useState('');
   const [err, setErr] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -17,6 +18,7 @@ export default function Workers({ onSelect, onOffboard }) {
 
   useEffect(() => {
     fetchWorkers();
+    fetchNGOs();
     const token = localStorage.getItem('hr_token');
     fetch(API_BASE + '/salary/workers-summary', {
       headers: { Authorization: 'Bearer ' + token },
@@ -48,8 +50,9 @@ export default function Workers({ onSelect, onOffboard }) {
     if (!name.trim()) return;
     setErr('');
     try {
-      await addWorker({ name: name.trim(), dept });
+      await addWorker({ name: name.trim(), dept, ngo_id: ngoId || null });
       setName('');
+      setNgoId('');
     } catch (e) {
       setErr(e.message);
     }
@@ -73,6 +76,12 @@ export default function Workers({ onSelect, onOffboard }) {
             <label className="field">Team
               <select value={dept} onChange={e=>setDept(e.target.value)}>
                 {DEPTS.map(d => <option key={d}>{d}</option>)}
+              </select>
+            </label>
+            <label className="field">NGO
+              <select value={ngoId} onChange={e=>setNgoId(e.target.value)}>
+                <option value="">NA</option>
+                {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
               </select>
             </label>
             <button className="btn btn-primary" onClick={submit}><Plus width={16}/> Add employee</button>

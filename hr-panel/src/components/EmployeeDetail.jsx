@@ -24,7 +24,7 @@ function fmtTime(iso) {
 }
 
 export default function EmployeeDetail({ worker, onBack }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +55,7 @@ export default function EmployeeDetail({ worker, onBack }) {
     });
     if (!attendance.length) fetchAttendance();
     if (!leaves.length) fetchLeaves();
+    if (!ngos.length) fetchNGOs();
     return () => { cancelled = true; };
   }, [worker.id]);
 
@@ -67,6 +68,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       phone: data.phone || '',
       alternate_phone: data.alternate_phone || '',
       department: data.department || '',
+      ngo_id: data.ngo_id || '',
       shift: data.shift || '',
       address: data.address || '',
       city: data.city || '',
@@ -119,6 +121,8 @@ export default function EmployeeDetail({ worker, onBack }) {
   const empLeaves = leaves.filter(l =>
     l.workers?.name === data.name || l.workers?.email === data.email
   );
+
+  const ngoName = ngos.find(n => n.id === data.ngo_id)?.name || 'NA';
 
   const TABS = [
     { key: 'overview', label: 'Overview' },
@@ -281,7 +285,25 @@ export default function EmployeeDetail({ worker, onBack }) {
                 <div className="detail-grid">
                   {editing ? <EditField label="Email" value={form.email} onChange={setField('email')} /> : <Field label="Email" value={data.email} />}
                   <Field label="Login ID" value={data.login_id} />
-                  {editing ? <EditField label="Department" value={form.department} onChange={setField('department')} /> : <Field label="Department" value={data.department} />}
+                  {editing ? (
+                    <div className="detail-field">
+                      <span className="detail-label">Department</span>
+                      <select value={form.department} onChange={setField('department')}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
+                        {DEPTS.map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  ) : <Field label="Department" value={data.department} />}
+                  {editing ? (
+                    <div className="detail-field">
+                      <span className="detail-label">NGO</span>
+                      <select value={form.ngo_id} onChange={setField('ngo_id')}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
+                        <option value="">NA</option>
+                        {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                      </select>
+                    </div>
+                  ) : <Field label="NGO" value={ngoName} />}
                   {editing ? <EditField label="Shift" value={form.shift} onChange={setField('shift')} /> : <Field label="Shift" value={data.shift} />}
                   {editing ? <EditField label="Gender" value={form.gender} onChange={setField('gender')} /> : <Field label="Gender" value={data.gender} />}
                   {editing ? <EditField label="Date of Birth" value={form.dob} onChange={setField('dob')} type="date" /> : <Field label="Date of Birth" value={data.dob} />}

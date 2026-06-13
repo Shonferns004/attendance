@@ -205,7 +205,7 @@ export const editWorker = async (req, res) => {
       name, email, gender, dob, phone, alternate_phone,
       department, shift, address, city, state, pincode,
       permanent_address, father_husband_name, marital_status,
-      pan_number, aadhar_number, is_active,
+      pan_number, aadhar_number, is_active, ngo_id,
       emergency_contact_name, emergency_contact_relation, emergency_contact_phone,
       account_holder_name, ifsc_code, account_number,
     } = req.body;
@@ -228,6 +228,7 @@ export const editWorker = async (req, res) => {
     if (pan_number !== undefined) updates.pan_number = pan_number;
     if (aadhar_number !== undefined) updates.aadhar_number = aadhar_number;
     if (is_active !== undefined) updates.is_active = is_active;
+    if (ngo_id !== undefined) updates.ngo_id = ngo_id || null;
     if (emergency_contact_name !== undefined) updates.emergency_contact_name = emergency_contact_name;
     if (emergency_contact_relation !== undefined) updates.emergency_contact_relation = emergency_contact_relation;
     if (emergency_contact_phone !== undefined) updates.emergency_contact_phone = emergency_contact_phone;

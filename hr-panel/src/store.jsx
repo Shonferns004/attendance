@@ -15,7 +15,7 @@ export const avatarTint = tint;
 
 const now = () => new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 
-export const DEPTS = ['Engineering','Design','Sales','People','Operations'];
+export const DEPTS = ['FRO','Admin','HR','Housekeeping','CSR','Digital','Manager','Event Manager','Telecalling','NA'];
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -31,6 +31,7 @@ export function HRProvider({ children }) {
   const [templates, setTemplates] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [notifs, setNotifs] = useState([]);
+  const [ngos, setNgos] = useState([]);
   const [feed, setFeed] = useState([{ id:'init', msg:'HR Panel ready', time:now() }]);
   const [loading, setLoading] = useState(false);
   const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sage');
@@ -112,10 +113,16 @@ export function HRProvider({ children }) {
     return data;
   }, [api]);
 
-  const addWorker = useCallback(async ({ name, email, dept }) => {
+  const fetchNGOs = useCallback(async () => {
+    const data = await api('/ngos');
+    setNgos(data);
+    return data;
+  }, [api]);
+
+  const addWorker = useCallback(async ({ name, email, dept, ngo_id }) => {
     const data = await api('/workers', {
       method: 'POST',
-      body: JSON.stringify({ name, email: email || null, department: dept || null }),
+      body: JSON.stringify({ name, email: email || null, department: dept || null, ngo_id: ngo_id || null }),
     });
     const w = data.worker;
     setWorkers(p => [{ id: w.id, name: w.name, email: w.email, login_id: w.login_id, created_at: new Date().toISOString(), department: dept }, ...p]);
@@ -299,9 +306,9 @@ export function HRProvider({ children }) {
 
   return (
     <HRContext.Provider value={{
-      DEPTS, workers, attendance, leaves, templates, notifs, holidays, feed,
+      DEPTS, ngos, workers, attendance, leaves, templates, notifs, holidays, feed,
       loading, user, token, login, logout,
-      fetchWorkers, addWorker, removeWorker, fetchWorkerById, updateWorker,
+      fetchWorkers, fetchNGOs, addWorker, removeWorker, fetchWorkerById, updateWorker,
       fetchAttendance, fetchLeaves, decideLeave,
       fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
       addHoliday, removeHoliday, fetchHolidays,
