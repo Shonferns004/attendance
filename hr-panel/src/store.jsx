@@ -272,6 +272,27 @@ export function HRProvider({ children }) {
     return await api('/recruiters/' + id + '/stats');
   }, [api]);
 
+  const fetchWorkerSalaries = useCallback(async (workerId) => {
+    return await api('/salary/worker/' + workerId);
+  }, [api]);
+
+  const addWorkerSalary = useCallback(async (data) => {
+    const result = await api('/salary', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    log(`Salary added for worker`);
+    return result;
+  }, [api, log]);
+
+  const updateWorkerSalary = useCallback(async (id, data) => {
+    const result = await api('/salary/' + id, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return result;
+  }, [api]);
+
   const fetchLeadsDashboard = useCallback(async () => {
     return await api('/leads/dashboard');
   }, [api]);
@@ -288,6 +309,7 @@ export function HRProvider({ children }) {
       leads, recruiters,
       fetchLeads, addLead, updateLead,
       fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
+      fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary,
     }}>
       {children}
     </HRContext.Provider>
