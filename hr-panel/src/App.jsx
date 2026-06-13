@@ -103,7 +103,11 @@ function Sidebar({ active, setActive, open, onClose }) {
 
 function Dashboard() {
   const { user, logout, themes, themeName, setTheme } = useHR();
-  const [active, setActive] = useState('overview');
+  const [active, setActive] = useState(() => localStorage.getItem('hr_panel') || 'overview');
+  const setActiveAndPersist = useCallback((id) => {
+    setActive(id);
+    localStorage.setItem('hr_panel', id);
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -132,7 +136,7 @@ function Dashboard() {
 
   return (
     <div className="app">
-      <Sidebar active={active} setActive={setActive} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Sidebar active={active} setActive={setActiveAndPersist} open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="main">
         <div className="mobile-top">
