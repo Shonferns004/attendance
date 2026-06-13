@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useHR } from '../store';
-import { Plus, Trash, X } from '../icons';
+import { Plus, Trash } from '../icons';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -12,7 +12,8 @@ export default function Holidays() {
   const [recurring, setRecurring] = useState(true);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [selectedDay, setSelectedDay] = useState(null);
+  const today = new Date();
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
 
   useEffect(() => { fetchWorkers(); }, []);
 
@@ -58,7 +59,6 @@ export default function Holidays() {
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const today = new Date();
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -68,7 +68,6 @@ export default function Holidays() {
   const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); };
 
   const handleDayClick = (d) => {
-    if (selectedDay === d) { setSelectedDay(null); return; }
     setSelectedDay(d);
     setName('');
     setType('holiday');
@@ -76,7 +75,7 @@ export default function Holidays() {
   };
 
   const submit = () => {
-    if (!name.trim() || !selectedDay) return;
+    if (!name.trim()) return;
     const m = String(calMonth + 1).padStart(2, '0');
     const day = String(selectedDay).padStart(2, '0');
     const date = `${calYear}-${m}-${day}`;
@@ -86,10 +85,10 @@ export default function Holidays() {
 
   const isToday = (d) => calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate();
 
-  const sideEvents = selectedDay ? [
+  const sideEvents = [
     ...(dayHolidays[selectedDay] || []).map(h => ({ ...h, kind: h.type === 'event' ? 'event' : 'holiday' })),
     ...(dayBirthdays[selectedDay] || []).map(n => ({ id: 'b-' + n, name: n, kind: 'birthday' })),
-  ] : [];
+  ];
 
   return (
     <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -128,62 +127,59 @@ export default function Holidays() {
         </div>
       </div>
 
-      {selectedDay !== null && (
-        <div className="card" style={{ flex: '0 0 280px', alignSelf: 'stretch' }}>
-          <div className="card-head">
-            <h3>{selectedDay} {MONTHS[calMonth]}</h3>
-            <button className="btn btn-icon" onClick={() => setSelectedDay(null)}><X width={16} /></button>
-          </div>
-          <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sideEvents.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {sideEvents.map(e => (
-                  <div key={e.id} className={`cal-side-item ${e.kind === 'birthday' ? 'cal-side-bday' : e.kind === 'event' ? 'cal-side-event' : ''}`}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {e.kind === 'birthday' && '🎂 '}
-                        {e.is_recurring && <span style={{ opacity: .5, marginRight: 3 }}>↻</span>}
-                        {e.name}
-                      </div>
-                      <div style={{ marginTop: 2 }}>
-                        {e.kind === 'holiday' && <span className="badge badge-present" style={{ fontSize: 10 }}>Holiday</span>}
-                        {e.kind === 'event' && <span className="badge badge-leave" style={{ fontSize: 10 }}>Event</span>}
-                        {e.kind === 'birthday' && <span className="badge" style={{ fontSize: 10, background:'#fce7f3', color:'#be4b7b' }}>Birthday</span>}
-                      </div>
+      <div className="card" style={{ flex: '0 0 280px', alignSelf: 'stretch' }}>
+        <div className="card-head">
+          <h3>{selectedDay} {MONTHS[calMonth]}</h3>
+        </div>
+        <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {sideEvents.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {sideEvents.map(e => (
+                <div key={e.id} className={`cal-side-item ${e.kind === 'birthday' ? 'cal-side-bday' : e.kind === 'event' ? 'cal-side-event' : ''}`}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.kind === 'birthday' && '🎂 '}
+                      {e.is_recurring && <span style={{ opacity: .5, marginRight: 3 }}>↻</span>}
+                      {e.name}
                     </div>
-                    {e.kind !== 'birthday' && (
-                      <button className="btn btn-icon" onClick={() => removeHoliday(e.id)} title="Remove" style={{ flexShrink: 0 }}>
-                        <Trash width={13} />
-                      </button>
-                    )}
+                    <div style={{ marginTop: 2 }}>
+                      {e.kind === 'holiday' && <span className="badge badge-present" style={{ fontSize: 10 }}>Holiday</span>}
+                      {e.kind === 'event' && <span className="badge badge-leave" style={{ fontSize: 10 }}>Event</span>}
+                      {e.kind === 'birthday' && <span className="badge" style={{ fontSize: 10, background:'#fce7f3', color:'#be4b7b' }}>Birthday</span>}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ borderTop: sideEvents.length > 0 ? '1px solid var(--line)' : 'none', paddingTop: sideEvents.length > 0 ? 12 : 0 }}>
-              <label className="field" style={{ marginBottom: 8 }}>Occasion
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
-              </label>
-              <div className="form-row" style={{ gap: 8 }}>
-                <label className="field" style={{ minWidth: 0, flex: 1 }}>Type
-                  <select value={type} onChange={e => setType(e.target.value)}>
-                    <option value="holiday">Holiday</option>
-                    <option value="event">Event</option>
-                  </select>
-                </label>
-                <label className="field chk" style={{ marginTop: 22, whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />
-                  Recurring
-                </label>
-              </div>
-              <button className="btn btn-primary" onClick={submit} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-                <Plus width={16} /> Add
-              </button>
+                  {e.kind !== 'birthday' && (
+                    <button className="btn btn-icon" onClick={() => removeHoliday(e.id)} title="Remove" style={{ flexShrink: 0 }}>
+                      <Trash width={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+
+          <div style={{ borderTop: sideEvents.length > 0 ? '1px solid var(--line)' : 'none', paddingTop: sideEvents.length > 0 ? 12 : 0 }}>
+            <label className="field" style={{ marginBottom: 8 }}>Occasion
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
+            </label>
+            <div className="form-row" style={{ gap: 8 }}>
+              <label className="field" style={{ minWidth: 0, flex: 1 }}>Type
+                <select value={type} onChange={e => setType(e.target.value)}>
+                  <option value="holiday">Holiday</option>
+                  <option value="event">Event</option>
+                </select>
+              </label>
+              <label className="field chk" style={{ marginTop: 22, whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />
+                Recurring
+              </label>
+            </div>
+            <button className="btn btn-primary" onClick={submit} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+              <Plus width={16} /> Add
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
