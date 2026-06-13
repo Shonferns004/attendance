@@ -6,6 +6,8 @@ import {
   deleteTemplate,
   createGeneratedLetter,
   getGeneratedLetters,
+  getGeneratedLettersByWorkerId,
+  getGeneratedLetterById,
 } from '../models/letterModel.js';
 import { getWorkerById } from '../models/workerModel.js';
 
@@ -337,7 +339,7 @@ export const generateLetter = async (req, res) => {
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
 
     let filledHtml = template.html_content;
-    const vars = variables || {};
+    const vars = req.body.variables || {};
     template.variables.forEach((v) => {
       const val = vars[v] || worker[v.replace('employee_', '')] || `[${v}]`;
       filledHtml = filledHtml.replaceAll(`{${v}}`, val);
@@ -363,6 +365,34 @@ export const listGeneratedLetters = async (req, res) => {
     const ngo_id = req.query.ngo_id || req.user.ngo_id;
     const letters = await getGeneratedLetters(ngo_id);
     return res.json(letters);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getWorkerLetters = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const letters = await getGeneratedLettersByWorkerId(workerId);
+    return res.json(letters);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const downloadLetter = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const letter = await getGeneratedLetterById(id);
+    if (!letter) return res.status(404).json({ message: 'Letter not found' });
+
+    const workerName = letter.worker?.name || 'employee';
+    const templateTitle = letter.template?.title || 'letter';
+    const filename = `${workerName.replace(/\s+/g, '_')}_${templateTitle.replace(/\s+/g, '_')}.html`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(letter.filled_html);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

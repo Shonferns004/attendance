@@ -8,6 +8,8 @@ import {
   removeTemplate,
   generateLetter,
   listGeneratedLetters,
+  getWorkerLetters,
+  downloadLetter,
 } from '../controllers/letterController.js';
 import { authenticateRole } from '../middleware/authMiddleware.js';
 
@@ -23,5 +25,7 @@ router.put('/templates/:id', hrRoles, editTemplate);
 router.delete('/templates/:id', hrRoles, removeTemplate);
 router.post('/generate', hrRoles, generateLetter);
 router.get('/generated', hrRoles, listGeneratedLetters);
+router.get('/generated/worker/:workerId', hrRoles, getWorkerLetters);
+router.get('/generated/:id/download', hrRoles, downloadLetter);
 
 export default router;

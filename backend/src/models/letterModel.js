@@ -75,3 +75,23 @@ export const getGeneratedLetters = async (ngo_id) => {
   if (error) throw error;
   return data;
 };
+
+export const getGeneratedLettersByWorkerId = async (workerId) => {
+  const { data, error } = await supabase
+    .from('generated_letters')
+    .select('*, worker:worker_id(name, email), template:template_id(title, category)')
+    .eq('worker_id', workerId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const getGeneratedLetterById = async (id) => {
+  const { data, error } = await supabase
+    .from('generated_letters')
+    .select('*, worker:worker_id(name, email), template:template_id(title, category)')
+    .eq('id', id)
+    .single();
+  if (error) return null;
+  return data;
+};

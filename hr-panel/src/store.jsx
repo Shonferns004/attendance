@@ -1,0 +1,245 @@
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { themes, applyTheme } from './theme.js';
+
+const HRContext = createContext(null);
+export const useHR = () => useContext(HRContext);
+
+const PALETTE = ['#5B6B4E','#B5603A','#C08A2E','#4F6472','#7A5C7E','#88693D'];
+export const avatarColor = (name) => {
+  let h = 0; for (const c of name) h = c.charCodeAt(0) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+};
+export const initials = (n) => n.trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+const tint = (hex) => hex + '22';
+export const avatarTint = tint;
+
+const now = () => new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+
+export const DEPTS = ['Engineering','Design','Sales','People','Operations'];
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+
+function loadHolidays() {
+  try {
+    const h = localStorage.getItem('hr_holidays');
+    return h ? JSON.parse(h) : [
+      { id:1, name:'Republic Day',     date:'2026-01-26' },
+      { id:2, name:'Holi',             date:'2026-03-04' },
+      { id:3, name:'Independence Day', date:'2026-08-15' },
+      { id:4, name:'Diwali',           date:'2026-11-08' },
+    ];
+  } catch { return []; }
+}
+
+export function HRProvider({ children }) {
+  const [token, setToken] = useState(() => localStorage.getItem('hr_token') || '');
+  const [user, setUser] = useState(() => {
+    try { const u = localStorage.getItem('hr_user'); return u ? JSON.parse(u) : null; }
+    catch { return null; }
+  });
+  const [workers, setWorkers] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [holidays, setHolidays] = useState(loadHolidays);
+  const [notifs, setNotifs] = useState([]);
+  const [feed, setFeed] = useState([{ id:'init', msg:'HR Panel ready', time:now() }]);
+  const [loading, setLoading] = useState(false);
+  const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sage');
+
+  const setTheme = useCallback((name) => {
+    if (themes[name]) {
+      applyTheme(themes[name]);
+      setThemeName(name);
+      localStorage.setItem('hr_theme', name);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = themes[themeName];
+    if (t) applyTheme(t);
+  }, [themeName]);
+
+  useEffect(() => { localStorage.setItem('hr_holidays', JSON.stringify(holidays)); }, [holidays]);
+
+  let idCounter = Date.now();
+  const nextId = () => ++idCounter;
+
+  const log = useCallback((msg) => {
+    setFeed(f => [{ id:nextId(), msg, time:now() }, ...f].slice(0, 8));
+  }, []);
+
+  const api = useCallback(async (path, options = {}) => {
+    setLoading(true);
+    try {
+      const res = await fetch(API_BASE + path, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
+        ...options,
+      });
+      if (res.status === 401 || res.status === 403) {
+        setToken(''); setUser(null);
+        localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
+        throw new Error('Session expired. Please login again.');
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        throw new Error(err.message || 'Request failed');
+      }
+      return res.json();
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const login = useCallback(async (identifier, password) => {
+    const res = await fetch(API_BASE + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Invalid credentials' }));
+      throw new Error(err.message || 'Login failed');
+    }
+    const data = await res.json();
+    setToken(data.token);
+    setUser(data.user);
+    localStorage.setItem('hr_token', data.token);
+    localStorage.setItem('hr_user', JSON.stringify(data.user));
+    log(`Logged in as ${data.user?.name || data.role}`);
+    return data;
+  }, [log]);
+
+  const logout = useCallback(() => {
+    setToken(''); setUser(null);
+    localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
+    log('Logged out');
+  }, [log]);
+
+  const fetchWorkers = useCallback(async () => {
+    const data = await api('/workers');
+    setWorkers(data);
+    return data;
+  }, [api]);
+
+  const addWorker = useCallback(async ({ name, email, dept }) => {
+    const data = await api('/workers', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, department: dept || null }),
+    });
+    const w = data.worker;
+    setWorkers(p => [{ id: w.id, name: w.name, email: w.email, login_id: w.login_id, created_at: new Date().toISOString(), department: dept }, ...p]);
+    log(`Added ${w.name}`);
+    return data;
+  }, [api, log]);
+
+  const removeWorker = useCallback(async (id) => {
+    const w = workers.find(x => x.id === id);
+    await api('/workers/' + id, { method: 'DELETE' });
+    setWorkers(p => p.filter(x => x.id !== id));
+    if (w) log(`Removed ${w.name}`);
+  }, [api, workers, log]);
+
+  const fetchWorkerById = useCallback(async (id) => {
+    return await api('/workers/' + id);
+  }, [api]);
+
+  const updateWorker = useCallback(async (id, updates) => {
+    const data = await api('/workers/' + id, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    log(`Updated worker`);
+    return data;
+  }, [api, log]);
+
+  const fetchAttendance = useCallback(async () => {
+    const data = await api('/attendance/all');
+    setAttendance(data);
+    return data;
+  }, [api]);
+
+  const fetchLeaves = useCallback(async () => {
+    const data = await api('/leaves');
+    setLeaves(data);
+    return data;
+  }, [api]);
+
+  const decideLeave = useCallback(async (id, status) => {
+    const newStatus = status === 'Approved' ? 'approved' : 'rejected';
+    const data = await api('/leaves/' + id + '/status', {
+      method: 'PUT',
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setLeaves(p => p.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    const l = leaves.find(x => x.id === id);
+    log(`Leave ${status.toLowerCase()} · ${l?.workers?.name || ''}`);
+    return data;
+  }, [api, leaves, log]);
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const data = await api('/letters/templates');
+      setTemplates(data);
+      return data;
+    } catch { setTemplates([]); return []; }
+  }, [api]);
+
+  const generateLetter = useCallback(async (template_id, worker_id) => {
+    const data = await api('/letters/generate', {
+      method: 'POST',
+      body: JSON.stringify({ template_id, worker_id }),
+    });
+    log(`Letter generated`);
+    return data;
+  }, [api, log]);
+
+  const fetchWorkerLetters = useCallback(async (workerId) => {
+    try {
+      const res = await fetch(API_BASE + '/letters/generated/worker/' + workerId, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch {
+      return [];
+    }
+  }, [token]);
+
+  const sendNotif = useCallback(async (title, body, worker_id) => {
+    const data = await api('/admin/notifications/send-now', {
+      method: 'POST',
+      body: JSON.stringify({ title, body, worker_id: worker_id || undefined }),
+    });
+    setNotifs(p => [{ id:nextId(), to: title, msg: body, time:now() }, ...p]);
+    log(`Notification sent`);
+    return data;
+  }, [api, log]);
+
+  const addHoliday = useCallback((h) => {
+    setHolidays(p => [...p, { ...h, id:nextId() }]);
+    log(`Added holiday · ${h.name}`);
+  }, [log]);
+
+  const removeHoliday = useCallback((id) => {
+    setHolidays(p => p.filter(h => h.id !== id));
+  }, []);
+
+  return (
+    <HRContext.Provider value={{
+      DEPTS, workers, attendance, leaves, templates, notifs, holidays, feed,
+      loading, user, token, login, logout,
+      fetchWorkers, addWorker, removeWorker, fetchWorkerById, updateWorker,
+      fetchAttendance, fetchLeaves, decideLeave,
+      fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
+      addHoliday, removeHoliday,
+      themeName, setTheme, themes,
+    }}>
+      {children}
+    </HRContext.Provider>
+  );
+}
