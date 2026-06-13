@@ -23,10 +23,10 @@ function loadHolidays() {
   try {
     const h = localStorage.getItem('hr_holidays');
     return h ? JSON.parse(h) : [
-      { id:1, name:'Republic Day',     date:'2026-01-26' },
-      { id:2, name:'Holi',             date:'2026-03-04' },
-      { id:3, name:'Independence Day', date:'2026-08-15' },
-      { id:4, name:'Diwali',           date:'2026-11-08' },
+      { id:1, name:'Republic Day',     date:'2026-01-26', is_recurring:true, type:'holiday' },
+      { id:2, name:'Holi',             date:'2026-03-04', is_recurring:true, type:'holiday' },
+      { id:3, name:'Independence Day', date:'2026-08-15', is_recurring:true, type:'holiday' },
+      { id:4, name:'Diwali',           date:'2026-11-08', is_recurring:true, type:'holiday' },
     ];
   } catch { return []; }
 }
@@ -229,6 +229,54 @@ export function HRProvider({ children }) {
     setHolidays(p => p.filter(h => h.id !== id));
   }, []);
 
+  const [leads, setLeads] = useState([]);
+  const [recruiters, setRecruiters] = useState([]);
+
+  const fetchLeads = useCallback(async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.recruiter_id) params.set('recruiter_id', filters.recruiter_id);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    const q = params.toString();
+    const data = await api('/leads' + (q ? '?' + q : ''));
+    setLeads(data);
+    return data;
+  }, [api]);
+
+  const addLead = useCallback(async (leadData) => {
+    const data = await api('/leads', {
+      method: 'POST',
+      body: JSON.stringify(leadData),
+    });
+    setLeads(p => [data.lead, ...p]);
+    log(`Lead added · ${data.lead.name}`);
+    return data;
+  }, [api, log]);
+
+  const updateLead = useCallback(async (id, updates) => {
+    const data = await api('/leads/' + id, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    setLeads(p => p.map(l => l.id === id ? data.lead : l));
+    log(`Lead updated`);
+    return data;
+  }, [api, log]);
+
+  const fetchRecruiters = useCallback(async () => {
+    const data = await api('/recruiters');
+    setRecruiters(data);
+    return data;
+  }, [api]);
+
+  const fetchRecruiterStats = useCallback(async (id) => {
+    return await api('/recruiters/' + id + '/stats');
+  }, [api]);
+
+  const fetchLeadsDashboard = useCallback(async () => {
+    return await api('/leads/dashboard');
+  }, [api]);
+
   return (
     <HRContext.Provider value={{
       DEPTS, workers, attendance, leaves, templates, notifs, holidays, feed,
@@ -238,6 +286,9 @@ export function HRProvider({ children }) {
       fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
       addHoliday, removeHoliday,
       themeName, setTheme, themes,
+      leads, recruiters,
+      fetchLeads, addLead, updateLead,
+      fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
     }}>
       {children}
     </HRContext.Provider>

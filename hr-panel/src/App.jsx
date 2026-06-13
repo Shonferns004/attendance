@@ -10,6 +10,7 @@ import Attendance from './components/Attendance';
 import Letters from './components/Letters';
 import Notify from './components/Notify';
 import Holidays from './components/Holidays';
+import Recruiters from './components/Recruiters';
 
 const NAV = [
   { id:'overview',   label:'Overview',    icon:Grid,    eyebrow:'Dashboard',   sub:'Your team at a glance' },
@@ -17,11 +18,12 @@ const NAV = [
   { id:'attendance', label:'Attendance',  icon:Clock,   eyebrow:'Daily',       sub:'Mark who is in today' },
   { id:'leaves',     label:'Leaves',      icon:Plane,   eyebrow:'Time off',    sub:'Requests and approvals' },
   { id:'letters',    label:'Letters',     icon:FileTxt, eyebrow:'Documents',   sub:'Generate HR letters' },
+  { id:'recruiters', label:'Recruiters',  icon:Users,   eyebrow:'Pipeline',    sub:'Track leads and hires' },
   { id:'notify',     label:'Notifications',icon:Bell,   eyebrow:'Comms',       sub:'Send a message to the team' },
   { id:'holidays',   label:'Holidays',    icon:Cal,     eyebrow:'Calendar',    sub:'Plan the holiday chart' },
 ];
 
-const PANELS = { overview:Overview, employees:Workers, attendance:Attendance, leaves:Leaves, letters:Letters, notify:Notify, holidays:Holidays };
+const PANELS = { overview:Overview, employees:Workers, attendance:Attendance, leaves:Leaves, letters:Letters, recruiters:Recruiters, notify:Notify, holidays:Holidays };
 
 function LoginScreen() {
   const { login } = useHR();

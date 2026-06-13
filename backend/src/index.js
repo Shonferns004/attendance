@@ -20,6 +20,8 @@ import achievementRoutes from './routes/achievementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import notificationAdminRoutes from './routes/notificationAdminRoutes.js';
 import onboardingRoutes from './routes/onboardingRoutes.js';
+import leadRoutes from './routes/leadRoutes.js';
+import recruiterRoutes from './routes/recruiterRoutes.js';
 
 dotenv.config();
 
@@ -47,6 +49,8 @@ app.use('/api/achievements', achievementRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/notifications', notificationAdminRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/recruiters', recruiterRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });

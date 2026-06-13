@@ -6,25 +6,45 @@ export default function Holidays() {
   const { holidays, addHoliday, removeHoliday } = useHR();
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
+  const [type, setType] = useState('holiday');
+  const [recurring, setRecurring] = useState(true);
 
-  const submit = () => { if (!name.trim() || !date) return; addHoliday({ name:name.trim(), date }); setName(''); setDate(''); };
-  const sorted = [...holidays].sort((a,b) => a.date.localeCompare(b.date));
+  const submit = () => {
+    if (!name.trim() || !date) return;
+    addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
+    setName('');
+    setDate('');
+    setType('holiday');
+    setRecurring(true);
+  };
+
+  const sorted = [...holidays].sort((a, b) => a.date.localeCompare(b.date));
   const year = sorted[0] ? new Date(sorted[0].date).getFullYear() : new Date().getFullYear();
 
   return (
     <>
-      <div className="card" style={{ marginBottom:20 }}>
+      <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-head"><h3>Add a holiday</h3></div>
         <div className="card-pad">
           <div className="form-row">
             <label className="field">Occasion
-              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Diwali"
-                onKeyDown={e=>e.key==='Enter'&&submit()} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali"
+                onKeyDown={e => e.key === 'Enter' && submit()} />
             </label>
             <label className="field">Date
-              <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} />
             </label>
-            <button className="btn btn-primary" onClick={submit}><Plus width={16}/> Add holiday</button>
+            <label className="field">Type
+              <select value={type} onChange={e => setType(e.target.value)}>
+                <option value="holiday">Holiday</option>
+                <option value="event">Event</option>
+              </select>
+            </label>
+            <label className="field chk">
+              <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />
+              Recurs every year
+            </label>
+            <button className="btn btn-primary" onClick={submit}><Plus width={16} /> Add</button>
           </div>
         </div>
       </div>
@@ -36,18 +56,23 @@ export default function Holidays() {
             <div className="cal">
               {sorted.map(h => {
                 const d = new Date(h.date + 'T00:00:00');
+                const isEvent = h.type === 'event';
                 return (
-                  <div className="cal-item" key={h.id}>
-                    <button className="btn btn-icon rm" onClick={()=>removeHoliday(h.id)} aria-label="Remove holiday"><Trash width={14}/></button>
-                    <div className="mo">{d.toLocaleDateString('en-US',{month:'short'})}</div>
+                  <div className={`cal-item ${isEvent ? 'cal-event' : ''}`} key={h.id}>
+                    <button className="btn btn-icon rm" onClick={() => removeHoliday(h.id)} aria-label="Remove holiday"><Trash width={14} /></button>
+                    <div className="mo">{d.toLocaleDateString('en-US', { month: 'short' })}</div>
                     <div className="d">{d.getDate()}</div>
-                    <div className="oc">{h.name}</div>
-                    <div className="dy">{d.toLocaleDateString('en-US',{weekday:'long'})}</div>
+                    <div className="oc">
+                      {h.is_recurring && <span className="rec-badge" title="Recurs every year">🔁</span>}
+                      <span className={`type-dot ${isEvent ? 'event' : 'holiday'}`} />
+                      {h.name}
+                    </div>
+                    <div className="dy">{d.toLocaleDateString('en-US', { weekday: 'long' })}</div>
                   </div>
                 );
               })}
             </div>
-          ) : <div className="empty">No holidays added yet.</div>}
+          ) : <div className="empty">No holidays or events added yet.</div>}
         </div>
       </div>
     </>
