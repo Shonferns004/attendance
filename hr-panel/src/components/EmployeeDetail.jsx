@@ -194,6 +194,15 @@ export default function EmployeeDetail({ worker, onBack }) {
     }
   }
 
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dt = new Date(yr, mo - 1, d);
+    const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+    const att = monthAttendance.find(a => a.date === dateStr);
+    return { date: dateStr, day: d, dayName, att, status: att?.status || null };
+  });
+
   const paidDays = noAttendanceData ? 0 : daysInMonth - deducted.size;
   const daysWorked = monthAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
@@ -540,40 +549,108 @@ export default function EmployeeDetail({ worker, onBack }) {
               {/* Calculation Breakdown Notepad */}
               {activeSalary && !salaryPaid && !noAttendanceData && (
                 <div className="card" style={{ marginTop:16 }}>
-                  <div className="card-head"><h3>What Employee Gets</h3></div>
+                  <div className="card-head"><h3>Deep Calculation</h3></div>
                   <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
-                    <div style={{ marginBottom:10 }}>
-                      <strong>Salary:</strong> ₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} / {daysInMonth} days<br />
-                      <strong>Per-day rate:</strong> ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+
+                    {/* Formula */}
+                    <div style={{ marginBottom:12, background:'var(--bg)', padding:10, borderRadius:6, fontFamily:'monospace', fontSize:12, lineHeight:1.9 }}>
+                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Formula</div>
+                      <div>Employee gets = perDay × (daysInMonth − deductedDays)</div>
+                      <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({daysInMonth} − {deducted.size})</div>
+                      <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
+                      <div style={{ fontWeight:600, fontSize:14, marginTop:2 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
                     </div>
 
+                    {/* Per-day breakdown */}
+                    <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6 }}>
+                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Rate</div>
+                      <div>₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} (salary) ÷ {daysInMonth} (days)</div>
+                      <div>= <strong>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong> per day</div>
+                    </div>
+
+                    {/* Day grid */}
+                    <div style={{ marginBottom:12 }}>
+                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Day-by-day status</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, fontSize:10 }}>
+                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
+                          <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'2px 0' }}>{d}</div>
+                        )}
+                        {(() => {
+                          const firstDay = new Date(yr, mo - 1, 1).getDay();
+                          const cells = [];
+                          for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+                          for (const md of monthDays) {
+                            const isDeducted = deducted.has(md.date);
+                            const isWeekend = md.dayName === 'Sun';
+                            let bg, label;
+                            if (isDeducted) { bg = '#ffe0e0'; label = '✗'; }
+                            else if (md.status === 'present' || md.status === 'late') { bg = '#d4edda'; label = '✓'; }
+                            else if (isWeekend) { bg = '#f0f0f0'; label = '—'; }
+                            else { bg = '#fff'; label = ''; }
+                            cells.push(
+                              <div key={md.date} style={{ textAlign:'center', padding:'3px 0', borderRadius:3, background:bg, fontSize:9, position:'relative' }}>
+                                <div>{md.day}</div>
+                                <div style={{ fontWeight:600 }}>{label}</div>
+                              </div>
+                            );
+                          }
+                          return cells;
+                        })()}
+                      </div>
+                      <div style={{ display:'flex', gap:16, marginTop:6, fontSize:10, color:'var(--ink-soft)' }}>
+                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#d4edda', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Present/Late</span>
+                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffe0e0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Deducted</span>
+                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Weekend (no record)</span>
+                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff', border:'1px solid #ddd', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />No record</span>
+                      </div>
+                    </div>
+
+                    {/* Deductions */}
                     {deductionNotes.length > 0 && (
-                      <div style={{ marginBottom:10 }}>
-                        <strong style={{ color:'var(--danger)' }}>Deductions:</strong>
-                        <div style={{ paddingLeft:16, marginTop:2 }}>
-                          {deductionNotes.map((n, i) => (
-                            <div key={i} style={{ color:'var(--ink-soft)' }}>• {n.text}</div>
-                          ))}
+                      <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--danger)', borderRadius:6, background:'#fff5f5' }}>
+                        <div style={{ color:'var(--danger)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Absence deductions ({deductionNotes.length})</div>
+                        {deductionNotes.map((n, i) => (
+                          <div key={i} style={{ color:'var(--ink-soft)', fontSize:12 }}>• {n.text}</div>
+                        ))}
+                        <div style={{ marginTop:4, fontSize:11, color:'var(--danger)' }}>
+                          Saturday absences: {absentDates.filter(d => new Date(d).getDay() === 6).length} |
+                          Monday absences: {absentDates.filter(d => new Date(d).getDay() === 1).length} |
+                          Other absences: {absentDates.filter(d => { const day = new Date(d).getDay(); return day !== 6 && day !== 1 && day !== 0; }).length}
                         </div>
                       </div>
                     )}
 
-                    {extraSundays.length > 0 && (
-                      <div style={{ marginBottom:10 }}>
-                        <strong style={{ color:'var(--danger)' }}>Extra Sunday deduction{joinedThisMonth ? ' (on/after join date)' : ''}:</strong>
-                        <div style={{ paddingLeft:16, marginTop:2 }}>
-                          {extraSundays.map((d, i) => {
+                    {/* ≥6 Sunday rule */}
+                    <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6 }}>
+                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>≥6 Absence Rule</div>
+                      <div>Mon–Sat absences this month: <strong>{monSatAbsences}</strong></div>
+                      {extraSundays.length > 0 ? (
+                        <div style={{ color:'var(--danger)' }}>
+                          ≥ 6 → {extraSundays.length} extra Sunday{extraSundays.length > 1 ? 's' : ''} deducted:
+                          {extraSundays.map(d => {
                             const dt = new Date(d);
-                            return <div key={i} style={{ color:'var(--ink-soft)' }}>• Sun {dt.getDate()} {dt.toLocaleString('en-GB',{month:'short'})}</div>;
+                            return ` Sun ${dt.getDate()} ${dt.toLocaleString('en-GB',{month:'short'})}`;
                           })}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ color:'var(--ink-soft)' }}>&lt; 6 → no extra Sunday deduction</div>
+                      )}
+                    </div>
 
-                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:12, marginTop:12 }}>
-                      <strong>Employee gets:</strong><br />
-                      <span style={{ color:'var(--ink-soft)' }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {paidDays} days = </span>
-                      <strong style={{ fontSize:18, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                    {/* Summary */}
+                    <div style={{ borderTop:'2px solid var(--line)', paddingTop:12, marginTop:12 }}>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', fontSize:12 }}>
+                        <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
+                        <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
+                        <span style={{ color:'var(--danger)' }}>Absent days</span><span style={{ textAlign:'right' }}>{absentDates.length}</span>
+                        <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
+                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
+                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{paidDays}</span>
+                      </div>
+                      <div style={{ marginTop:10, textAlign:'center' }}>
+                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {paidDays} days = </span>
+                        <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                      </div>
                     </div>
                   </div>
                 </div>
