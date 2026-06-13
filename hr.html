@@ -282,6 +282,7 @@ let allWorkersCache = [];
 let todayRecords = [];
 let historyRecords = [];
 let allHistoryRecords = [];
+let todayFilter = '';
 
 // ---- Helpers ----
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -407,6 +408,7 @@ async function fetchToday() {
     const today = getIstDateStr(new Date());
     document.getElementById('todayDate').textContent = today;
     todayRecords = all.filter(r => r.date === today);
+    todayFilter = '';
     await fetchWorkers();
     renderTodayStats();
     renderTodayTable();
@@ -420,17 +422,27 @@ async function fetchToday() {
 
 // ---- Render today's stats ----
 function renderTodayStats() {
-  const present = todayRecords.filter(r => r.status === 'present').length;
+  const onTime = todayRecords.filter(r => r.status === 'present').length;
   const late = todayRecords.filter(r => r.status === 'late').length;
   const total = allWorkersCache.length || todayRecords.length;
-  const absent = total - present - late;
+  const absent = total - onTime - late;
+
+  const active = todayFilter;
+  const sel = (f) => active === f ? ' style="border-color:#6366f1;cursor:pointer;"' : ' style="cursor:pointer;"';
 
   document.getElementById('todayStats').innerHTML = `
     <div class="stat"><div class="stat-label">Total Workers</div><div class="stat-value info">${total}</div></div>
-    <div class="stat"><div class="stat-label">Present</div><div class="stat-value success">${present}</div></div>
-    <div class="stat"><div class="stat-label">Late</div><div class="stat-value warning">${late}</div></div>
-    <div class="stat"><div class="stat-label">Absent</div><div class="stat-value error">${absent > 0 ? absent : 0}</div></div>
+    <div class="stat" onclick="setTodayFilter('present')"${sel('present')}><div class="stat-label">Present</div><div class="stat-value success">${onTime + late}</div></div>
+    <div class="stat" onclick="setTodayFilter('late')"${sel('late')}><div class="stat-label">Late</div><div class="stat-value warning">${late}</div></div>
+    <div class="stat" onclick="setTodayFilter('absent')"${sel('absent')}><div class="stat-label">Absent</div><div class="stat-value error">${absent > 0 ? absent : 0}</div></div>
   `;
+}
+
+function setTodayFilter(filter) {
+  if (todayFilter === filter) { todayFilter = ''; }
+  else { todayFilter = filter; }
+  renderTodayStats();
+  renderAllWorkers();
 }
 
 // ---- Render today's table (only those who punched in) ----
@@ -475,7 +487,25 @@ function renderAllWorkers() {
   const todayMap = {};
   todayRecords.forEach(r => { todayMap[r.worker_id] = r; });
 
-  body.innerHTML = allWorkersCache.map((w, i) => {
+  let filtered = allWorkersCache;
+  if (todayFilter === 'present') {
+    filtered = allWorkersCache.filter(w => {
+      const rec = todayMap[w.id];
+      return rec && (rec.status === 'present' || rec.status === 'late');
+    });
+  } else if (todayFilter === 'late') {
+    filtered = allWorkersCache.filter(w => {
+      const rec = todayMap[w.id];
+      return rec && rec.status === 'late';
+    });
+  } else if (todayFilter === 'absent') {
+    filtered = allWorkersCache.filter(w => {
+      const rec = todayMap[w.id];
+      return !rec || rec.status === 'absent';
+    });
+  }
+
+  body.innerHTML = filtered.map((w, i) => {
     const record = todayMap[w.id];
     const status = record ? record.status : 'absent';
     return `<tr${rowClass(status)}>
