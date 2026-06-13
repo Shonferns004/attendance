@@ -317,12 +317,38 @@ export default function EmployeeDetail({ worker, onBack }) {
                 const monthAttendance = empAttendance.filter(a =>
                   a.date && a.date.startsWith(monthKey)
                 );
+
+                const absentDates = monthAttendance
+                  .filter(a => a.status === 'absent')
+                  .map(a => a.date);
+
+                const deducted = new Set();
+                for (const d of absentDates) {
+                  const dt = new Date(d);
+                  const day = dt.getDay();
+                  if (day === 6) {
+                    deducted.add(d);
+                    const sun = new Date(dt);
+                    sun.setDate(sun.getDate() + 1);
+                    deducted.add(sun.toISOString().slice(0, 10));
+                  } else if (day === 1) {
+                    deducted.add(d);
+                    const sun = new Date(dt);
+                    sun.setDate(sun.getDate() - 1);
+                    deducted.add(sun.toISOString().slice(0, 10));
+                  } else {
+                    deducted.add(d);
+                  }
+                }
+
+                const paidDays = daysInMonth - deducted.size;
                 const daysWorked = monthAttendance.filter(a =>
                   a.status === 'present' || a.status === 'late'
                 ).length;
+                const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
 
                 const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
-                const totalDue = perDay * daysWorked;
+                const totalDue = perDay * paidDays;
 
                 return (
                   <div className="card" style={{ marginBottom:16 }}>
@@ -336,6 +362,9 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <div className="lb-stat"><span className="lb-stat-lbl">Days in Month</span><span className="lb-stat-num">{daysInMonth}</span></div>
                           <div className="lb-stat"><span className="lb-stat-lbl">Per-Day Rate</span><span className="lb-stat-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                           <div className="lb-stat"><span className="lb-stat-lbl">Days Worked</span><span className="lb-stat-num">{daysWorked}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Absent Days</span><span className="lb-stat-num" style={absentDates.length ? { color:'var(--danger)' } : {}}>{absentDates.length}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Sundays Deducted</span><span className="lb-stat-num" style={sundayDeductions ? { color:'var(--danger)' } : {}}>{sundayDeductions}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Paid Days</span><span className="lb-stat-num">{paidDays}</span></div>
                           <div className="lb-stat"><span className="lb-stat-lbl" style={{ fontWeight:700 }}>Total Due</span><span className="lb-stat-num" style={{ color:'var(--sage)', fontWeight:700, fontSize:20 }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         </div>
                       )}
