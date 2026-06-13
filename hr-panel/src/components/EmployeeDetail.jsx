@@ -601,7 +601,7 @@ export default function EmployeeDetail({ worker, onBack }) {
               {/* Calculation Breakdown Notepad */}
               {activeSalary && !salaryPaid && !noAttendanceData && (
                 <div className="card" style={{ marginTop:16 }}>
-                  <div className="card-head"><h3>Deep Calculation</h3></div>
+                  <div className="card-head"><h3>Salary Breakdown</h3></div>
                   <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
 
                     {/* Formula */}
