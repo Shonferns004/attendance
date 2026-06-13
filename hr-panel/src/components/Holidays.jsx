@@ -1,23 +1,40 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useHR } from '../store';
-import { Plus, Trash, ArrowLeft } from '../icons';
+import { Plus, Trash } from '../icons';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export default function Holidays() {
-  const { holidays, addHoliday, removeHoliday } = useHR();
+  const { holidays, workers, fetchWorkers, addHoliday, removeHoliday } = useHR();
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [type, setType] = useState('holiday');
   const [recurring, setRecurring] = useState(true);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [quickDate, setQuickDate] = useState(null);
+  const formRef = useRef(null);
+
+  useEffect(() => { fetchWorkers(); }, []);
+
+  const birthdays = useMemo(() => {
+    const map = {};
+    workers.forEach(w => {
+      if (!w.dob) return;
+      const d = new Date(w.dob + 'T00:00:00');
+      const md = `${d.getMonth()}-${d.getDate()}`;
+      if (!map[md]) map[md] = [];
+      map[md].push(w.name);
+    });
+    return map;
+  }, [workers]);
 
   const submit = () => {
     if (!name.trim() || !date) return;
     addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
     setName(''); setDate(''); setType('holiday'); setRecurring(true);
+    setQuickDate(null);
   };
 
   const monthHolidays = useMemo(() => {
@@ -32,17 +49,23 @@ export default function Holidays() {
     const map = {};
     monthHolidays.forEach(h => {
       const d = new Date(h.date + 'T00:00:00');
-      let day;
-      if (h.is_recurring) {
-        day = d.getDate();
-      } else {
-        day = d.getDate();
-      }
+      const day = d.getDate();
       if (!map[day]) map[day] = [];
       map[day].push(h);
     });
     return map;
   }, [monthHolidays]);
+
+  const monthBirthdays = useMemo(() => {
+    const map = {};
+    Object.entries(birthdays).forEach(([md, names]) => {
+      const [m, day] = md.split('-').map(Number);
+      if (m === calMonth) {
+        map[day] = names;
+      }
+    });
+    return map;
+  }, [birthdays, calMonth]);
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -52,26 +75,32 @@ export default function Holidays() {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const prevMonth = () => {
-    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
-    else setCalMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
-    else setCalMonth(m => m + 1);
+  const prevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); };
+  const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); };
+
+  const handleDateClick = (d) => {
+    const y = calYear;
+    const m = String(calMonth + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    const ds = `${y}-${m}-${day}`;
+    setDate(ds);
+    setQuickDate(d);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const isToday = (d) => calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate();
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-head"><h3>Add a holiday</h3></div>
+      <div className="card" ref={formRef}>
+        <div className="card-head">
+          <h3>{quickDate ? `Add on ${quickDate} ${MONTHS[calMonth]} ${calYear}` : 'Add a holiday'}</h3>
+          {quickDate && <button className="btn btn-sm" onClick={() => { setQuickDate(null); setDate(''); }}>Cancel</button>}
+        </div>
         <div className="card-pad">
           <div className="form-row">
             <label className="field">Occasion
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali"
-                onKeyDown={e => e.key === 'Enter' && submit()} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} />
             </label>
             <label className="field">Date
               <input type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -84,7 +113,7 @@ export default function Holidays() {
             </label>
             <label className="field chk">
               <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />
-              Recurs every year
+              Recurs yearly
             </label>
             <button className="btn btn-primary" onClick={submit}><Plus width={16} /> Add</button>
           </div>
@@ -93,35 +122,42 @@ export default function Holidays() {
 
       <div className="card">
         <div className="card-head">
-          <h3>Calendar</h3>
-          <span className="sub">{monthHolidays.length} this month</span>
+          <h3>{MONTHS[calMonth]} {calYear}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className="hol-sub">{monthHolidays.length} holidays · {Object.keys(monthBirthdays).length} birthdays</span>
+            <button className="btn btn-icon" onClick={prevMonth}>‹</button>
+            <button className="btn btn-icon" onClick={nextMonth}>›</button>
+          </div>
         </div>
-        <div className="card-pad">
-          <div className="cal-nav">
-            <button className="btn btn-icon" onClick={prevMonth} style={{ transform: 'rotate(180deg)' }}><ArrowLeft width={18} /></button>
-            <span className="cal-nav-title">{MONTHS[calMonth]} {calYear}</span>
-            <button className="btn btn-icon" onClick={nextMonth}><ArrowLeft width={18} /></button>
-          </div>
-          <div className="cal-grid">
-            {DAYS.map(d => <div key={d} className="cal-dow">{d}</div>)}
-            {cells.map((d, i) => (
-              <div key={i} className={`cal-cell ${d === null ? 'cal-empty' : ''} ${isToday(d) ? 'cal-today' : ''}`}>
-                {d !== null && (
-                  <>
-                    <div className="cal-cell-day">{d}</div>
-                    {dayHolidays[d]?.map(h => (
-                      <div key={h.id} className={`cal-cell-event ${h.type === 'event' ? 'cal-event-type' : ''}`}>
-                        <span className="type-dot-sm ${h.type === 'event' ? 'event' : 'holiday'}" />
-                        {h.is_recurring && <span className="rec-indicator" title="Recurs every year">↻</span>}
-                        <span className="cal-event-name">{h.name}</span>
-                        <button className="cal-event-rm" onClick={() => removeHoliday(h.id)} title="Remove"><Trash width={10} /></button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="hol-cal">
+          {DAYS.map(d => <div key={d} className="hol-dow">{d}</div>)}
+          {cells.map((d, i) => (
+            <div
+              key={i}
+              className={`hol-cell ${d === null ? 'hol-empty' : ''} ${isToday(d) ? 'hol-today' : ''} ${d !== null && !isToday(d) ? 'hol-clickable' : ''}`}
+              onClick={() => d !== null && handleDateClick(d)}
+            >
+              {d !== null && (
+                <>
+                  <div className="hol-day">{d}</div>
+                  {dayHolidays[d]?.map(h => (
+                    <div key={h.id} className={`hol-tag ${h.type === 'event' ? 'hol-event' : ''}`}>
+                      <span className="hol-dot" />
+                      {h.is_recurring && <span className="hol-rec">↻</span>}
+                      <span className="hol-name">{h.name}</span>
+                      <button className="hol-rm" onClick={e => { e.stopPropagation(); removeHoliday(h.id); }}>×</button>
+                    </div>
+                  ))}
+                  {monthBirthdays[d]?.map((name, i) => (
+                    <div key={`b-${i}`} className="hol-tag hol-bday">
+                      <span className="hol-bday-icon">🎂</span>
+                      <span className="hol-name">{name}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </>
