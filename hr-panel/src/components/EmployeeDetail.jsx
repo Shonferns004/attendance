@@ -142,9 +142,12 @@ export default function EmployeeDetail({ worker, onBack }) {
   const noAttendanceData = monthAttendance.length === 0;
   const absentDates = monthAttendance.filter(a => a.status === 'absent').map(a => a.date);
 
+  const joinCutoff = data.created_at.slice(0, 10);
+
   const deducted = new Set();
   const deductionNotes = [];
   for (const d of absentDates) {
+    if (joinedThisMonth && d < joinCutoff) continue;
     const dt = new Date(d);
     const day = dt.getDay();
     const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day];
@@ -154,14 +157,14 @@ export default function EmployeeDetail({ worker, onBack }) {
       const sun = new Date(dt);
       sun.setDate(sun.getDate() + 1);
       const sunDate = sun.toISOString().slice(0, 10);
-      deducted.add(sunDate);
+      if (!joinedThisMonth || sunDate >= joinCutoff) deducted.add(sunDate);
       deductionNotes.push({ day: d, text: `${label} → absent → deducted: ${label} + Sun ${sun.getDate()} ${sun.toLocaleString('en-GB',{month:'short'})}` });
     } else if (day === 1) {
       deducted.add(d);
       const sun = new Date(dt);
       sun.setDate(sun.getDate() - 1);
       const sunDate = sun.toISOString().slice(0, 10);
-      deducted.add(sunDate);
+      if (!joinedThisMonth || sunDate >= joinCutoff) deducted.add(sunDate);
       deductionNotes.push({ day: d, text: `${label} → absent → deducted: Sun ${sun.getDate()} ${sun.toLocaleString('en-GB',{month:'short'})} + ${label}` });
     } else {
       deducted.add(d);
@@ -172,10 +175,12 @@ export default function EmployeeDetail({ worker, onBack }) {
   const joinDate = new Date(data.created_at);
   const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
   const joinedThisMonth = joinMonth === monthKey;
+  const joinDayNum = joinDate.getDate();
+  const availableDays = joinedThisMonth ? (daysInMonth - joinDayNum + 1) : daysInMonth;
 
   const monSatAbsences = absentDates.filter(d => {
     const dt = new Date(d);
-    return dt.getDay() !== 0 && d >= data.created_at.slice(0, 10);
+    return dt.getDay() !== 0 && d >= joinCutoff;
   }).length;
 
   const extraSundays = [];
@@ -184,7 +189,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       const dt = new Date(yr, mo - 1, d);
       if (dt.getDay() === 0) {
         const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (!joinedThisMonth || dateStr >= data.created_at.slice(0, 10)) {
+        if (!joinedThisMonth || dateStr >= joinCutoff) {
           if (!deducted.has(dateStr)) {
             extraSundays.push(dateStr);
           }
@@ -203,7 +208,8 @@ export default function EmployeeDetail({ worker, onBack }) {
     return { date: dateStr, day: d, dayName, att, status: att?.status || null };
   });
 
-  const paidDays = noAttendanceData ? 0 : daysInMonth - deducted.size;
+  let paidDays = noAttendanceData ? 0 : availableDays - deducted.size;
+  if (paidDays < 0) paidDays = 0;
   const daysWorked = monthAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
@@ -555,11 +561,31 @@ export default function EmployeeDetail({ worker, onBack }) {
                     {/* Formula */}
                     <div style={{ marginBottom:12, background:'var(--bg)', padding:10, borderRadius:6, fontFamily:'monospace', fontSize:12, lineHeight:1.9 }}>
                       <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Formula</div>
-                      <div>Employee gets = perDay × (daysInMonth − deductedDays)</div>
-                      <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({daysInMonth} − {deducted.size})</div>
-                      <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
-                      <div style={{ fontWeight:600, fontSize:14, marginTop:2 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      {joinedThisMonth ? (
+                        <>
+                          <div>Employee gets = perDay × (availableDays − deductedDays)</div>
+                          <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({availableDays} − {deducted.size})</div>
+                          <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
+                          <div style={{ fontWeight:600, fontSize:14, marginTop:2, borderTop:'1px dashed var(--line)', paddingTop:4 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div>Employee gets = perDay × (daysInMonth − deductedDays)</div>
+                          <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({daysInMonth} − {deducted.size})</div>
+                          <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
+                          <div style={{ fontWeight:600, fontSize:14, marginTop:2 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                        </>
+                      )}
                     </div>
+
+                    {/* Join info */}
+                    {joinedThisMonth && (
+                      <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6, background:'#fffbea' }}>
+                        <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Joined this month</div>
+                        <div>Joined on <strong>{new Date(data.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</strong></div>
+                        <div>Available days (join date → month end): {joinDayNum} – {daysInMonth} = <strong>{availableDays} days</strong></div>
+                      </div>
+                    )}
 
                     {/* Per-day breakdown */}
                     <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6 }}>
@@ -582,25 +608,28 @@ export default function EmployeeDetail({ worker, onBack }) {
                           for (const md of monthDays) {
                             const isDeducted = deducted.has(md.date);
                             const isWeekend = md.dayName === 'Sun';
-                            let bg, label;
-                            if (isDeducted) { bg = '#ffe0e0'; label = '✗'; }
-                            else if (md.status === 'present' || md.status === 'late') { bg = '#d4edda'; label = '✓'; }
-                            else if (isWeekend) { bg = '#f0f0f0'; label = '—'; }
-                            else { bg = '#fff'; label = ''; }
+                            const beforeJoin = joinedThisMonth && md.date < joinCutoff;
+                            let bg, label, title;
+                            if (beforeJoin) { bg = '#e8e8e8'; label = '—'; title = 'Before join'; }
+                            else if (isDeducted) { bg = '#ffe0e0'; label = '✗'; title = 'Deducted'; }
+                            else if (md.status === 'present' || md.status === 'late') { bg = '#d4edda'; label = '✓'; title = 'Present/Late'; }
+                            else if (isWeekend) { bg = '#f0f0f0'; label = '—'; title = 'Weekend'; }
+                            else { bg = '#fff'; label = ''; title = ''; }
                             cells.push(
                               <div key={md.date} style={{ textAlign:'center', padding:'3px 0', borderRadius:3, background:bg, fontSize:9, position:'relative' }}>
                                 <div>{md.day}</div>
-                                <div style={{ fontWeight:600 }}>{label}</div>
+                                <div style={{ fontWeight:600 }} title={title}>{label}</div>
                               </div>
                             );
                           }
                           return cells;
                         })()}
                       </div>
-                      <div style={{ display:'flex', gap:16, marginTop:6, fontSize:10, color:'var(--ink-soft)' }}>
+                      <div style={{ display:'flex', gap:16, marginTop:6, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
                         <span><span style={{ display:'inline-block', width:10, height:10, background:'#d4edda', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Present/Late</span>
                         <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffe0e0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Deducted</span>
-                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Weekend (no record)</span>
+                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Weekend</span>
+                        {joinedThisMonth && <span><span style={{ display:'inline-block', width:10, height:10, background:'#e8e8e8', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Before join</span>}
                         <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff', border:'1px solid #ddd', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />No record</span>
                       </div>
                     </div>
@@ -641,8 +670,9 @@ export default function EmployeeDetail({ worker, onBack }) {
                     <div style={{ borderTop:'2px solid var(--line)', paddingTop:12, marginTop:12 }}>
                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', fontSize:12 }}>
                         <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
+                        {joinedThisMonth && <><span style={{ color:'var(--ink-soft)' }}>Available (from join date)</span><span style={{ textAlign:'right' }}>{availableDays}</span></>}
                         <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
-                        <span style={{ color:'var(--danger)' }}>Absent days</span><span style={{ textAlign:'right' }}>{absentDates.length}</span>
+                        <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{joinedThisMonth ? absentDates.filter(d => d >= joinCutoff).length : absentDates.length}</span>
                         <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{paidDays}</span>
