@@ -374,7 +374,7 @@ export default function EmployeeDetail({ worker, onBack }) {
               {/* Attendance Records */}
               <div className="card" style={{ padding:'20px 22px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                  <h3 style={{ fontSize:16 }}>Attendance ({filteredAttendance.length} records)</h3>
+                  <h3 style={{ fontSize:16 }}>{fmtMonthYear(new Date(yr, mo - 1))}</h3>
                   <select className="filter-select" value={attStatus} onChange={e => setAttStatus(e.target.value)}>
                     <option value="">All</option>
                     <option value="present">Present</option>
@@ -384,40 +384,53 @@ export default function EmployeeDetail({ worker, onBack }) {
                   </select>
                 </div>
 
-                {filteredAttendance.length > 0 && <AttendanceChart records={filteredAttendance} />}
+                <div style={{ display:'flex', gap:24, alignItems:'flex-start' }}>
+                  {/* Calendar */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:1, background:'var(--line)', border:'1px solid var(--line)', borderRadius:6, overflow:'hidden', fontSize:11 }}>
+                      {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
+                        <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'4px 0', background:'var(--bg)' }}>{d}</div>
+                      )}
+                      {(() => {
+                        const firstDay = new Date(yr, mo - 1, 1).getDay();
+                        const cells = [];
+                        for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} style={{ background:'#fff' }} />);
+                        for (const md of monthDays) {
+                          const s = md.status;
+                          let bg, lbl;
+                          if (s === 'present') { bg = '#d4edda'; lbl = '✓'; }
+                          else if (s === 'late') { bg = '#fef3c7'; lbl = '⚠'; }
+                          else if (s === 'absent') { bg = '#ffe0e0'; lbl = '✗'; }
+                          else if (s === 'leave' || s === 'Leave') { bg = '#f3e8ff'; lbl = '✋'; }
+                          else if (md.dayName === 'Sun') { bg = '#f0f0f0'; lbl = '—'; }
+                          else { bg = '#fff'; lbl = ''; }
+                          cells.push(
+                            <div key={md.date} style={{ textAlign:'center', padding:'4px 0', background:bg, fontSize:10 }}>
+                              <div style={{ fontWeight:600 }}>{md.day}</div>
+                              <div>{lbl}</div>
+                            </div>
+                          );
+                        }
+                        return cells;
+                      })()}
+                    </div>
+                    <div style={{ display:'flex', gap:12, marginTop:6, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
+                      <span><span style={{ display:'inline-block', width:10, height:10, background:'#d4edda', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />Present</span>
+                      <span><span style={{ display:'inline-block', width:10, height:10, background:'#fef3c7', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />Late</span>
+                      <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffe0e0', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />Absent</span>
+                      <span><span style={{ display:'inline-block', width:10, height:10, background:'#f3e8ff', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />Leave</span>
+                      <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />Sun</span>
+                    </div>
+                  </div>
 
-                {filteredAttendance.length === 0 ? (
-                  <div className="empty" style={{ padding:0 }}>No attendance records found.</div>
-                ) : (
-                  <table style={{ marginTop:16 }}>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Punch In</th>
-                        <th>Punch Out</th>
-                        <th>Late (min)</th>
-                        <th>Hours</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAttendance.sort((a,b) => b.date.localeCompare(a.date)).map((a, i) => {
-                        const cls = a.status === 'absent' ? 'row-absent' : a.status === 'late' ? 'row-late' : '';
-                        return (
-                          <tr key={a.id} className={cls}>
-                            <td>{i + 1}</td>
-                            <td>{new Date(a.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
-                            <td><StatusPill status={a.status} /></td>
-                            <td>{fmtTime(a.punch_in_time)}</td>
-                            <td>{fmtTime(a.punch_out_time)}</td>
-                            <td>{a.late_minutes > 0 ? <span style={{ color:'#f59e0b', fontWeight:600 }}>{a.late_minutes}</span> : '\u2014'}</td>
-                            <td>{a.hours_worked || '\u2014'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  {/* Chart */}
+                  <div style={{ flexShrink:0 }}>
+                    {filteredAttendance.length > 0 && <AttendanceChart records={filteredAttendance} />}
+                  </div>
+                </div>
+
+                {filteredAttendance.length === 0 && (
+                  <div className="empty" style={{ marginTop:12 }}>No attendance records found.</div>
                 )}
               </div>
             </div>
