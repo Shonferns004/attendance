@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useHR, avatarColor, avatarTint, initials, DEPTS } from '../store';
-import { ArrowLeft, Pencil } from '../icons';
+import { ArrowLeft, Pencil, Trash } from '../icons';
 
 const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
@@ -24,7 +24,7 @@ function fmtTime(iso) {
 }
 
 export default function EmployeeDetail({ worker, onBack }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,9 @@ export default function EmployeeDetail({ worker, onBack }) {
   const [form, setForm] = useState({});
   const [tab, setTab] = useState('overview');
   const [attStatus, setAttStatus] = useState('');
+  const [salaries, setSalaries] = useState([]);
+  const [salaryForm, setSalaryForm] = useState({ salary: '' });
+  const [salarySubmitting, setSalarySubmitting] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -42,10 +45,12 @@ export default function EmployeeDetail({ worker, onBack }) {
     Promise.all([
       fetchWorkerById(worker.id).catch(() => null),
       fetchWorkerLetters(worker.id),
-    ]).then(([d, l]) => {
+      fetchWorkerSalaries(worker.id).catch(() => []),
+    ]).then(([d, l, s]) => {
       if (cancelled) return;
       setData(d);
       setLetters(l || []);
+      setSalaries(s || []);
       setLoading(false);
     });
     if (!attendance.length) fetchAttendance();
@@ -118,6 +123,7 @@ export default function EmployeeDetail({ worker, onBack }) {
   const TABS = [
     { key: 'overview', label: 'Overview' },
     { key: 'attendance', label: `Attendance (${empAttendance.length})` },
+    { key: 'salary', label: `Salary (${salaries.length})` },
     { key: 'leaves', label: `Leaves (${empLeaves.length})` },
     { key: 'documents', label: 'Documents & Letters' },
   ];
@@ -285,6 +291,115 @@ export default function EmployeeDetail({ worker, onBack }) {
                             <td>{fmtTime(a.punch_out_time)}</td>
                             <td>{a.late_minutes > 0 ? <span style={{ color:'#f59e0b', fontWeight:600 }}>{a.late_minutes}</span> : '\u2014'}</td>
                             <td>{a.hours_worked || '\u2014'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab === 'salary' && (
+            <div>
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>Add Salary</h3></div>
+                <div className="card-pad">
+                  <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+                    <div>
+                      <span className="detail-label">Salary Amount</span>
+                      <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
+                        value={salaryForm.salary}
+                        onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
+                    </div>
+                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
+                      onClick={async () => {
+                        setSalarySubmitting(true);
+                        try {
+                          const joinDate = new Date(data.created_at);
+                          const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
+                          const now = new Date();
+                          const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+                          const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+                          const latest = sorted[0];
+
+                          let from_month;
+                          if (!latest) {
+                            from_month = joinMonth;
+                          } else {
+                            from_month = currMonth;
+                          }
+
+                          if (latest && !latest.to_month) {
+                            const d = new Date(from_month);
+                            d.setDate(0);
+                            const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                            await updateWorkerSalary(latest.id, { to_month: prevMonth });
+                            setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
+                          }
+
+                          const res = await addWorkerSalary({
+                            worker_id: worker.id,
+                            salary: parseFloat(salaryForm.salary),
+                            from_month,
+                            to_month: null,
+                          });
+                          setSalaries(p => [res.record, ...p]);
+                          setSalaryForm({ salary: '' });
+                        } catch (e) { alert(e.message); }
+                        finally { setSalarySubmitting(false); }
+                      }}>
+                      {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="card-head"><h3>Salary History ({salaries.length} records)</h3></div>
+                {salaries.length === 0 ? (
+                  <div className="card-pad"><div className="empty">No salary records found.</div></div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Salary</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Added On</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month)).map((s, i) => {
+                        const from = new Date(s.from_month);
+                        const to = s.to_month ? new Date(s.to_month) : null;
+                        const fmtMonth = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+                        return (
+                          <tr key={s.id}>
+                            <td>{i + 1}</td>
+                            <td style={{ fontWeight:600 }}>₹{parseFloat(s.salary).toLocaleString('en-IN')}</td>
+                            <td>{fmtMonth(from)}</td>
+                            <td>{to ? fmtMonth(to) : '\u2014 (Current)'}</td>
+                            <td style={{ color:'var(--ink-soft)', fontSize:12 }}>
+                              {new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+                            </td>
+                            <td>
+                              <button className="btn btn-icon" title="Delete"
+                                onClick={async () => {
+                                  if (!confirm('Delete this salary record?')) return;
+                                  try {
+                                    await fetch(API_BASE + '/salary/' + s.id, { method:'DELETE', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
+                                    setSalaries(p => p.filter(x => x.id !== s.id));
+                                  } catch (e) { alert(e.message); }
+                                }}>
+                                <Trash width={14} />
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
