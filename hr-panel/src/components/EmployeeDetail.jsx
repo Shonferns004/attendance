@@ -38,6 +38,8 @@ export default function EmployeeDetail({ worker, onBack }) {
   const [salaries, setSalaries] = useState([]);
   const [salaryForm, setSalaryForm] = useState({ salary: '' });
   const [salarySubmitting, setSalarySubmitting] = useState(false);
+  const [selectedShift, setSelectedShift] = useState('');
+  const [shiftSaving, setShiftSaving] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -58,6 +60,10 @@ export default function EmployeeDetail({ worker, onBack }) {
     if (!ngos.length) fetchNGOs();
     return () => { cancelled = true; };
   }, [worker.id]);
+
+  useEffect(() => {
+    setSelectedShift(data?.shift || '');
+  }, [data?.shift]);
 
   const startEdit = () => {
     setForm({
@@ -129,7 +135,10 @@ export default function EmployeeDetail({ worker, onBack }) {
     { key: 'attendance', label: 'Attendance' },
     { key: 'salary', label: 'Salary' },
     { key: 'leaves', label: 'Leaves' },
+    { key: 'settings', label: 'Settings' },
   ];
+
+  const SHIFTS = ['09:30–18:30', '10:00–19:00'];
 
   const now = new Date();
   const yr = now.getFullYear();
@@ -304,13 +313,43 @@ export default function EmployeeDetail({ worker, onBack }) {
                       </select>
                     </div>
                   ) : <Field label="NGO" value={ngoName} />}
-                  {editing ? <EditField label="Shift" value={form.shift} onChange={setField('shift')} /> : <Field label="Shift" value={data.shift} />}
-                  {editing ? <EditField label="Gender" value={form.gender} onChange={setField('gender')} /> : <Field label="Gender" value={data.gender} />}
+                  {editing ? (
+                    <div className="detail-field">
+                      <span className="detail-label">Shift</span>
+                      <input value={form.shift} disabled
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%', background:'var(--bg)', color:'var(--ink-soft)' }} />
+                      <div style={{ fontSize:11, color:'var(--ink-soft)', marginTop:2 }}>Change in Settings tab</div>
+                    </div>
+                  ) : <Field label="Shift" value={data.shift} />}
+                  {editing ? (
+                    <div className="detail-field">
+                      <span className="detail-label">Gender</span>
+                      <select value={form.gender} onChange={setField('gender')}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  ) : <Field label="Gender" value={data.gender} />}
                   {editing ? <EditField label="Date of Birth" value={form.dob} onChange={setField('dob')} type="date" /> : <Field label="Date of Birth" value={data.dob} />}
                   {editing ? <EditField label="Phone" value={form.phone} onChange={setField('phone')} /> : <Field label="Phone" value={data.phone} />}
                   {editing ? <EditField label="Alternate Phone" value={form.alternate_phone} onChange={setField('alternate_phone')} /> : <Field label="Alternate Phone" value={data.alternate_phone} />}
                   {editing ? <EditField label="Father/Husband" value={form.father_husband_name} onChange={setField('father_husband_name')} /> : <Field label="Father/Husband" value={data.father_husband_name} />}
-                  {editing ? <EditField label="Marital Status" value={form.marital_status} onChange={setField('marital_status')} /> : <Field label="Marital Status" value={data.marital_status} />}
+                  {editing ? (
+                    <div className="detail-field">
+                      <span className="detail-label">Marital Status</span>
+                      <select value={form.marital_status} onChange={setField('marital_status')}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
+                        <option value="">Select</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                      </select>
+                    </div>
+                  ) : <Field label="Marital Status" value={data.marital_status} />}
                   {editing ? <EditField label="PAN Number" value={form.pan_number} onChange={setField('pan_number')} /> : <Field label="PAN Number" value={data.pan_number} />}
                   {editing ? <EditField label="Aadhar Number" value={form.aadhar_number} onChange={setField('aadhar_number')} /> : <Field label="Aadhar Number" value={data.aadhar_number} />}
                   {editing ? <EditField label="Address" value={form.address} onChange={setField('address')} /> : <Field label="Address" value={data.address} />}
@@ -753,6 +792,39 @@ export default function EmployeeDetail({ worker, onBack }) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {tab === 'settings' && (
+            <div className="card" style={{ padding:'20px 22px' }}>
+              <div className="card-head" style={{ marginBottom:16 }}><h3>Shift Time</h3></div>
+              <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+                <div className="detail-field" style={{ marginBottom:0 }}>
+                  <span className="detail-label">Shift</span>
+                  <select value={selectedShift} onChange={e => setSelectedShift(e.target.value)}
+                    style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:220 }}>
+                    <option value="">Select shift</option>
+                    {SHIFTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {data.shift && (
+                    <div style={{ marginTop:4, fontSize:12, color:'var(--ink-soft)' }}>
+                      Current: <strong>{data.shift}</strong>
+                    </div>
+                  )}
+                </div>
+                <button className="btn btn-primary btn-sm" disabled={shiftSaving || !selectedShift || selectedShift === data.shift}
+                  onClick={async () => {
+                    setShiftSaving(true);
+                    try {
+                      await updateWorker(worker.id, { shift: selectedShift });
+                      const fresh = await fetchWorkerById(worker.id);
+                      setData(fresh);
+                    } catch (e) { alert(e.message); }
+                    finally { setShiftSaving(false); }
+                  }}>
+                  {shiftSaving ? 'Saving\u2026' : 'Save'}
+                </button>
+              </div>
             </div>
           )}
 
