@@ -6,7 +6,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export default function Holidays() {
-  const { holidays, workers, fetchWorkers, addHoliday, removeHoliday } = useHR();
+  const { holidays, workers, fetchWorkers, addHoliday, removeHoliday, fetchHolidays } = useHR();
   const [name, setName] = useState('');
   const [type, setType] = useState('holiday');
   const [recurring, setRecurring] = useState(true);
@@ -16,7 +16,7 @@ export default function Holidays() {
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { fetchWorkers(); }, []);
+  useEffect(() => { fetchWorkers(); fetchHolidays(); }, []);
 
   const birthdays = useMemo(() => {
     const map = {};
@@ -76,12 +76,12 @@ export default function Holidays() {
     setRecurring(true);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) return;
     const m = String(calMonth + 1).padStart(2, '0');
     const day = String(selectedDay).padStart(2, '0');
     const date = `${calYear}-${m}-${day}`;
-    addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
+    await addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
     setName('');
     setShowForm(false);
   };

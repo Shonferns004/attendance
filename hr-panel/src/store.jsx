@@ -19,18 +19,6 @@ export const DEPTS = ['Engineering','Design','Sales','People','Operations'];
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
-function loadHolidays() {
-  try {
-    const h = localStorage.getItem('hr_holidays');
-    return h ? JSON.parse(h) : [
-      { id:1, name:'Republic Day',     date:'2026-01-26', is_recurring:true, type:'holiday' },
-      { id:2, name:'Holi',             date:'2026-03-04', is_recurring:true, type:'holiday' },
-      { id:3, name:'Independence Day', date:'2026-08-15', is_recurring:true, type:'holiday' },
-      { id:4, name:'Diwali',           date:'2026-11-08', is_recurring:true, type:'holiday' },
-    ];
-  } catch { return []; }
-}
-
 export function HRProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('hr_token') || '');
   const [user, setUser] = useState(() => {
@@ -41,7 +29,7 @@ export function HRProvider({ children }) {
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [holidays, setHolidays] = useState(loadHolidays);
+  const [holidays, setHolidays] = useState([]);
   const [notifs, setNotifs] = useState([]);
   const [feed, setFeed] = useState([{ id:'init', msg:'HR Panel ready', time:now() }]);
   const [loading, setLoading] = useState(false);
@@ -59,8 +47,6 @@ export function HRProvider({ children }) {
     const t = themes[themeName];
     if (t) applyTheme(t);
   }, [themeName]);
-
-  useEffect(() => { localStorage.setItem('hr_holidays', JSON.stringify(holidays)); }, [holidays]);
 
   let idCounter = Date.now();
   const nextId = () => ++idCounter;
@@ -220,17 +206,30 @@ export function HRProvider({ children }) {
     return data;
   }, [api, log]);
 
-  const addHoliday = useCallback((h) => {
-    setHolidays(p => [...p, { ...h, id:nextId() }]);
-    log(`Added holiday · ${h.name}`);
-  }, [log]);
-
-  const removeHoliday = useCallback((id) => {
-    setHolidays(p => p.filter(h => h.id !== id));
-  }, []);
-
   const [leads, setLeads] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
+
+  const fetchHolidays = useCallback(async () => {
+    try {
+      const data = await api('/holidays');
+      setHolidays(data);
+    } catch { /* ignore */ }
+  }, [api]);
+
+  const addHoliday = useCallback(async (h) => {
+    const data = await api('/holidays', {
+      method: 'POST',
+      body: JSON.stringify(h),
+    });
+    setHolidays(p => [...p, data.holiday]);
+    log(`Added holiday · ${h.name}`);
+    return data;
+  }, [api, log]);
+
+  const removeHoliday = useCallback(async (id) => {
+    await api('/holidays/' + id, { method: 'DELETE' });
+    setHolidays(p => p.filter(h => h.id !== id));
+  }, [api]);
 
   const fetchLeads = useCallback(async (filters = {}) => {
     const params = new URLSearchParams();
@@ -284,7 +283,7 @@ export function HRProvider({ children }) {
       fetchWorkers, addWorker, removeWorker, fetchWorkerById, updateWorker,
       fetchAttendance, fetchLeaves, decideLeave,
       fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
-      addHoliday, removeHoliday,
+      addHoliday, removeHoliday, fetchHolidays,
       themeName, setTheme, themes,
       leads, recruiters,
       fetchLeads, addLead, updateLead,

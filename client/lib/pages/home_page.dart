@@ -215,7 +215,41 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     });
   }
 
+  Future<bool> _requestLocationPermission() async {
+    bool service = await Geolocator.isLocationServiceEnabled();
+    if (!service) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Please enable GPS location'), backgroundColor: Colors.red.shade700),
+        );
+      }
+      return false;
+    }
+    LocationPermission perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Location permission is required to punch in/out'), backgroundColor: Colors.red.shade700),
+          );
+        }
+        return false;
+      }
+    }
+    if (perm == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Location permission permanently denied. Enable it in app settings.'), backgroundColor: Colors.red.shade700),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _punchIn() async {
+    if (!await _requestLocationPermission()) return;
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(builder: (_) => const ScannerPage()),
@@ -258,63 +292,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _punchOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Confirm Punch Out'),
-        content: const Text('Are you sure you want to punch out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Punch Out'),
-          ),
-        ],
-      ),
+    if (!await _requestLocationPermission()) return;
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const ScannerPage()),
     );
-    if (confirmed != true) return;
+    if (result == null || !mounted) return;
+
     try {
-      bool service = await Geolocator.isLocationServiceEnabled();
-      if (!service) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('GPS is disabled'),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        return;
-      }
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) {
-          if (mounted)
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Location permission denied'),
-                backgroundColor: Colors.red.shade700,
-              ),
-            );
-          return;
-        }
-      }
-      if (perm == LocationPermission.deniedForever) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Location permission permanently denied'),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition();
-      await ApiService.punchOut(pos.latitude, pos.longitude);
+      await ApiService.punchOut(result['lat'], result['lng']);
       setState(() {
         _isPunchedOut = true;
         _punchOutTime = DateTime.now();
