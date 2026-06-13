@@ -202,6 +202,21 @@ tr:hover td { background: #faf8f2; }
 .letter { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 28px 30px; margin-top: 16px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; color: #34302a; }
 
 /* === Calendar === */
+.hol-wrap { display: flex; gap: 20px; align-items: flex-start; }
+.hol-cal-card { flex: 1; }
+.hol-side { flex: 0 0 280px; align-self: stretch; }
+.hol-head-right { display: flex; align-items: center; gap: 10px; }
+.hol-side-body { display: flex; flex-direction: column; gap: 12px; }
+.hol-side-events { display: flex; flex-direction: column; gap: 6px; }
+.hol-side-text { flex: 1; min-width: 0; }
+.hol-side-name { font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hol-side-badges { margin-top: 2px; }
+.hol-rec-icon { opacity: .5; margin-right: 3px; }
+.bday-badge { font-size: 10px; background: #fce7f3; color: #be4b7b; }
+.hol-add-form { padding-top: 0; }
+.hol-add-bordered { border-top: 1px solid var(--line); padding-top: 12px; }
+.hol-field { margin-bottom: 8px; }
+.hol-add-btn { width: 100%; justify-content: center; margin-top: 4px; }
 .cal-nav { font-size: 18px; line-height: 1; width: 28px; height: 28px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 8px 16px 16px; }
 .cal-dow { text-align: center; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; padding: 4px 0 10px; letter-spacing: .06em; }
@@ -223,12 +238,6 @@ tr:hover td { background: #faf8f2; }
 .cal-side-item { display: flex; align-items: center; gap: 8px; background: var(--sand); border-radius: var(--radius-sm); padding: 8px 10px; }
 .cal-side-item.cal-side-bday { background: #fdf2f8; }
 .cal-side-item.cal-side-event { background: #eef4ff; }
-
-@media (max-width: 820px) {
-  .cal-cell { min-height: 64px; padding: 5px; }
-  .cal-day-num { font-size: 13px; }
-  .cal-dot { width: 6px; height: 6px; }
-}
 
 .seg { display: inline-flex; gap: 4px; }
 .seg button { padding: 4px 9px; font-size: 11px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--ink-soft); }
@@ -373,6 +382,11 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
   .form-row { flex-direction: column; }
   .form-row .field { min-width: 0; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
+  .hol-wrap { flex-direction: column; }
+  .hol-side { flex: none; width: 100%; }
+  .cal-cell { min-height: 64px; padding: 5px; }
+  .cal-day-num { font-size: 13px; }
+  .cal-dot { width: 6px; height: 6px; }
 }
 
 /* === Holidays === */
@@ -403,9 +417,6 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
   th, td { padding: 10px 12px; }
   .card-head { padding: 14px 16px; }
   .card-pad { padding: 16px; }
-}
-
-@media (max-width: 820px) {
 }
 
 @media (min-width: 821px) {

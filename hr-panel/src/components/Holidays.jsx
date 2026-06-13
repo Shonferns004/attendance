@@ -91,11 +91,11 @@ export default function Holidays() {
   ];
 
   return (
-    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-      <div className="card" style={{ flex: 1 }}>
+    <div className="hol-wrap">
+      <div className="card hol-cal-card">
         <div className="card-head">
           <h3>{MONTHS[calMonth]} {calYear}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="hol-head-right">
             <span className="sub">{monthHolidays.length} {monthHolidays.length === 1 ? 'entry' : 'entries'}</span>
             <button className="btn btn-icon cal-nav" onClick={prevMonth}>‹</button>
             <button className="btn btn-icon cal-nav" onClick={nextMonth}>›</button>
@@ -127,29 +127,29 @@ export default function Holidays() {
         </div>
       </div>
 
-      <div className="card" style={{ flex: '0 0 280px', alignSelf: 'stretch' }}>
+      <div className="card hol-side">
         <div className="card-head">
           <h3>{selectedDay} {MONTHS[calMonth]}</h3>
         </div>
-        <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="card-pad hol-side-body">
           {sideEvents.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="hol-side-events">
               {sideEvents.map(e => (
                 <div key={e.id} className={`cal-side-item ${e.kind === 'birthday' ? 'cal-side-bday' : e.kind === 'event' ? 'cal-side-event' : ''}`}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="hol-side-text">
+                    <div className="hol-side-name">
                       {e.kind === 'birthday' && '🎂 '}
-                      {e.is_recurring && <span style={{ opacity: .5, marginRight: 3 }}>↻</span>}
+                      {e.is_recurring && <span className="hol-rec-icon">↻</span>}
                       {e.name}
                     </div>
-                    <div style={{ marginTop: 2 }}>
-                      {e.kind === 'holiday' && <span className="badge badge-present" style={{ fontSize: 10 }}>Holiday</span>}
-                      {e.kind === 'event' && <span className="badge badge-leave" style={{ fontSize: 10 }}>Event</span>}
-                      {e.kind === 'birthday' && <span className="badge" style={{ fontSize: 10, background:'#fce7f3', color:'#be4b7b' }}>Birthday</span>}
+                    <div className="hol-side-badges">
+                      {e.kind === 'holiday' && <span className="badge badge-present">Holiday</span>}
+                      {e.kind === 'event' && <span className="badge badge-leave">Event</span>}
+                      {e.kind === 'birthday' && <span className="badge bday-badge">Birthday</span>}
                     </div>
                   </div>
                   {e.kind !== 'birthday' && (
-                    <button className="btn btn-icon" onClick={() => removeHoliday(e.id)} title="Remove" style={{ flexShrink: 0 }}>
+                    <button className="btn btn-icon" onClick={() => removeHoliday(e.id)} title="Remove">
                       <Trash width={13} />
                     </button>
                   )}
@@ -158,8 +158,8 @@ export default function Holidays() {
             </div>
           )}
 
-          <div style={{ borderTop: sideEvents.length > 0 ? '1px solid var(--line)' : 'none', paddingTop: sideEvents.length > 0 ? 12 : 0 }}>
-            <label className="field" style={{ marginBottom: 8 }}>Occasion
+          <div className={`hol-add-form ${sideEvents.length > 0 ? 'hol-add-bordered' : ''}`}>
+            <label className="field hol-field">Occasion
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Diwali" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
             </label>
             <div className="form-row" style={{ gap: 8 }}>
@@ -174,7 +174,7 @@ export default function Holidays() {
                 Recurring
               </label>
             </div>
-            <button className="btn btn-primary" onClick={submit} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+            <button className="btn btn-primary hol-add-btn" onClick={submit}>
               <Plus width={16} /> Add
             </button>
           </div>
