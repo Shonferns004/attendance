@@ -122,9 +122,9 @@ export default function EmployeeDetail({ worker, onBack }) {
 
   const TABS = [
     { key: 'overview', label: 'Overview' },
-    { key: 'attendance', label: `Attendance ${empAttendance.length}` },
-    { key: 'salary', label: `Salary ${salaries.length}` },
-    { key: 'leaves', label: `Leaves ${empLeaves.length}` },
+    { key: 'attendance', label: 'Attendance' },
+    { key: 'salary', label: 'Salary' },
+    { key: 'leaves', label: 'Leaves' },
   ];
 
   const now = new Date();
