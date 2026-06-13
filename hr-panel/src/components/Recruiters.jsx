@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../store';
-import { Plus, Trash, ArrowLeft, X } from '../icons';
+import { Pill } from './ui';
+import { Plus, X } from '../icons';
 
 const STATUSES = [
   { key: 'new', label: 'New', color: '#6b7280' },
@@ -10,61 +11,55 @@ const STATUSES = [
   { key: 'placed', label: 'Placed', color: '#22c55e' },
   { key: 'rejected', label: 'Rejected', color: '#ef4444' },
 ];
-
 const SOURCES = ['Walk-in', 'LinkedIn', 'Referral', 'Job Portal', 'Campus', 'Social Media', 'Other'];
+
+const STATUS_LABELS = {};
+STATUSES.forEach(s => { STATUS_LABELS[s.key] = s.label; });
 
 export default function Recruiters() {
   const { leads, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters } = useHR();
-  const [selectedRecruiter, setSelectedRecruiter] = useState(null);
+  const [recruiterFilter, setRecruiterFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '', source: 'Walk-in', status: 'new', notes: '', recruiter_id: '' });
-  const [activeTab, setActiveTab] = useState('pipeline');
 
   useEffect(() => {
     fetchLeads();
     fetchRecruiters();
   }, []);
 
-  const filteredLeads = selectedRecruiter
-    ? leads.filter(l => l.recruiter_id === selectedRecruiter)
-    : leads;
-
-  const grouped = {};
-  STATUSES.forEach(s => { grouped[s.key] = []; });
-  filteredLeads.forEach(l => {
-    if (grouped[l.status]) grouped[l.status].push(l);
-    else grouped['new'].push(l);
+  const filteredLeads = leads.filter(l => {
+    if (recruiterFilter && String(l.recruiter_id) !== recruiterFilter) return false;
+    if (statusFilter && l.status !== statusFilter) return false;
+    if (sourceFilter && l.source !== sourceFilter) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      if (!l.name.toLowerCase().includes(s) && !(l.email || '').toLowerCase().includes(s) && !(l.phone || '').includes(s)) return false;
+    }
+    return true;
   });
 
   const stats = {
-    total: filteredLeads.length,
-    newToday: filteredLeads.filter(l => l.created_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length,
-    placed: grouped['placed'].length,
-    rejected: grouped['rejected'].length,
-    conversion: filteredLeads.length > 0
-      ? ((grouped['placed'].length / (grouped['placed'].length + grouped['rejected'].length)) * 100).toFixed(1)
-      : 0,
-    active: filteredLeads.filter(l => !['placed', 'rejected'].includes(l.status)).length,
+    total: leads.length,
+    filtered: filteredLeads.length,
+    newToday: leads.filter(l => l.created_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length,
+    placed: leads.filter(l => l.status === 'placed').length,
+    rejected: leads.filter(l => l.status === 'rejected').length,
+    active: leads.filter(l => !['placed', 'rejected'].includes(l.status)).length,
+    conversion: leads.length > 0 ? ((leads.filter(l => l.status === 'placed').length / Math.max(1, leads.filter(l => l.status === 'placed' || l.status === 'rejected').length)) * 100).toFixed(1) : 0,
   };
 
-  const openAddForm = () => {
-    setForm({ name: '', phone: '', email: '', source: 'Walk-in', status: 'new', notes: '', recruiter_id: selectedRecruiter || '' });
-    setEditingLead(null);
-    setShowForm(true);
-  };
-
-  const openEditForm = (lead) => {
-    setForm({
-      name: lead.name,
-      phone: lead.phone || '',
-      email: lead.email || '',
-      source: lead.source || 'Walk-in',
-      status: lead.status,
-      notes: lead.notes || '',
-      recruiter_id: lead.recruiter_id || '',
-    });
-    setEditingLead(lead);
+  const openForm = (lead) => {
+    if (lead) {
+      setForm({ name: lead.name, phone: lead.phone || '', email: lead.email || '', source: lead.source || 'Walk-in', status: lead.status, notes: lead.notes || '', recruiter_id: lead.recruiter_id || '' });
+      setEditingLead(lead);
+    } else {
+      setForm({ name: '', phone: '', email: '', source: 'Walk-in', status: 'new', notes: '', recruiter_id: '' });
+      setEditingLead(null);
+    }
     setShowForm(true);
   };
 
@@ -81,170 +76,115 @@ export default function Recruiters() {
     } catch {}
   };
 
-  const quickStatus = async (lead, status) => {
-    try {
-      await updateLead(lead.id, { ...lead, status });
-    } catch {}
-  };
-
   return (
-    <div className="recruiters">
-      <div className="rec-sidebar">
-        <div className="card" style={{ marginBottom: 0 }}>
-          <div className="card-head"><h3>Recruiters</h3></div>
-          <div className="rec-recruiters-list">
-            <button
-              className={`rec-recruiter ${!selectedRecruiter ? 'active' : ''}`}
-              onClick={() => setSelectedRecruiter(null)}
-            >
-              <div className="rec-r-name">All Recruiters</div>
-              <div className="rec-r-count">{leads.length} leads</div>
-            </button>
-            {recruiters.map(r => (
-              <button
-                key={r.id}
-                className={`rec-recruiter ${selectedRecruiter === r.id ? 'active' : ''}`}
-                onClick={() => setSelectedRecruiter(r.id)}
-              >
-                <div className="rec-r-name">{r.name}</div>
-                <div className="rec-r-stats">
-                  <span>{r.leadsCount || 0} leads</span>
-                  <span className="rec-r-conv">{r.conversionRate || 0}%</span>
+    <>
+      <div className="stats">
+        <div className="stat"><div className="stat-label">Total Leads</div><div className="stat-value info">{stats.total}</div></div>
+        <div className="stat"><div className="stat-label">New Today</div><div className="stat-value success">{stats.newToday}</div></div>
+        <div className="stat"><div className="stat-label">Active</div><div className="stat-value warning">{stats.active}</div></div>
+        <div className="stat"><div className="stat-label">Placed</div><div className="stat-value leave">{stats.placed}</div></div>
+        <div className="stat"><div className="stat-label">Conversion</div><div className="stat-value info">{stats.conversion}%</div></div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <h3>Recruiters</h3>
+        </div>
+        <div className="card-pad">
+          {recruiters.length === 0 ? (
+            <div className="empty">No recruiters found.</div>
+          ) : (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {recruiters.map(r => (
+                <div key={r.id} className="recruiter-card" onClick={() => setRecruiterFilter(String(r.id))}>
+                  <div className="recruiter-card-name">{r.name}</div>
+                  <div className="recruiter-card-stats">
+                    <span><strong>{r.leadsCount || 0}</strong> leads</span>
+                    <span className="recruiter-card-placed"><strong>{r.placed || 0}</strong> placed</span>
+                    <span className="recruiter-card-conv">{r.conversionRate || 0}% conv</span>
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+              ))}
+              {recruiterFilter && (
+                <button className="btn btn-sm" onClick={() => setRecruiterFilter('')} style={{ alignSelf: 'center' }}>
+                  Clear filter
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="rec-main">
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="rec-stats">
-            <div className="rec-stat">
-              <div className="rec-stat-val">{stats.total}</div>
-              <div className="rec-stat-lbl">Total Leads</div>
-            </div>
-            <div className="rec-stat">
-              <div className="rec-stat-val">{stats.newToday}</div>
-              <div className="rec-stat-lbl">New Today</div>
-            </div>
-            <div className="rec-stat">
-              <div className="rec-stat-val">{stats.active}</div>
-              <div className="rec-stat-lbl">Active</div>
-            </div>
-            <div className="rec-stat">
-              <div className="rec-stat-val">{stats.placed}</div>
-              <div className="rec-stat-lbl">Placed</div>
-            </div>
-            <div className="rec-stat">
-              <div className="rec-stat-val">{stats.conversion}%</div>
-              <div className="rec-stat-lbl">Conversion</div>
-            </div>
+      <div className="card">
+        <div className="card-head">
+          <h3>Leads {filteredLeads.length !== leads.length && <span className="sub">({filteredLeads.length} of {leads.length})</span>}</h3>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}>
+              <option value="">All statuses</option>
+              {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+            <select className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: 130 }}>
+              <option value="">All sources</option>
+              {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <input className="filter-select" placeholder="Search name, email, phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
+            <button className="btn btn-primary" onClick={() => openForm(null)}><Plus width={16} /> Add Lead</button>
           </div>
         </div>
-
-        <div className="rec-tabs">
-          <button className={`rec-tab ${activeTab === 'pipeline' ? 'active' : ''}`} onClick={() => setActiveTab('pipeline')}>Pipeline</button>
-          <button className={`rec-tab ${activeTab === 'table' ? 'active' : ''}`} onClick={() => setActiveTab('table')}>Table</button>
-          <div className="rec-tab-spacer" />
-          <button className="btn btn-primary" onClick={openAddForm}><Plus width={16} /> Add Lead</button>
-        </div>
-
-        {activeTab === 'pipeline' ? (
-          <div className="rec-pipeline">
-            {STATUSES.map(s => {
-              const items = grouped[s.key] || [];
-              return (
-                <div className="rec-column" key={s.key}>
-                  <div className="rec-col-head" style={{ borderTopColor: s.color }}>
-                    <span>{s.label}</span>
-                    <span className="rec-col-count">{items.length}</span>
-                  </div>
-                  <div className="rec-col-body">
-                    {items.map(lead => (
-                      <div key={lead.id} className="rec-card" onClick={() => openEditForm(lead)}>
-                        <div className="rec-card-name">{lead.name}</div>
-                        <div className="rec-card-meta">
-                          {lead.users?.name && <span className="rec-card-rec">{lead.users.name}</span>}
-                          <span className="rec-card-src">{lead.source}</span>
-                        </div>
-                        {lead.email && <div className="rec-card-email">{lead.email}</div>}
-                        {lead.phone && <div className="rec-card-phone">{lead.phone}</div>}
-                        <div className="rec-card-actions">
-                          {STATUSES.map(st => (
-                            <button
-                              key={st.key}
-                              className={`rec-dot ${lead.status === st.key ? 'active' : ''}`}
-                              style={{ '--dot-color': st.color }}
-                              onClick={e => { e.stopPropagation(); quickStatus(lead, st.key); }}
-                              title={st.label}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {items.length === 0 && <div className="rec-col-empty">No leads</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="card">
-            <div className="rec-table-wrap">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Contact</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Recruiter</th>
-                    <th>Date</th>
-                    <th></th>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Recruiter</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLeads.map(lead => {
+                const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
+                return (
+                  <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
+                    <td><strong>{lead.name}</strong></td>
+                    <td>
+                      {lead.email && <div>{lead.email}</div>}
+                      {lead.phone && <div className="ink-soft">{lead.phone}</div>}
+                    </td>
+                    <td><Pill status={lead.source} /></td>
+                    <td>
+                      <span className="status-dot" style={{ background: st.color }} />
+                      {st.label}
+                    </td>
+                    <td>{lead.users?.name || '\u2014'}</td>
+                    <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
+                    <td>
+                      <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredLeads.map(lead => {
-                    const st = STATUSES.find(s => s.key === lead.status);
-                    return (
-                      <tr key={lead.id}>
-                        <td><strong>{lead.name}</strong></td>
-                        <td>
-                          {lead.email && <div>{lead.email}</div>}
-                          {lead.phone && <div className="rec-phone">{lead.phone}</div>}
-                        </td>
-                        <td><span className="rec-badge">{lead.source}</span></td>
-                        <td>
-                          <span className="rec-status-dot" style={{ background: st?.color }} />
-                          {st?.label || lead.status}
-                        </td>
-                        <td>{lead.users?.name || '—'}</td>
-                        <td className="rec-date">{lead.created_at?.slice(0, 10)}</td>
-                        <td>
-                          <button className="btn btn-icon" onClick={() => openEditForm(lead)} title="Edit">✎</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredLeads.length === 0 && <div className="empty">No leads found.</div>}
-            </div>
-          </div>
-        )}
+                );
+              })}
+              {filteredLeads.length === 0 && (
+                <tr><td colSpan={7}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{editingLead ? 'Edit Lead' : 'Add Lead'}</h3>
+              <h3>{editingLead ? 'Edit Lead' : 'New Lead'}</h3>
               <button className="btn btn-icon" onClick={() => setShowForm(false)}><X width={18} /></button>
             </div>
             <div className="modal-body">
               <label className="field">Name *
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" />
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" autoFocus />
               </label>
               <div className="form-row">
                 <label className="field">Phone
@@ -266,25 +206,23 @@ export default function Recruiters() {
                   </select>
                 </label>
               </div>
-              <label className="field">Recruiter
+              <label className="field">Assigned to
                 <select value={form.recruiter_id} onChange={e => setForm(f => ({ ...f, recruiter_id: e.target.value }))}>
-                  <option value="">— Unassigned —</option>
+                  <option value="">\u2014 Unassigned \u2014</option>
                   {recruiters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </label>
               <label className="field">Notes
-                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Any notes…" />
+                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Any notes\u2026" />
               </label>
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitForm}>
-                {editingLead ? 'Save Changes' : 'Add Lead'}
-              </button>
+              <button className="btn btn-primary" onClick={submitForm}>{editingLead ? 'Save' : 'Add Lead'}</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
