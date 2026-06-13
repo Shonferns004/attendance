@@ -128,6 +128,79 @@ export default function EmployeeDetail({ worker, onBack }) {
     { key: 'documents', label: 'Documents & Letters' },
   ];
 
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  const monthKey = `${yr}-${String(mo).padStart(2, '0')}`;
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+
+  const activeSalary = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month))
+    .find(s => s.from_month.slice(0, 7) <= monthKey && (!s.to_month || s.to_month.slice(0, 7) >= monthKey));
+  const salaryPaid = activeSalary?.paid_at;
+
+  const monthAttendance = empAttendance.filter(a => a.date && a.date.startsWith(monthKey));
+  const absentDates = monthAttendance.filter(a => a.status === 'absent').map(a => a.date);
+
+  const deducted = new Set();
+  const deductionNotes = [];
+  for (const d of absentDates) {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day];
+    const label = `${dayName} ${dt.getDate()} ${dt.toLocaleString('en-GB',{month:'short'})}`;
+    if (day === 6) {
+      deducted.add(d);
+      const sun = new Date(dt);
+      sun.setDate(sun.getDate() + 1);
+      const sunDate = sun.toISOString().slice(0, 10);
+      deducted.add(sunDate);
+      deductionNotes.push({ day: d, text: `${label} → absent → deducted: ${label} + Sun ${sun.getDate()} ${sun.toLocaleString('en-GB',{month:'short'})}` });
+    } else if (day === 1) {
+      deducted.add(d);
+      const sun = new Date(dt);
+      sun.setDate(sun.getDate() - 1);
+      const sunDate = sun.toISOString().slice(0, 10);
+      deducted.add(sunDate);
+      deductionNotes.push({ day: d, text: `${label} → absent → deducted: Sun ${sun.getDate()} ${sun.toLocaleString('en-GB',{month:'short'})} + ${label}` });
+    } else {
+      deducted.add(d);
+      deductionNotes.push({ day: d, text: `${label} → absent → deducted: ${label}` });
+    }
+  }
+
+  const joinDate = new Date(data.created_at);
+  const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
+  const joinedThisMonth = joinMonth === monthKey;
+
+  const monSatAbsences = absentDates.filter(d => {
+    const dt = new Date(d);
+    return dt.getDay() !== 0 && d >= data.created_at.slice(0, 10);
+  }).length;
+
+  const extraSundays = [];
+  if (monSatAbsences >= 6) {
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(yr, mo - 1, d);
+      if (dt.getDay() === 0) {
+        const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (!joinedThisMonth || dateStr >= data.created_at.slice(0, 10)) {
+          if (!deducted.has(dateStr)) {
+            extraSundays.push(dateStr);
+          }
+          deducted.add(dateStr);
+        }
+      }
+    }
+  }
+
+  const paidDays = daysInMonth - deducted.size;
+  const daysWorked = monthAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
+  const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
+  const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
+  const totalDue = perDay * paidDays;
+
+  const fmtMonthYear = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+
   return (
     <>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
@@ -304,106 +377,35 @@ export default function EmployeeDetail({ worker, onBack }) {
           {tab === 'salary' && (
             <div>
               {/* Salary Calculator — auto for current month */}
-              {(() => {
-                const now = new Date();
-                const yr = now.getFullYear();
-                const mo = now.getMonth() + 1;
-                const monthKey = `${yr}-${String(mo).padStart(2, '0')}`;
-                const daysInMonth = new Date(yr, mo, 0).getDate();
-
-                const activeSalary = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month))
-                  .find(s => s.from_month.slice(0, 7) <= monthKey && (!s.to_month || s.to_month.slice(0, 7) >= monthKey));
-
-                const monthAttendance = empAttendance.filter(a =>
-                  a.date && a.date.startsWith(monthKey)
-                );
-
-                const absentDates = monthAttendance
-                  .filter(a => a.status === 'absent')
-                  .map(a => a.date);
-
-                const deducted = new Set();
-                for (const d of absentDates) {
-                  const dt = new Date(d);
-                  const day = dt.getDay();
-                  if (day === 6) {
-                    deducted.add(d);
-                    const sun = new Date(dt);
-                    sun.setDate(sun.getDate() + 1);
-                    deducted.add(sun.toISOString().slice(0, 10));
-                  } else if (day === 1) {
-                    deducted.add(d);
-                    const sun = new Date(dt);
-                    sun.setDate(sun.getDate() - 1);
-                    deducted.add(sun.toISOString().slice(0, 10));
-                  } else {
-                    deducted.add(d);
-                  }
-                }
-
-                const joinDate = new Date(data.created_at);
-                const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
-                const joinedThisMonth = joinMonth === monthKey;
-
-                const monSatAbsences = absentDates.filter(d => {
-                  const dt = new Date(d);
-                  return dt.getDay() !== 0 && d >= data.created_at.slice(0, 10);
-                }).length;
-
-                if (monSatAbsences >= 6) {
-                  for (let d = 1; d <= daysInMonth; d++) {
-                    const dt = new Date(yr, mo - 1, d);
-                    if (dt.getDay() === 0) {
-                      const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                      if (!joinedThisMonth || dateStr >= data.created_at.slice(0, 10)) {
-                        deducted.add(dateStr);
-                      }
-                    }
-                  }
-                }
-
-                const paidDays = daysInMonth - deducted.size;
-                const daysWorked = monthAttendance.filter(a =>
-                  a.status === 'present' || a.status === 'late'
-                ).length;
-                const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
-
-                const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
-                const totalDue = perDay * paidDays;
-                const salaryPaid = activeSalary?.paid_at;
-
-                return (
-                  <div className="card" style={{ marginBottom:16 }}>
-                    <div className="card-head"><h3>This Month's Salary</h3><span className="sub">{monthKey}</span></div>
-                    <div className="card-pad">
-                      {!activeSalary ? (
-                        <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
-                      ) : salaryPaid ? (
-                        <div className="salary-stats">
-                          <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Status</span><span className="ss-num" style={{ color:'var(--sage)', fontSize:16 }}>Paid</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Paid On</span><span className="ss-num" style={{ fontSize:13 }}>{new Date(salaryPaid).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></div>
-                          <div className="ss-item ss-total" style={{ background:'var(--sage-soft)', border:'1px solid var(--sage)' }}><span className="ss-lbl">Total Due</span><span className="ss-num" style={{ color:'var(--sage)' }}>₹0.00</span></div>
-                        </div>
-                      ) : (
-                        <div className="salary-stats">
-                          <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
-                          <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDates.length}</span></div>
-                          <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
-                          <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{paidDays}</span></div>
-                          <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        </div>
-                      )}
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>This Month's Salary</h3><span className="sub">{monthKey}</span></div>
+                <div className="card-pad">
+                  {!activeSalary ? (
+                    <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
+                  ) : salaryPaid ? (
+                    <div className="salary-stats">
+                      <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Status</span><span className="ss-num" style={{ color:'var(--sage)', fontSize:16 }}>Paid</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Paid On</span><span className="ss-num" style={{ fontSize:13 }}>{new Date(salaryPaid).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></div>
+                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num" style={{ color:'var(--sage)' }}>₹0.00</span></div>
                     </div>
-                  </div>
-                );
-              })()}
+                  ) : (
+                    <div className="salary-stats">
+                      <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
+                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDates.length}</span></div>
+                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
+                      <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{paidDays}</span></div>
+                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>Add Salary</h3></div>
@@ -531,6 +533,52 @@ export default function EmployeeDetail({ worker, onBack }) {
                   </table>
                 )}
               </div>
+
+              {/* Deduction Breakdown Notepad */}
+              {activeSalary && !salaryPaid && (
+                <div className="card" style={{ marginTop:16 }}>
+                  <div className="card-head"><h3>Calculation Breakdown</h3></div>
+                  <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
+                    <div style={{ marginBottom:10 }}>
+                      <strong>Salary:</strong> ₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} / month<br />
+                      <strong>Days in {fmtMonthYear(new Date(yr, mo - 1))}:</strong> {daysInMonth}<br />
+                      <strong>Per-day rate:</strong> ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} ({parseFloat(activeSalary.salary).toLocaleString('en-IN')} ÷ {daysInMonth})
+                    </div>
+
+                    {deductionNotes.length > 0 && (
+                      <div style={{ marginBottom:10 }}>
+                        <strong style={{ color:'var(--danger)' }}>Absence deductions:</strong>
+                        <div style={{ paddingLeft:16, marginTop:2 }}>
+                          {deductionNotes.map((n, i) => (
+                            <div key={i} style={{ color:'var(--ink-soft)' }}>• {n.text}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {extraSundays.length > 0 && (
+                      <div style={{ marginBottom:10 }}>
+                        <strong style={{ color:'var(--danger)' }}>≥6 absences ({monSatAbsences}) — extra Sunday deduction{joinedThisMonth ? ' (after join date)' : ''}:</strong>
+                        <div style={{ paddingLeft:16, marginTop:2 }}>
+                          {extraSundays.map((d, i) => {
+                            const dt = new Date(d);
+                            return <div key={i} style={{ color:'var(--ink-soft)' }}>• Sun {dt.getDate()} {dt.toLocaleString('en-GB',{month:'short'})}</div>;
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:10, marginTop:10 }}>
+                      <strong style={{ color:'var(--sage)' }}>Calculation:</strong>
+                      <div style={{ paddingLeft:16, marginTop:2 }}>
+                        <span style={{ color:'var(--ink-soft)' }}>Paid days = {daysInMonth} − {deducted.size} = <strong>{paidDays}</strong></span><br />
+                        <span style={{ color:'var(--ink-soft)' }}>Total = {paidDays} × ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} = </span>
+                        <strong style={{ fontSize:16, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
