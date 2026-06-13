@@ -303,6 +303,47 @@ export default function EmployeeDetail({ worker, onBack }) {
 
           {tab === 'salary' && (
             <div>
+              {/* Salary Calculator — auto for current month */}
+              {(() => {
+                const now = new Date();
+                const yr = now.getFullYear();
+                const mo = now.getMonth() + 1;
+                const monthKey = `${yr}-${String(mo).padStart(2, '0')}`;
+                const daysInMonth = new Date(yr, mo, 0).getDate();
+
+                const activeSalary = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month))
+                  .find(s => s.from_month.slice(0, 7) <= monthKey && (!s.to_month || s.to_month.slice(0, 7) >= monthKey));
+
+                const monthAttendance = empAttendance.filter(a =>
+                  a.date && a.date.startsWith(monthKey)
+                );
+                const daysWorked = monthAttendance.filter(a =>
+                  a.status === 'present' || a.status === 'late'
+                ).length;
+
+                const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
+                const totalDue = perDay * daysWorked;
+
+                return (
+                  <div className="card" style={{ marginBottom:16 }}>
+                    <div className="card-head"><h3>This Month's Salary</h3><span className="sub">{monthKey}</span></div>
+                    <div className="card-pad">
+                      {!activeSalary ? (
+                        <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
+                      ) : (
+                        <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Monthly Salary</span><span className="lb-stat-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Days in Month</span><span className="lb-stat-num">{daysInMonth}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Per-Day Rate</span><span className="lb-stat-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl">Days Worked</span><span className="lb-stat-num">{daysWorked}</span></div>
+                          <div className="lb-stat"><span className="lb-stat-lbl" style={{ fontWeight:700 }}>Total Due</span><span className="lb-stat-num" style={{ color:'var(--sage)', fontWeight:700, fontSize:20 }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>Add Salary</h3></div>
                 <div className="card-pad">
