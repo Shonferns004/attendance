@@ -349,6 +349,7 @@ export default function EmployeeDetail({ worker, onBack }) {
 
                 const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
                 const totalDue = perDay * paidDays;
+                const salaryPaid = activeSalary?.paid_at;
 
                 return (
                   <div className="card" style={{ marginBottom:16 }}>
@@ -356,6 +357,16 @@ export default function EmployeeDetail({ worker, onBack }) {
                     <div className="card-pad">
                       {!activeSalary ? (
                         <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
+                      ) : salaryPaid ? (
+                        <div className="salary-stats">
+                          <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Status</span><span className="ss-num" style={{ color:'var(--sage)', fontSize:16 }}>Paid</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Paid On</span><span className="ss-num" style={{ fontSize:13 }}>{new Date(salaryPaid).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></div>
+                          <div className="ss-item ss-total" style={{ background:'var(--sage-soft)', border:'1px solid var(--sage)' }}><span className="ss-lbl">Total Due</span><span className="ss-num" style={{ color:'var(--sage)' }}>₹0.00</span></div>
+                        </div>
                       ) : (
                         <div className="salary-stats">
                           <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
