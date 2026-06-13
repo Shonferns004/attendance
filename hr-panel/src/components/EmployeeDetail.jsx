@@ -341,6 +341,27 @@ export default function EmployeeDetail({ worker, onBack }) {
                   }
                 }
 
+                const joinDate = new Date(data.created_at);
+                const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
+                const joinedThisMonth = joinMonth === monthKey;
+
+                const monSatAbsences = absentDates.filter(d => {
+                  const dt = new Date(d);
+                  return dt.getDay() !== 0 && d >= data.created_at.slice(0, 10);
+                }).length;
+
+                if (monSatAbsences >= 6) {
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const dt = new Date(yr, mo - 1, d);
+                    if (dt.getDay() === 0) {
+                      const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                      if (!joinedThisMonth || dateStr >= data.created_at.slice(0, 10)) {
+                        deducted.add(dateStr);
+                      }
+                    }
+                  }
+                }
+
                 const paidDays = daysInMonth - deducted.size;
                 const daysWorked = monthAttendance.filter(a =>
                   a.status === 'present' || a.status === 'late'
