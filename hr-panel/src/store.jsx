@@ -317,6 +317,7 @@ export function HRProvider({ children }) {
       fetchLeads, addLead, updateLead,
       fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
       fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary,
+      api,
     }}>
       {children}
     </HRContext.Provider>
