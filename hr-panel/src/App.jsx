@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { HRProvider, useHR } from './store';
-import { Grid, Users, Plane, Clock, FileTxt, Bell, Cal, ArrowLeft } from './icons';
+import { Grid, Users, Plane, Clock, FileTxt, Bell, Cal } from './icons';
 import Overview from './components/Overview';
 import Workers from './components/Workers';
 import EmployeeDetail from './components/EmployeeDetail';
+import Offboarding from './components/Offboarding';
 import Leaves from './components/Leaves';
 import Attendance from './components/Attendance';
 import Letters from './components/Letters';
@@ -106,6 +107,7 @@ function Dashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [offboardingEmployee, setOffboardingEmployee] = useState(null);
   const menuRef = useRef(null);
   const Panel = PANELS[active];
   const meta = NAV.find(n => n.id === active);
@@ -115,8 +117,10 @@ function Dashboard() {
 
   const handleBack = useCallback(() => setSelectedEmployee(null), []);
   const handleSelectEmployee = useCallback((worker) => setSelectedEmployee(worker), []);
+  const handleOffboard = useCallback((worker) => setOffboardingEmployee(worker), []);
+  const handleOffboardBack = useCallback(() => setOffboardingEmployee(null), []);
 
-  useEffect(() => { setSelectedEmployee(null); }, [active]);
+  useEffect(() => { setSelectedEmployee(null); setOffboardingEmployee(null); }, [active]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -167,10 +171,12 @@ function Dashboard() {
         </header>
 
         <div className="content-body">
-          {selectedEmployee ? (
+          {offboardingEmployee ? (
+            <Offboarding worker={offboardingEmployee} onBack={handleOffboardBack} />
+          ) : selectedEmployee ? (
             <EmployeeDetail worker={selectedEmployee} onBack={handleBack} />
           ) : active === 'employees' ? (
-            <Workers onSelect={handleSelectEmployee} />
+            <Workers onSelect={handleSelectEmployee} onOffboard={handleOffboard} />
           ) : (
             <Panel />
           )}

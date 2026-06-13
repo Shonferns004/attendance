@@ -3,8 +3,8 @@ import { useHR } from '../store';
 import { Who } from './ui';
 import { Plus, Trash } from '../icons';
 
-export default function Workers({ onSelect }) {
-  const { workers, addWorker, removeWorker, DEPTS, fetchWorkers } = useHR();
+export default function Workers({ onSelect, onOffboard }) {
+  const { workers, addWorker, DEPTS, fetchWorkers } = useHR();
   const [name, setName] = useState('');
   const [dept, setDept] = useState(DEPTS[0]);
   const [err, setErr] = useState('');
@@ -39,13 +39,9 @@ export default function Workers({ onSelect }) {
     }
   };
 
-  const handleRemove = async (e, id) => {
+  const handleOffboard = (e, worker) => {
     e.stopPropagation();
-    try {
-      await removeWorker(id);
-    } catch (e) {
-      setErr(e.message);
-    }
+    if (onOffboard) onOffboard(worker);
   };
 
   return (
@@ -85,7 +81,7 @@ export default function Workers({ onSelect }) {
                 <td style={{ color:'var(--ink-soft)' }}>{w.department || '—'}</td>
                 <td style={{ color:'var(--ink-soft)' }}>{new Date(w.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</td>
                 <td style={{ textAlign:'right' }}>
-                  <button className="btn btn-icon" onClick={(e)=>handleRemove(e, w.id)} aria-label="Remove employee"><Trash width={16}/></button>
+                  <button className="btn btn-icon" onClick={(e)=>handleOffboard(e, w)} aria-label="Offboard employee"><Trash width={16}/></button>
                 </td>
               </tr>
             ))}
