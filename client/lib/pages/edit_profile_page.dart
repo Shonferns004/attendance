@@ -21,11 +21,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _cityCtrl;
   late TextEditingController _stateCtrl;
   late TextEditingController _pincodeCtrl;
-  late TextEditingController _panNumberCtrl;
-  late TextEditingController _aadharNumberCtrl;
-  late TextEditingController _emergencyNameCtrl;
-  late TextEditingController _emergencyRelationCtrl;
-  late TextEditingController _emergencyPhoneCtrl;
+  late TextEditingController _emergency1NameCtrl;
+  late TextEditingController _emergency1RelationCtrl;
+  late TextEditingController _emergency1PhoneCtrl;
+  late TextEditingController _emergency2NameCtrl;
+  late TextEditingController _emergency2RelationCtrl;
+  late TextEditingController _emergency2PhoneCtrl;
   late TextEditingController _accountHolderCtrl;
   late TextEditingController _ifscCtrl;
   late TextEditingController _accountNoCtrl;
@@ -37,6 +38,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final List<String> _genders = ['Male', 'Female', 'Other'];
   final List<String> _maritalStatuses = ['Single', 'Married', 'Divorced', 'Widowed'];
+
+  // Education
+  final List<_EducationEntry> _educationList = [];
 
   @override
   void initState() {
@@ -52,17 +56,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _cityCtrl = TextEditingController(text: w['city'] ?? '');
     _stateCtrl = TextEditingController(text: w['state'] ?? '');
     _pincodeCtrl = TextEditingController(text: w['pincode'] ?? '');
-    _panNumberCtrl = TextEditingController(text: w['pan_number'] ?? '');
-    _aadharNumberCtrl = TextEditingController(text: w['aadhar_number'] ?? '');
-    _emergencyNameCtrl = TextEditingController(text: w['emergency_contact_name'] ?? '');
-    _emergencyRelationCtrl = TextEditingController(text: w['emergency_contact_relation'] ?? '');
-    _emergencyPhoneCtrl = TextEditingController(text: w['emergency_contact_phone'] ?? '');
+    _emergency1NameCtrl = TextEditingController(text: w['emergency_contact_name'] ?? '');
+    _emergency1RelationCtrl = TextEditingController(text: w['emergency_contact_relation'] ?? '');
+    _emergency1PhoneCtrl = TextEditingController(text: w['emergency_contact_phone'] ?? '');
+    _emergency2NameCtrl = TextEditingController(text: w['emergency_contact_name2'] ?? '');
+    _emergency2RelationCtrl = TextEditingController(text: w['emergency_contact_relation2'] ?? '');
+    _emergency2PhoneCtrl = TextEditingController(text: w['emergency_contact_phone2'] ?? '');
     _accountHolderCtrl = TextEditingController(text: w['account_holder_name'] ?? '');
     _ifscCtrl = TextEditingController(text: w['ifsc_code'] ?? '');
     _accountNoCtrl = TextEditingController(text: w['account_number'] ?? '');
     if (w['gender'] != null) _gender = w['gender'];
     if (w['marital_status'] != null) _maritalStatus = w['marital_status'];
     if (w['dob'] != null) _dob = DateTime.tryParse(w['dob'].toString());
+    final education = w['education'];
+    if (education is List) {
+      for (final e in education) {
+        _educationList.add(_EducationEntry(
+          degree: e['degree'] ?? '',
+          institution: e['institution'] ?? '',
+          university: e['university'] ?? '',
+          year: e['year_of_passing']?.toString() ?? '',
+          percentage: e['percentage'] ?? '',
+        ));
+      }
+    }
+    if (_educationList.isEmpty) {
+      _educationList.add(_EducationEntry());
+    }
   }
 
   @override
@@ -77,14 +97,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pincodeCtrl.dispose();
-    _panNumberCtrl.dispose();
-    _aadharNumberCtrl.dispose();
-    _emergencyNameCtrl.dispose();
-    _emergencyRelationCtrl.dispose();
-    _emergencyPhoneCtrl.dispose();
+    _emergency1NameCtrl.dispose();
+    _emergency1RelationCtrl.dispose();
+    _emergency1PhoneCtrl.dispose();
+    _emergency2NameCtrl.dispose();
+    _emergency2RelationCtrl.dispose();
+    _emergency2PhoneCtrl.dispose();
     _accountHolderCtrl.dispose();
     _ifscCtrl.dispose();
     _accountNoCtrl.dispose();
+    for (final e in _educationList) e.dispose();
     super.dispose();
   }
 
@@ -101,6 +123,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       await ApiService.updateMyProfile({
         'name': _nameCtrl.text.trim(),
+        'email': _emailCtrl.text.trim(),
         'phone': _phoneCtrl.text.trim(),
         'alternate_phone': _altPhoneCtrl.text.trim(),
         'father_husband_name': _fatherHusbandCtrl.text.trim(),
@@ -112,15 +135,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'city': _cityCtrl.text.trim(),
         'state': _stateCtrl.text.trim(),
         'pincode': _pincodeCtrl.text.trim(),
-        'pan_number': _panNumberCtrl.text.trim(),
-        'aadhar_number': _aadharNumberCtrl.text.trim(),
-        'emergency_contact_name': _emergencyNameCtrl.text.trim(),
-        'emergency_contact_relation': _emergencyRelationCtrl.text.trim(),
-        'emergency_contact_phone': _emergencyPhoneCtrl.text.trim(),
+        'emergency_contact_name': _emergency1NameCtrl.text.trim(),
+        'emergency_contact_relation': _emergency1RelationCtrl.text.trim(),
+        'emergency_contact_phone': _emergency1PhoneCtrl.text.trim(),
+        'emergency_contact_name2': _emergency2NameCtrl.text.trim(),
+        'emergency_contact_relation2': _emergency2RelationCtrl.text.trim(),
+        'emergency_contact_phone2': _emergency2PhoneCtrl.text.trim(),
         'account_holder_name': _accountHolderCtrl.text.trim(),
         'ifsc_code': _ifscCtrl.text.trim(),
         'account_number': _accountNoCtrl.text.trim(),
       });
+      final education = _educationList
+          .where((e) => e.degreeCtrl.text.trim().isNotEmpty)
+          .map((e) => {
+            'degree': e.degreeCtrl.text.trim(),
+            'institution': e.institutionCtrl.text.trim(),
+            'university': e.universityCtrl.text.trim(),
+            'year_of_passing': e.yearCtrl.text.trim(),
+            'percentage': e.percentageCtrl.text.trim(),
+          })
+          .toList();
+      if (education.isNotEmpty) {
+        await ApiService.updateMyEducation(education);
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated'), backgroundColor: Color(0xFF10b981)),
@@ -161,7 +198,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         children: [
           _section('Basic Information'),
           _field('Full Name', _nameCtrl),
-          _readOnlyField('Email', _emailCtrl),
+          _field('Email', _emailCtrl, keyboardType: TextInputType.emailAddress),
           Row(
             children: [
               Expanded(child: _field('Phone', _phoneCtrl, keyboardType: TextInputType.phone)),
@@ -197,24 +234,89 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const SizedBox(height: 12),
           _field('Permanent Address', _permanentAddressCtrl, maxLines: 2),
           const SizedBox(height: 16),
-          _section('Identity Numbers'),
-          Row(
-            children: [
-              Expanded(child: _field('PAN Number', _panNumberCtrl)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('Aadhaar Number', _aadharNumberCtrl, keyboardType: TextInputType.number, maxLength: 12)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _section('Emergency Contact'),
-          _field('Contact Person', _emergencyNameCtrl),
+          _section('Emergency Contact 1'),
+          _field('Contact Person', _emergency1NameCtrl),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _field('Relationship', _emergencyRelationCtrl)),
+              Expanded(child: _field('Relationship', _emergency1RelationCtrl)),
               const SizedBox(width: 12),
-              Expanded(child: _field('Phone', _emergencyPhoneCtrl, keyboardType: TextInputType.phone)),
+              Expanded(child: _field('Phone', _emergency1PhoneCtrl, keyboardType: TextInputType.phone)),
             ],
+          ),
+          const SizedBox(height: 16),
+          _section('Emergency Contact 2'),
+          _field('Contact Person', _emergency2NameCtrl),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _field('Relationship', _emergency2RelationCtrl)),
+              const SizedBox(width: 12),
+              Expanded(child: _field('Phone', _emergency2PhoneCtrl, keyboardType: TextInputType.phone)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _section('Qualifications'),
+          const SizedBox(height: 4),
+          Text('Add your educational qualifications',
+            style: TextStyle(fontSize: 13, color: const Color(0xFF74777e))),
+          const SizedBox(height: 12),
+          ..._educationList.asMap().entries.map((entry) {
+            final i = entry.key;
+            final e = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFdfe3e7)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Qualification ${i + 1}',
+                        style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF00152a))),
+                      const Spacer(),
+                      if (_educationList.length > 1)
+                        GestureDetector(
+                          onTap: () {
+                            e.dispose();
+                            setState(() => _educationList.removeAt(i));
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.delete_outline, size: 20, color: const Color(0xFFba1a1a)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _field('Degree', e.degreeCtrl),
+                  const SizedBox(height: 10),
+                  _field('Institution', e.institutionCtrl),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _field('University', e.universityCtrl)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _field('Year of Passing', e.yearCtrl, keyboardType: TextInputType.number)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _field('Percentage / Grade', e.percentageCtrl),
+                ],
+              ),
+            );
+          }),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _educationList.add(_EducationEntry())),
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00152a)),
+              label: Text('Add Another', style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF00152a))),
+            ),
           ),
           const SizedBox(height: 16),
           _section('Bank Account Details'),
@@ -263,25 +365,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF00152a), width: 1.5)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           counterText: '',
-        ),
-      ),
-    );
-  }
-
-  Widget _readOnlyField(String label, TextEditingController ctrl) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: ctrl,
-        readOnly: true,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF74777e)),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Color(0xFF74777e), fontSize: 13),
-          filled: true,
-          fillColor: const Color(0xFFe4e9ed),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFc3c6ce))),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
       ),
     );
@@ -339,5 +422,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
       ),
     );
+  }
+}
+
+class _EducationEntry {
+  final TextEditingController degreeCtrl;
+  final TextEditingController institutionCtrl;
+  final TextEditingController universityCtrl;
+  final TextEditingController yearCtrl;
+  final TextEditingController percentageCtrl;
+
+  _EducationEntry({
+    String degree = '',
+    String institution = '',
+    String university = '',
+    String year = '',
+    String percentage = '',
+  })  : degreeCtrl = TextEditingController(text: degree),
+        institutionCtrl = TextEditingController(text: institution),
+        universityCtrl = TextEditingController(text: university),
+        yearCtrl = TextEditingController(text: year),
+        percentageCtrl = TextEditingController(text: percentage);
+
+  void dispose() {
+    degreeCtrl.dispose();
+    institutionCtrl.dispose();
+    universityCtrl.dispose();
+    yearCtrl.dispose();
+    percentageCtrl.dispose();
   }
 }

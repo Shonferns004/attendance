@@ -178,6 +178,17 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>> updateMyEducation(List<Map<String, dynamic>> education) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/workers/me/education'),
+      headers: await _headers(),
+      body: jsonEncode({'education': education}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to update education');
+    return body;
+  }
+
   static Future<List<dynamic>> getMyLeaves() async {
     final res = await http.get(
       Uri.parse('$baseUrl/leaves/my'),

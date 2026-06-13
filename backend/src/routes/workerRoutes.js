@@ -9,6 +9,7 @@ import {
   getBirthdays,
   getMyProfile,
   updateMyProfile,
+  updateMyEducation,
 } from '../controllers/workerController.js';
 import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
@@ -22,6 +23,7 @@ router.get('/', adminOrHrOrHo, getWorkers);
 router.get('/birthdays', adminOrHrOrHo, getBirthdays);
 router.get('/me', authenticateWorker, getMyProfile);
 router.put('/me', authenticateWorker, updateMyProfile);
+router.put('/me/education', authenticateWorker, updateMyEducation);
 router.get('/:id', adminOrHrOrHo, getWorker);
 router.put('/:id', adminOrHrOrHo, editWorker);
 router.delete('/:id', adminOrHrOrHo, removeWorker);

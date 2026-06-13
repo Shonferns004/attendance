@@ -8,6 +8,7 @@ import {
   updateWorker,
   deleteWorker,
 } from '../models/workerModel.js';
+import { saveWorkerEducation, getFullWorkerProfile } from '../models/onboardingModel.js';
 
 const DEFAULT_PASSWORD = '123456';
 
@@ -137,29 +138,11 @@ export const getWorkers = async (req, res) => {
 
 export const getMyProfile = async (req, res) => {
   try {
-    const worker = await getWorkerById(req.user.id);
-    if (!worker) {
+    const profile = await getFullWorkerProfile(req.user.id);
+    if (!profile) {
       return res.status(404).json({ message: 'Worker not found' });
     }
-    return res.json({
-      id: worker.id,
-      name: worker.name,
-      email: worker.email,
-      login_id: worker.login_id,
-      gender: worker.gender,
-      dob: worker.dob,
-      phone: worker.phone,
-      department: worker.department,
-      shift: worker.shift,
-      address: worker.address,
-      city: worker.city,
-      state: worker.state,
-      pincode: worker.pincode,
-      photo_url: worker.photo_url,
-      is_active: worker.is_active,
-      ngo_id: worker.ngo_id,
-      created_at: worker.created_at,
-    });
+    return res.json(profile);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -297,10 +280,11 @@ export const removeWorker = async (req, res) => {
 export const updateMyProfile = async (req, res) => {
   try {
     const allowed = [
-      'name', 'phone', 'alternate_phone', 'address', 'permanent_address',
+      'name', 'email', 'phone', 'alternate_phone', 'address', 'permanent_address',
       'city', 'state', 'pincode', 'gender', 'dob',
       'father_husband_name', 'marital_status', 'pan_number', 'aadhar_number',
       'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
+      'emergency_contact_name2', 'emergency_contact_relation2', 'emergency_contact_phone2',
       'account_holder_name', 'ifsc_code', 'account_number',
       'photo_url',
     ];
@@ -313,6 +297,19 @@ export const updateMyProfile = async (req, res) => {
     }
     const worker = await updateWorker(req.user.id, updates);
     return res.json({ message: 'Profile updated', worker });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateMyEducation = async (req, res) => {
+  try {
+    const { education } = req.body;
+    if (!education || !Array.isArray(education)) {
+      return res.status(400).json({ message: 'Education list is required' });
+    }
+    const result = await saveWorkerEducation(req.user.id, education);
+    return res.json({ message: 'Education updated', education: result });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
