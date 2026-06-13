@@ -357,15 +357,15 @@ export default function EmployeeDetail({ worker, onBack }) {
                       {!activeSalary ? (
                         <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
                       ) : (
-                        <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Monthly Salary</span><span className="lb-stat-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Days in Month</span><span className="lb-stat-num">{daysInMonth}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Per-Day Rate</span><span className="lb-stat-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Days Worked</span><span className="lb-stat-num">{daysWorked}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Absent Days</span><span className="lb-stat-num" style={absentDates.length ? { color:'var(--danger)' } : {}}>{absentDates.length}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Sundays Deducted</span><span className="lb-stat-num" style={sundayDeductions ? { color:'var(--danger)' } : {}}>{sundayDeductions}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl">Paid Days</span><span className="lb-stat-num">{paidDays}</span></div>
-                          <div className="lb-stat"><span className="lb-stat-lbl" style={{ fontWeight:700 }}>Total Due</span><span className="lb-stat-num" style={{ color:'var(--sage)', fontWeight:700, fontSize:20 }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        <div className="salary-stats">
+                          <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
+                          <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDates.length}</span></div>
+                          <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
+                          <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{paidDays}</span></div>
+                          <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         </div>
                       )}
                     </div>

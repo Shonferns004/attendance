@@ -322,6 +322,20 @@ tr:hover td { background: #faf8f2; }
 .lb-fill { height: 100%; border-radius: 10px; transition: width .4s ease; }
 .lb-track-pct { font-size: 12px; font-weight: 600; color: var(--ink-soft); min-width: 36px; text-align: right; }
 
+/* === Salary Stats === */
+.salary-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.ss-item { background: var(--sand); border-radius: var(--radius-sm); padding: 14px 16px; text-align: center; }
+.ss-lbl { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; display: block; }
+.ss-num { font-size: 18px; font-weight: 700; margin-top: 4px; display: block; }
+.ss-item-warn .ss-num { color: var(--danger); }
+.ss-total { grid-column: 1 / -1; background: var(--sage-soft); border: 1px solid var(--sage); }
+.ss-total .ss-lbl { font-weight: 700; color: var(--sage); }
+.ss-total .ss-num { color: var(--sage); font-size: 24px; }
+@media (max-width: 600px) {
+  .salary-stats { grid-template-columns: repeat(2, 1fr); }
+  .ss-total { grid-column: 1 / -1; }
+}
+
 /* Mini late balance bar for table cells */
 .lb-mini { display: inline-flex; align-items: center; gap: 6px; min-width: 100px; }
 .lb-mini-track { width: 48px; height: 6px; background: var(--line); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
