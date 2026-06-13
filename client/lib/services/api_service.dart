@@ -167,6 +167,17 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>> updateMyProfile(Map<String, dynamic> updates) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/workers/me'),
+      headers: await _headers(),
+      body: jsonEncode(updates),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception(body['message'] ?? 'Failed to update profile');
+    return body;
+  }
+
   static Future<List<dynamic>> getMyLeaves() async {
     final res = await http.get(
       Uri.parse('$baseUrl/leaves/my'),
@@ -337,6 +348,21 @@ class ApiService {
     );
     final body = jsonDecode(res.body);
     if (res.statusCode != 200) throw Exception('Failed to get print profile');
+    return body;
+  }
+
+  // ---- Calendar API ----
+
+  static Future<Map<String, dynamic>> getCalendar({int? year, int? month}) async {
+    final now = DateTime.now();
+    final y = year ?? now.year;
+    final m = month ?? now.month;
+    final res = await http.get(
+      Uri.parse('$baseUrl/calendar?year=$y&month=$m'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200) throw Exception('Failed to get calendar data');
     return body;
   }
 }

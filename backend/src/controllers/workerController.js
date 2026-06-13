@@ -293,3 +293,20 @@ export const removeWorker = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const allowed = ['name', 'phone', 'address', 'emergency_contact', 'emergency_phone'];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+    const worker = await updateWorker(req.user.id, updates);
+    return res.json({ message: 'Profile updated', worker });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};

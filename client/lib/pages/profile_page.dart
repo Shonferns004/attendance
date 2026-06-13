@@ -9,6 +9,7 @@ import '../widgets/progress_circle.dart';
 import '../widgets/consistency_bar.dart';
 import '../widgets/menu_item.dart';
 import '../widgets/skeleton_loader.dart';
+import 'edit_profile_page.dart';
 import 'print_form_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -34,6 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final Map<int, Map<String, int>> _monthlyStats = {};
   int _calYear = 0, _calMonth = 0;
   String? _workerId;
+  Map<String, List<String>> _calendarDates = {};
 
   @override
   void initState() {
@@ -84,6 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (_) {}
 
     await _refreshHistoryFromNetwork();
+    _fetchCalendar();
 
     // Subscribe to realtime updates
     if (_workerId != null && _workerId!.isNotEmpty) {
@@ -198,6 +201,26 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (_) {}
   }
 
+  Future<void> _fetchCalendar() async {
+    try {
+      final data = await ApiService.getCalendar(year: _calYear, month: _calMonth);
+      final Map<String, List<String>> calMap = {};
+      for (final e in (data['events'] as List? ?? [])) {
+        final d = e['date']?.toString();
+        if (d != null) calMap.putIfAbsent(d, () => []).add('event');
+      }
+      for (final h in (data['holidays'] as List? ?? [])) {
+        final d = h['date']?.toString();
+        if (d != null) calMap.putIfAbsent(d, () => []).add('holiday');
+      }
+      for (final b in (data['birthdays'] as List? ?? [])) {
+        final d = b['date']?.toString();
+        if (d != null) calMap.putIfAbsent(d, () => []).add('birthday');
+      }
+      if (mounted) setState(() => _calendarDates = calMap);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColors>()!;
@@ -248,55 +271,63 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _profileCard(String name, String loginId, String role, String initials) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFffffff),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFc3c6ce)),
-      ),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFd1e4ff),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF00152a), width: 2),
-                ),
-                child: Center(child: Text(initials,
-                  style: GoogleFonts.hankenGrotesk(
-                    fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF00152a),
-                  ),
-                )),
-              ),
-              Positioned(
-                right: 0, bottom: 0,
-                child: Container(
-                  width: 20, height: 20,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2a6a4b),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFf6fafe), width: 2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => EditProfilePage(worker: _worker!)),
+        );
+        if (result == true && mounted) _loadData();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFffffff),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFc3c6ce)),
+        ),
+        child: Row(
+          children: [
+            Stack(
               children: [
-                Text(name,
-                  style: GoogleFonts.hankenGrotesk(
-                    fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFd1e4ff),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF00152a), width: 2),
+                  ),
+                  child: Center(child: Text(initials,
+                    style: GoogleFonts.hankenGrotesk(
+                      fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF00152a),
+                    ),
+                  )),
+                ),
+                Positioned(
+                  right: 0, bottom: 0,
+                  child: Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2a6a4b),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFf6fafe), width: 2),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(role.isNotEmpty ? role : 'Worker',
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                    style: GoogleFonts.hankenGrotesk(
+                      fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(role.isNotEmpty ? role : 'Worker',
                   style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF43474d),
                   ),
@@ -311,6 +342,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -451,6 +483,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         else { _calMonth--; }
                         _selectedDateKey = null;
                       });
+                      _fetchCalendar();
                     },
                     child: Container(
                       padding: const EdgeInsets.all(4),
@@ -465,6 +498,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         else { _calMonth++; }
                         _selectedDateKey = null;
                       });
+                      _fetchCalendar();
                     },
                     child: Container(
                       padding: const EdgeInsets.all(4),
@@ -507,6 +541,7 @@ class _ProfilePageState extends State<ProfilePage> {
             month: _calMonth,
             statusByDate: _statusByDate,
             selectedDate: _selectedDateKey,
+            calendarDates: _calendarDates,
             onDateSelected: (key) => setState(() {
               _selectedDateKey = _selectedDateKey == key ? null : key;
             }),
@@ -520,6 +555,8 @@ class _ProfilePageState extends State<ProfilePage> {
               _legendDot('Leave', const Color(0xFFd1e4ff)),
               _legendDot('Late', const Color(0xFFffddb8)),
               _legendDot('Holiday', const Color(0xFFe8d5f5)),
+              _smLegendDot(Icons.circle, 'Event', const Color(0xFF2563eb)),
+              _smLegendDot(Icons.cake, 'Birthday', const Color(0xFFf43f5e)),
             ],
           ),
         ],
@@ -608,9 +645,9 @@ class _ProfilePageState extends State<ProfilePage> {
             Icon(Icons.info_outline, size: 18, color: const Color(0xFF74777e)),
             const SizedBox(width: 10),
             Text('No record for this date', style: TextStyle(fontSize: 14, color: const Color(0xFF74777e))),
-          ],
-        ),
-      );
+        ],
+      ),
+    );
     }
 
     final status = detail['status']?.toString() ?? '';
@@ -716,6 +753,17 @@ class _ProfilePageState extends State<ProfilePage> {
           borderRadius: BorderRadius.circular(3),
         )),
         const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
+      ],
+    );
+  }
+
+  Widget _smLegendDot(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
       ],
     );

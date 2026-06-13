@@ -6,6 +6,7 @@ class MiniCalendar extends StatelessWidget {
   final Map<String, String> statusByDate;
   final String? selectedDate;
   final ValueChanged<String>? onDateSelected;
+  final Map<String, List<String>> calendarDates;
 
   const MiniCalendar({
     super.key,
@@ -14,6 +15,7 @@ class MiniCalendar extends StatelessWidget {
     this.statusByDate = const {},
     this.selectedDate,
     this.onDateSelected,
+    this.calendarDates = const {},
   });
 
   @override
@@ -43,6 +45,7 @@ class MiniCalendar extends StatelessWidget {
                 if (dayNum < 1 || dayNum > monthDays) return const Expanded(child: SizedBox());
                 final key = '${year}-${month.toString().padLeft(2, '0')}-${dayNum.toString().padLeft(2, '0')}';
                 final status = statusByDate[key];
+                final calTypes = calendarDates[key] ?? <String>[];
                 final wd = DateTime(year, month, dayNum).weekday;
                 final isWeekend = wd == DateTime.saturday || wd == DateTime.sunday;
                 final isToday = isCurrentMonth && dayNum == now.day;
@@ -100,19 +103,54 @@ class MiniCalendar extends StatelessWidget {
                   child: GestureDetector(
                     onTap: onDateSelected != null ? () => onDateSelected!(key) : null,
                     child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: EdgeInsets.symmetric(vertical: calTypes.isNotEmpty ? 4 : 6),
                       decoration: BoxDecoration(
                         color: isSelected ? const Color(0xFF00152a) : bg,
                         borderRadius: BorderRadius.circular(4),
                         border: hasBorder ? Border.all(color: const Color(0xFF00152a), width: 2) : null,
                       ),
-                      child: Text('$dayNum',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: filled || isToday ? FontWeight.w700 : FontWeight.w400,
-                          color: isSelected ? Colors.white : (fg ?? const Color(0xFF171c1f)),
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('$dayNum',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: filled || isToday ? FontWeight.w700 : FontWeight.w400,
+                              color: isSelected ? Colors.white : (fg ?? const Color(0xFF171c1f)),
+                            ),
+                          ),
+                          if (calTypes.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: calTypes.map((t) {
+                                  Color dotColor;
+                                  switch (t) {
+                                    case 'holiday':
+                                      dotColor = const Color(0xFF7c3aed);
+                                      break;
+                                    case 'event':
+                                      dotColor = const Color(0xFF2563eb);
+                                      break;
+                                    case 'birthday':
+                                      dotColor = const Color(0xFFf43f5e);
+                                      break;
+                                    default:
+                                      dotColor = const Color(0xFF74777e);
+                                  }
+                                  return Container(
+                                    width: 5, height: 5,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.white : dotColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
