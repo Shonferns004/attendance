@@ -139,6 +139,7 @@ export default function EmployeeDetail({ worker, onBack }) {
   const salaryPaid = activeSalary?.paid_at;
 
   const monthAttendance = empAttendance.filter(a => a.date && a.date.startsWith(monthKey));
+  const noAttendanceData = monthAttendance.length === 0;
   const absentDates = monthAttendance.filter(a => a.status === 'absent').map(a => a.date);
 
   const deducted = new Set();
@@ -193,7 +194,7 @@ export default function EmployeeDetail({ worker, onBack }) {
     }
   }
 
-  const paidDays = daysInMonth - deducted.size;
+  const paidDays = noAttendanceData ? 0 : daysInMonth - deducted.size;
   const daysWorked = monthAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
@@ -382,6 +383,8 @@ export default function EmployeeDetail({ worker, onBack }) {
                 <div className="card-pad">
                   {!activeSalary ? (
                     <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
+                  ) : noAttendanceData ? (
+                    <div className="empty" style={{ padding:0 }}>No attendance data for this month yet.</div>
                   ) : salaryPaid ? (
                     <div className="salary-stats">
                       <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
@@ -534,20 +537,19 @@ export default function EmployeeDetail({ worker, onBack }) {
                 )}
               </div>
 
-              {/* Deduction Breakdown Notepad */}
-              {activeSalary && !salaryPaid && (
+              {/* Calculation Breakdown Notepad */}
+              {activeSalary && !salaryPaid && !noAttendanceData && (
                 <div className="card" style={{ marginTop:16 }}>
-                  <div className="card-head"><h3>Calculation Breakdown</h3></div>
+                  <div className="card-head"><h3>What Employee Gets</h3></div>
                   <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
                     <div style={{ marginBottom:10 }}>
-                      <strong>Salary:</strong> ₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} / month<br />
-                      <strong>Days in {fmtMonthYear(new Date(yr, mo - 1))}:</strong> {daysInMonth}<br />
-                      <strong>Per-day rate:</strong> ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} ({parseFloat(activeSalary.salary).toLocaleString('en-IN')} ÷ {daysInMonth})
+                      <strong>Salary:</strong> ₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} / {daysInMonth} days<br />
+                      <strong>Per-day rate:</strong> ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </div>
 
                     {deductionNotes.length > 0 && (
                       <div style={{ marginBottom:10 }}>
-                        <strong style={{ color:'var(--danger)' }}>Absence deductions:</strong>
+                        <strong style={{ color:'var(--danger)' }}>Deductions:</strong>
                         <div style={{ paddingLeft:16, marginTop:2 }}>
                           {deductionNotes.map((n, i) => (
                             <div key={i} style={{ color:'var(--ink-soft)' }}>• {n.text}</div>
@@ -558,7 +560,7 @@ export default function EmployeeDetail({ worker, onBack }) {
 
                     {extraSundays.length > 0 && (
                       <div style={{ marginBottom:10 }}>
-                        <strong style={{ color:'var(--danger)' }}>≥6 absences ({monSatAbsences}) — extra Sunday deduction{joinedThisMonth ? ' (after join date)' : ''}:</strong>
+                        <strong style={{ color:'var(--danger)' }}>Extra Sunday deduction{joinedThisMonth ? ' (on/after join date)' : ''}:</strong>
                         <div style={{ paddingLeft:16, marginTop:2 }}>
                           {extraSundays.map((d, i) => {
                             const dt = new Date(d);
@@ -568,13 +570,10 @@ export default function EmployeeDetail({ worker, onBack }) {
                       </div>
                     )}
 
-                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:10, marginTop:10 }}>
-                      <strong style={{ color:'var(--sage)' }}>Calculation:</strong>
-                      <div style={{ paddingLeft:16, marginTop:2 }}>
-                        <span style={{ color:'var(--ink-soft)' }}>Paid days = {daysInMonth} − {deducted.size} = <strong>{paidDays}</strong></span><br />
-                        <span style={{ color:'var(--ink-soft)' }}>Total = {paidDays} × ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} = </span>
-                        <strong style={{ fontSize:16, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                      </div>
+                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:12, marginTop:12 }}>
+                      <strong>Employee gets:</strong><br />
+                      <span style={{ color:'var(--ink-soft)' }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {paidDays} days = </span>
+                      <strong style={{ fontSize:18, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
                     </div>
                   </div>
                 </div>
