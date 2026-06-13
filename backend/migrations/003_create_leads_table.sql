@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS leads (
-  id SERIAL PRIMARY KEY,
-  recruiter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recruiter_id UUID REFERENCES users(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   phone TEXT,
   email TEXT,
