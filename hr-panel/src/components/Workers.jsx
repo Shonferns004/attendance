@@ -33,7 +33,7 @@ export default function Workers({ onSelect }) {
     setErr('');
     try {
       await addWorker({ name: name.trim(), dept });
-      setName(''); setEmail('');
+      setName('');
     } catch (e) {
       setErr(e.message);
     }
