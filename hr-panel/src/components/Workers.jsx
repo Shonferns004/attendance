@@ -6,10 +6,11 @@ import { Plus, Trash } from '../icons';
 export default function Workers({ onSelect }) {
   const { workers, addWorker, removeWorker, DEPTS, fetchWorkers } = useHR();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [dept, setDept] = useState(DEPTS[0]);
   const [err, setErr] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => { fetchWorkers(); }, []);
 
@@ -21,11 +22,17 @@ export default function Workers({ onSelect }) {
       )
     : workers;
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [search]);
+
   const submit = async () => {
-    if (!name.trim() || !email.trim()) return;
+    if (!name.trim()) return;
     setErr('');
     try {
-      await addWorker({ name: name.trim(), email: email.trim(), dept });
+      await addWorker({ name: name.trim(), dept });
       setName(''); setEmail('');
     } catch (e) {
       setErr(e.message);
@@ -51,10 +58,6 @@ export default function Workers({ onSelect }) {
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Jane Doe"
                 onKeyDown={e=>e.key==='Enter'&&submit()} />
             </label>
-            <label className="field">Email
-              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="jane@example.com"
-                onKeyDown={e=>e.key==='Enter'&&submit()} />
-            </label>
             <label className="field">Team
               <select value={dept} onChange={e=>setDept(e.target.value)}>
                 {DEPTS.map(d => <option key={d}>{d}</option>)}
@@ -67,7 +70,7 @@ export default function Workers({ onSelect }) {
       </div>
 
       <div className="card">
-        <div className="card-head"><h3>Employees</h3><span className="sub">{workers.length} total</span></div>
+        <div className="card-head"><h3>Employees</h3><span className="sub">{filtered.length} total</span></div>
         <div className="card-pad" style={{ paddingTop:0 }}>
           <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Search by name, email, or team…" />
@@ -75,7 +78,7 @@ export default function Workers({ onSelect }) {
         <table>
           <thead><tr><th>Name</th><th>Team</th><th>Joined</th><th></th></tr></thead>
           <tbody>
-            {filtered.map(w => (
+            {paginated.map(w => (
               <tr key={w.id} className="clickable-row" onClick={() => onSelect && onSelect(w)}
                 style={{ cursor:'pointer' }}>
                 <td><Who name={w.name} role={w.department || 'Team Member'} /></td>
@@ -89,6 +92,15 @@ export default function Workers({ onSelect }) {
             {!filtered.length && <tr><td colSpan={4}><div className="empty">No employees found.</div></td></tr>}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button className="btn btn-sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : ''}`} onClick={() => setPage(p)}>{p}</button>
+            ))}
+            <button className="btn btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Next</button>
+          </div>
+        )}
       </div>
     </>
   );

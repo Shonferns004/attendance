@@ -25,8 +25,8 @@ async function generateLoginId(name) {
 export const addWorker = async (req, res) => {
   try {
     const { name, email, gender, dob, ngo_id } = req.body;
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' });
     }
     const login_id = await generateLoginId(name);
     const salt = await bcrypt.genSalt(10);

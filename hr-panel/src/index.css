@@ -228,6 +228,9 @@ tr:hover td { background: #faf8f2; }
 
 .letter-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; }
 
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 16px; border-top: 1px solid var(--line); }
+.pagination .btn { min-width: 34px; justify-content: center; }
+
 .sk { background: linear-gradient(90deg, var(--line) 25%, var(--sand) 50%, var(--line) 75%); background-size: 200% 100%; animation: sk-shimmer 1.4s infinite; }
 @keyframes sk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 

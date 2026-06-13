@@ -129,7 +129,7 @@ export function HRProvider({ children }) {
   const addWorker = useCallback(async ({ name, email, dept }) => {
     const data = await api('/workers', {
       method: 'POST',
-      body: JSON.stringify({ name, email, department: dept || null }),
+      body: JSON.stringify({ name, email: email || null, department: dept || null }),
     });
     const w = data.worker;
     setWorkers(p => [{ id: w.id, name: w.name, email: w.email, login_id: w.login_id, created_at: new Date().toISOString(), department: dept }, ...p]);
