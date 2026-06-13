@@ -17,3 +17,4 @@ export const X       = I(<path d="M18 6 6 18M6 6l12 12"/>);
 export const Send    = I(<><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>);
 export const Heart   = I(<path d="M19 14c1.5-1.5 3-3.4 3-5.5A5.5 5.5 0 0 0 12 5 5.5 5.5 0 0 0 2 8.5c0 2.1 1.5 4 3 5.5l7 7Z"/>);
 export const ArrowLeft = I(<path d="M19 12H5M12 19l-7-7 7-7"/>);
+export const Pencil = I(<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>);

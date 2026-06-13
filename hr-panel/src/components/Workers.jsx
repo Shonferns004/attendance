@@ -66,26 +66,28 @@ export default function Workers({ onSelect, onOffboard }) {
       </div>
 
       <div className="card">
-        <div className="card-head"><h3>Employees</h3><span className="sub">{filtered.length} total</span></div>
-        <div className="card-pad" style={{ paddingTop:0 }}>
-          <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)}
-            placeholder="Search by name, email, or team…" />
+        <div className="card-head"><h3>Employees</h3>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span className="sub">{filtered.length} total</span>
+            <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Search by name, email, or team…"
+              style={{ marginTop:0, width:220 }} />
+          </div>
         </div>
         <table>
-          <thead><tr><th>Name</th><th>Team</th><th>Joined</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Joined</th><th></th></tr></thead>
           <tbody>
             {paginated.map(w => (
               <tr key={w.id} className="clickable-row" onClick={() => onSelect && onSelect(w)}
                 style={{ cursor:'pointer' }}>
                 <td><Who name={w.name} role={w.department || 'Team Member'} /></td>
-                <td style={{ color:'var(--ink-soft)' }}>{w.department || '—'}</td>
                 <td style={{ color:'var(--ink-soft)' }}>{new Date(w.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</td>
                 <td style={{ textAlign:'right' }}>
                   <button className="btn btn-icon" onClick={(e)=>handleOffboard(e, w)} aria-label="Offboard employee"><Trash width={16}/></button>
                 </td>
               </tr>
             ))}
-            {!filtered.length && <tr><td colSpan={4}><div className="empty">No employees found.</div></td></tr>}
+            {!filtered.length && <tr><td colSpan={3}><div className="empty">No employees found.</div></td></tr>}
           </tbody>
         </table>
         {totalPages > 1 && (
