@@ -22,6 +22,6 @@ router.get('/birthdays', adminOrHrOrHo, getBirthdays);
 router.get('/me', authenticateWorker, getMyProfile);
 router.get('/:id', adminOrHrOrHo, getWorker);
 router.put('/:id', adminOrHrOrHo, editWorker);
-router.delete('/:id', authenticateRole('super_admin', 'hoadmin'), removeWorker);
+router.delete('/:id', adminOrHrOrHo, removeWorker);
 
 export default router;
