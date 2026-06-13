@@ -3,6 +3,8 @@ import { useHR } from '../store';
 import { Who } from './ui';
 import { Plus, Trash } from '../icons';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+
 export default function Workers({ onSelect, onOffboard }) {
   const { workers, addWorker, DEPTS, fetchWorkers } = useHR();
   const [name, setName] = useState('');
@@ -10,9 +12,23 @@ export default function Workers({ onSelect, onOffboard }) {
   const [err, setErr] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [salaryMap, setSalaryMap] = useState({});
   const PAGE_SIZE = 10;
 
-  useEffect(() => { fetchWorkers(); }, []);
+  useEffect(() => {
+    fetchWorkers();
+    const token = localStorage.getItem('hr_token');
+    fetch(API_BASE + '/salary/workers-summary', {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+      .then(r => r.json())
+      .then(data => {
+        const map = {};
+        for (const w of data) map[w.id] = w;
+        setSalaryMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = search.trim()
     ? workers.filter(w =>
@@ -75,19 +91,34 @@ export default function Workers({ onSelect, onOffboard }) {
           </div>
         </div>
         <table>
-          <thead><tr><th>Name</th><th>Joined</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Joined</th><th>Salary</th><th></th></tr></thead>
           <tbody>
-            {paginated.map(w => (
-              <tr key={w.id} className="clickable-row" onClick={() => onSelect && onSelect(w)}
-                style={{ cursor:'pointer' }}>
-                <td><Who name={w.name} role={w.department || 'Team Member'} /></td>
-                <td style={{ color:'var(--ink-soft)' }}>{new Date(w.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</td>
-                <td style={{ textAlign:'right' }}>
-                  <button className="btn btn-icon" onClick={(e)=>handleOffboard(e, w)} aria-label="Offboard employee"><Trash width={16}/></button>
-                </td>
-              </tr>
-            ))}
-            {!filtered.length && <tr><td colSpan={3}><div className="empty">No employees found.</div></td></tr>}
+            {paginated.map(w => {
+              const sw = salaryMap[w.id];
+              const paid = sw?.current_salary_paid;
+              const currentMonth = new Date().toISOString().slice(0, 7);
+              const salaryFromMonth = sw?.current_salary_from?.slice(0, 7);
+              const isCurrent = salaryFromMonth && salaryFromMonth <= currentMonth;
+              return (
+                <tr key={w.id} className="clickable-row" onClick={() => onSelect && onSelect(w)}
+                  style={{ cursor:'pointer' }}>
+                  <td><Who name={w.name} role={w.department || 'Team Member'} /></td>
+                  <td style={{ color:'var(--ink-soft)' }}>{new Date(w.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</td>
+                  <td>
+                    {sw?.current_salary ? (
+                      <span style={{ fontWeight:600 }}>
+                        ₹{parseFloat(sw.current_salary).toLocaleString('en-IN')}
+                        {paid && <span className="pill pill-green" style={{ marginLeft:6, fontSize:10 }}>Paid</span>}
+                      </span>
+                    ) : <span style={{ color:'var(--ink-soft)', fontSize:12 }}>—</span>}
+                  </td>
+                  <td style={{ textAlign:'right' }}>
+                    <button className="btn btn-icon" onClick={(e)=>handleOffboard(e, w)} aria-label="Offboard employee"><Trash width={16}/></button>
+                  </td>
+                </tr>
+              );
+            })}
+            {!filtered.length && <tr><td colSpan={4}><div className="empty">No employees found.</div></td></tr>}
           </tbody>
         </table>
         {totalPages > 1 && (

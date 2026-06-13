@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS salary_history (
   from_month DATE NOT NULL,
   to_month DATE,
   created_by UUID,
+  paid_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

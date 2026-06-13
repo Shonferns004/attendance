@@ -3,6 +3,7 @@ import {
   createSalary,
   updateSalary,
   deleteSalary,
+  getAllWorkersSalarySummary,
 } from '../models/salaryModel.js';
 
 export const getWorkerSalaries = async (req, res) => {
@@ -42,6 +43,24 @@ export const editSalary = async (req, res) => {
     if (to_month !== undefined) updates.to_month = to_month;
     const record = await updateSalary(req.params.id, updates);
     return res.json({ message: 'Salary updated', record });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getWorkersSummary = async (req, res) => {
+  try {
+    const data = await getAllWorkersSalarySummary();
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const paySalary = async (req, res) => {
+  try {
+    const record = await updateSalary(req.params.id, { paid_at: new Date().toISOString() });
+    return res.json({ message: 'Salary marked as paid', record });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

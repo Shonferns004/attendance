@@ -440,6 +440,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <th>Salary</th>
                         <th>From</th>
                         <th>To</th>
+                        <th>Status</th>
                         <th>Added On</th>
                         <th></th>
                       </tr>
@@ -449,26 +450,47 @@ export default function EmployeeDetail({ worker, onBack }) {
                         const from = new Date(s.from_month);
                         const to = s.to_month ? new Date(s.to_month) : null;
                         const fmtMonth = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+                        const paid = s.paid_at;
                         return (
                           <tr key={s.id}>
                             <td>{i + 1}</td>
                             <td style={{ fontWeight:600 }}>₹{parseFloat(s.salary).toLocaleString('en-IN')}</td>
                             <td>{fmtMonth(from)}</td>
                             <td>{to ? fmtMonth(to) : '\u2014 (Current)'}</td>
+                            <td>
+                              {paid ? (
+                                <span className="pill pill-green">Paid</span>
+                              ) : (
+                                <span className="pill pill-gold">Unpaid</span>
+                              )}
+                            </td>
                             <td style={{ color:'var(--ink-soft)', fontSize:12 }}>
                               {new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
                             </td>
                             <td>
-                              <button className="btn btn-icon" title="Delete"
-                                onClick={async () => {
-                                  if (!confirm('Delete this salary record?')) return;
-                                  try {
-                                    await fetch(API_BASE + '/salary/' + s.id, { method:'DELETE', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
-                                    setSalaries(p => p.filter(x => x.id !== s.id));
-                                  } catch (e) { alert(e.message); }
-                                }}>
-                                <Trash width={14} />
-                              </button>
+                              <div style={{ display:'flex', gap:4 }}>
+                                {!paid && (
+                                  <button className="btn btn-sm btn-primary" title="Mark as paid"
+                                    onClick={async () => {
+                                      try {
+                                        await fetch(API_BASE + '/salary/' + s.id + '/pay', { method:'PUT', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
+                                        setSalaries(p => p.map(x => x.id === s.id ? { ...x, paid_at: new Date().toISOString() } : x));
+                                      } catch (e) { alert(e.message); }
+                                    }}>
+                                    Pay
+                                  </button>
+                                )}
+                                <button className="btn btn-icon" title="Delete"
+                                  onClick={async () => {
+                                    if (!confirm('Delete this salary record?')) return;
+                                    try {
+                                      await fetch(API_BASE + '/salary/' + s.id, { method:'DELETE', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
+                                      setSalaries(p => p.filter(x => x.id !== s.id));
+                                    } catch (e) { alert(e.message); }
+                                  }}>
+                                  <Trash width={14} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
