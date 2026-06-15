@@ -336,6 +336,24 @@ tr:hover td { background: #faf8f2; }
   .ss-total { grid-column: 1 / -1; }
 }
 
+/* Salary visual redesign */
+.salary-visual { display:flex; align-items:center; gap:20px; padding:16px 0 12px; }
+.salary-visual-main { flex:1; }
+.salary-visual-total { font-size:36px; font-weight:800; color:var(--sage); line-height:1; }
+.salary-visual-label { font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
+.salary-breakdown-bar { display:flex; height:28px; border-radius:var(--radius-sm); overflow:hidden; margin:12px 0; font-size:0; }
+.salary-bar-paid { background:var(--sage); }
+.salary-bar-deducted { background:var(--danger); }
+.salary-bar-absent { background:#e67e22; }
+.salary-bar-empty { background:var(--line); }
+.salary-breakdown-legend { display:flex; gap:16px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft); margin-bottom:12px; }
+.salary-legend-dot { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+.salary-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+.salary-metric { background:var(--sand); border-radius:var(--radius-sm); padding:10px 12px; text-align:center; }
+.salary-metric-num { font-size:16px; font-weight:700; }
+.salary-metric-lbl { font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
+.salary-extra-row { display:flex; align-items:center; gap:8px; padding-top:10px; border-top:1px solid var(--line); margin-top:10px; font-size:13px; }
+
 /* Mini late balance bar for table cells */
 .lb-mini { display: inline-flex; align-items: center; gap: 6px; min-width: 100px; }
 .lb-mini-track { width: 48px; height: 6px; background: var(--line); border-radius: 6px; overflow: hidden; flex-shrink: 0; }

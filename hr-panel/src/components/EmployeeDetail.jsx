@@ -531,73 +531,155 @@ export default function EmployeeDetail({ worker, onBack }) {
                       <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num" style={{ color:'var(--sage)' }}>₹0.00</span></div>
                     </div>
                   ) : (
-                    <div className="salary-stats">
-                      <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
-                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDatesAfterJoin.length}</span></div>
-                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
-                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Late Minutes</span><span className="ss-num">{totalLateMinutes}</span></div>
-                      {hourlyMode ? (
-                        <div className="ss-item"><span className="ss-lbl">Hourly Rate</span><span className="ss-num">₹{hourlyRate.toFixed(2)}</span></div>
-                      ) : lateDeductionDays > 0 ? (
-                        <div className="ss-item ss-item-warn"><span className="ss-lbl">Late Deduction</span><span className="ss-num">{lateDeductionDays} day{lateDeductionDays > 1 ? 's' : ''}</span></div>
-                      ) : null}
-                      {joiningDeduction > 0 && (
-                        <div className="ss-item ss-item-warn"><span className="ss-lbl">Joining Deduction</span><span className="ss-num">{joiningDeduction} day{joiningDeduction > 1 ? 's' : ''}</span></div>
-                      )}
-                      <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span></div>
-                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{Math.round(totalDue).toLocaleString('en-IN')}</span></div>
-                      <div className="ss-item">
-                        <span className="ss-lbl">Extra Amount</span>
-                        <span className="ss-num" style={{ display:'flex', alignItems:'center', gap:6, justifyContent:'flex-end' }}>
-                          {extraInput === activeSalary?.id ? (
-                            <>
-                              <input type="number" min="0" step="1"
-                                defaultValue={parseFloat(activeSalary?.extra_amount || 0)}
-                                onChange={e => setExtraInput(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Escape') setExtraInput(''); }}
-                                style={{ width:80, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', fontSize:13, textAlign:'right' }}
-                                autoFocus />
-                              <button className="btn btn-xs" disabled={extraSaving}
-                                style={{ background:'var(--sage)', color:'#fff', border:'none', borderRadius:'var(--radius-sm)', padding:'2px 8px', cursor:'pointer', fontSize:12 }}
-                                onClick={async () => {
-                                  setExtraSaving(true);
-                                  try {
-                                    const val = parseFloat(extraInput) || 0;
-                                    await updateWorkerSalary(activeSalary.id, { extra_amount: val });
-                                    setSalaries(p => p.map(x => x.id === activeSalary.id ? { ...x, extra_amount: val } : x));
-                                    setExtraInput('');
-                                  } catch (e) { alert(e.message); }
-                                  finally { setExtraSaving(false); }
-                                }}>
-                                {extraSaving ? '\u2026' : 'Save'}
-                              </button>
-                              <button className="btn btn-xs"
-                                style={{ background:'transparent', border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', cursor:'pointer', fontSize:12 }}
-                                onClick={() => setExtraInput('')}>Cancel</button>
-                            </>
-                          ) : (
-                            <>
-                              <span>₹{parseFloat(activeSalary?.extra_amount || 0).toLocaleString('en-IN')}</span>
-                              <button className="btn btn-icon btn-sm" title="Add extra amount"
-                                onClick={() => setExtraInput(activeSalary?.id || '')}>
-                                <Pencil width={13} />
-                              </button>
-                            </>
-                          )}
+                    <>
+                      {/* Visual header: donut + total */}
+                      <div className="salary-visual">
+                        <svg width="72" height="72" viewBox="0 0 72 72">
+                          {(() => {
+                            const r = 30, cx = 36, cy = 36, circ = 2 * Math.PI * r;
+                            const ded = deducted.size;
+                            const tot = availableDays || 1;
+                            const paidPct = Math.max(0, tot - ded) / tot;
+                            const dedPct = ded / tot;
+                            const paidOff = paidPct * circ;
+                            const dedOff = dedPct * circ;
+                            const emptyPct = Math.max(0, daysInMonth - tot) / daysInMonth;
+                            return (
+                              <>
+                                <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--line)" strokeWidth="8" />
+                                {ded > 0 && (
+                                  <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e67e22" strokeWidth="8"
+                                    strokeDasharray={`${dedOff} ${circ - dedOff}`}
+                                    strokeDashoffset={0} transform="rotate(-90 36 36)" />
+                                )}
+                                <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--sage)" strokeWidth="8"
+                                  strokeDasharray={`${paidOff} ${circ - paidOff}`}
+                                  strokeDashoffset={-dedOff} transform="rotate(-90 36 36)" />
+                                <text x={cx} y={cy - 4} textAnchor="middle" fontSize="16" fontWeight="700" fill="var(--ink)">{Math.round(paidPct * 100)}%</text>
+                                <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" fill="var(--ink-soft)">paid</text>
+                              </>
+                            );
+                          })()}
+                        </svg>
+                        <div className="salary-visual-main">
+                          <div className="salary-visual-total">₹{Math.round(totalDue).toLocaleString('en-IN')}</div>
+                          <div className="salary-visual-label">Total Due{hourlyMode ? ' (Hourly Mode)' : ''}</div>
+                        </div>
+                      </div>
+
+                      {/* Stacked bar: days breakdown */}
+                      {(() => {
+                        const ded = deducted.size;
+                        const paid = Math.max(0, availableDays - ded);
+                        const empty = Math.max(0, daysInMonth - availableDays);
+                        const pct = (v) => (v / daysInMonth * 100).toFixed(1);
+                        return (
+                          <div>
+                            <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--ink-soft)', marginBottom:4 }}>
+                              <span>Available: {availableDays}d</span>
+                              <span>Deducted: {ded}d</span>
+                              <span>Paid: {paid}d</span>
+                            </div>
+                            <div className="salary-breakdown-bar">
+                              {paid > 0 && <div className="salary-bar-paid" style={{ width:pct(paid) + '%' }} title={`${paid} days paid`} />}
+                              {ded > 0 && <div className="salary-bar-deducted" style={{ width:pct(ded) + '%' }} title={`${ded} days deducted`} />}
+                              {empty > 0 && <div className="salary-bar-empty" style={{ width:pct(empty) + '%' }} title={`${empty} days before join`} />}
+                            </div>
+                            <div className="salary-breakdown-legend">
+                              <span><span className="salary-legend-dot" style={{ background:'var(--sage)' }} />Paid ({paid}d)</span>
+                              <span><span className="salary-legend-dot" style={{ background:'var(--danger)' }} />Deducted ({ded}d)</span>
+                              {empty > 0 && <span><span className="salary-legend-dot" style={{ background:'var(--line)' }} />Before join ({empty}d)</span>}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Key metrics */}
+                      <div className="salary-metrics">
+                        <div className="salary-metric">
+                          <div className="salary-metric-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</div>
+                          <div className="salary-metric-lbl">Monthly Salary</div>
+                        </div>
+                        <div className="salary-metric">
+                          <div className="salary-metric-num">{daysInMonth}</div>
+                          <div className="salary-metric-lbl">Days in Month</div>
+                        </div>
+                        <div className="salary-metric">
+                          <div className="salary-metric-num">{daysWorked}</div>
+                          <div className="salary-metric-lbl">Days Worked</div>
+                        </div>
+                        <div className="salary-metric">
+                          <div className="salary-metric-num" style={{ color:'var(--danger)' }}>{totalLateMinutes}</div>
+                          <div className="salary-metric-lbl">Late Minutes</div>
+                        </div>
+                        {hourlyMode ? (
+                          <div className="salary-metric">
+                            <div className="salary-metric-num" style={{ color:'var(--sage)' }}>₹{hourlyRate.toFixed(0)}/hr</div>
+                            <div className="salary-metric-lbl">Hourly Rate</div>
+                          </div>
+                        ) : lateDeductionDays > 0 ? (
+                          <div className="salary-metric">
+                            <div className="salary-metric-num" style={{ color:'var(--danger)' }}>{lateDeductionDays}d</div>
+                            <div className="salary-metric-lbl">Late Deduction</div>
+                          </div>
+                        ) : null}
+                        {joiningDeduction > 0 && (
+                          <div className="salary-metric">
+                            <div className="salary-metric-num" style={{ color:'#8B5CF6' }}>{joiningDeduction}d</div>
+                            <div className="salary-metric-lbl">Joining Deduction</div>
+                          </div>
+                        )}
+                        {hourlyMode && (
+                          <div className="salary-metric">
+                            <div className="salary-metric-num">{totalActualHours.toFixed(1)}</div>
+                            <div className="salary-metric-lbl">Actual Hours</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Extra Amount row */}
+                      <div className="salary-extra-row">
+                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>Extra Amount</span>
+                        {extraInput === activeSalary?.id ? (
+                          <>
+                            <input type="number" min="0" step="1"
+                              defaultValue={parseFloat(activeSalary?.extra_amount || 0)}
+                              onChange={e => setExtraInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Escape') setExtraInput(''); }}
+                              style={{ width:80, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', fontSize:13, textAlign:'right' }}
+                              autoFocus />
+                            <button className="btn btn-xs" disabled={extraSaving}
+                              style={{ background:'var(--sage)', color:'#fff', border:'none', borderRadius:'var(--radius-sm)', padding:'2px 8px', cursor:'pointer', fontSize:12 }}
+                              onClick={async () => {
+                                setExtraSaving(true);
+                                try {
+                                  const val = parseFloat(extraInput) || 0;
+                                  await updateWorkerSalary(activeSalary.id, { extra_amount: val });
+                                  setSalaries(p => p.map(x => x.id === activeSalary.id ? { ...x, extra_amount: val } : x));
+                                  setExtraInput('');
+                                } catch (e) { alert(e.message); }
+                                finally { setExtraSaving(false); }
+                              }}>
+                              {extraSaving ? '\u2026' : 'Save'}
+                            </button>
+                            <button className="btn btn-xs"
+                              style={{ background:'transparent', border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', cursor:'pointer', fontSize:12 }}
+                              onClick={() => setExtraInput('')}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ fontWeight:600, fontSize:15 }}>₹{parseFloat(activeSalary?.extra_amount || 0).toLocaleString('en-IN')}</span>
+                            <button className="btn btn-icon btn-sm" title="Add extra amount"
+                              onClick={() => setExtraInput(activeSalary?.id || '')}>
+                              <Pencil width={13} />
+                            </button>
+                          </>
+                        )}
+                        <span style={{ marginLeft:'auto', fontWeight:600, fontSize:15 }}>
+                          Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}</span>
                         </span>
                       </div>
-                      {parseFloat(activeSalary?.extra_amount || 0) > 0 && (
-                        <div className="ss-item ss-total" style={{ borderTop:'2px solid var(--sage)' }}>
-                          <span className="ss-lbl" style={{ fontWeight:700 }}>Grand Total</span>
-                          <span className="ss-num" style={{ color:'var(--sage)', fontSize:18, fontWeight:700 }}>
-                            ₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
