@@ -58,7 +58,8 @@ export default function EmployeeDetail({ worker, onBack }) {
   const [salaries, setSalaries] = useState([]);
   const [salaryForm, setSalaryForm] = useState({ salary: '' });
   const [salarySubmitting, setSalarySubmitting] = useState(false);
-  const [extraInput, setExtraInput] = useState('');
+  const [extraEditing, setExtraEditing] = useState(false);
+  const [extraVal, setExtraVal] = useState('');
   const [extraSaving, setExtraSaving] = useState(false);
 
   useEffect(() => {
@@ -640,12 +641,12 @@ export default function EmployeeDetail({ worker, onBack }) {
                       {/* Extra Amount row */}
                       <div className="salary-extra-row">
                         <span style={{ color:'var(--ink-soft)', fontSize:12 }}>Extra Amount</span>
-                        {extraInput === activeSalary?.id ? (
+                        {extraEditing ? (
                           <>
                             <input type="number" min="0" step="1"
-                              defaultValue={parseFloat(activeSalary?.extra_amount || 0)}
-                              onChange={e => setExtraInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Escape') setExtraInput(''); }}
+                              value={extraVal}
+                              onChange={e => setExtraVal(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Escape') setExtraEditing(false); }}
                               style={{ width:80, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', fontSize:13, textAlign:'right' }}
                               autoFocus />
                             <button className="btn btn-xs" disabled={extraSaving}
@@ -653,10 +654,10 @@ export default function EmployeeDetail({ worker, onBack }) {
                               onClick={async () => {
                                 setExtraSaving(true);
                                 try {
-                                  const val = parseFloat(extraInput) || 0;
+                                  const val = parseFloat(extraVal) || 0;
                                   await updateWorkerSalary(activeSalary.id, { extra_amount: val });
                                   setSalaries(p => p.map(x => x.id === activeSalary.id ? { ...x, extra_amount: val } : x));
-                                  setExtraInput('');
+                                  setExtraEditing(false);
                                 } catch (e) { alert(e.message); }
                                 finally { setExtraSaving(false); }
                               }}>
@@ -664,13 +665,13 @@ export default function EmployeeDetail({ worker, onBack }) {
                             </button>
                             <button className="btn btn-xs"
                               style={{ background:'transparent', border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'2px 6px', cursor:'pointer', fontSize:12 }}
-                              onClick={() => setExtraInput('')}>Cancel</button>
+                              onClick={() => setExtraEditing(false)}>Cancel</button>
                           </>
                         ) : (
                           <>
                             <span style={{ fontWeight:600, fontSize:15 }}>₹{parseFloat(activeSalary?.extra_amount || 0).toLocaleString('en-IN')}</span>
                             <button className="btn btn-icon btn-sm" title="Add extra amount"
-                              onClick={() => setExtraInput(activeSalary?.id || '')}>
+                              onClick={() => { setExtraEditing(true); setExtraVal(String(parseFloat(activeSalary?.extra_amount || 0))); }}>
                               <Pencil width={13} />
                             </button>
                           </>
