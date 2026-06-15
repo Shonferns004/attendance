@@ -849,13 +849,13 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10, flexWrap:'wrap' }}>
                           <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
                           <Arrow />
-                          <Box num={deducted.size} label="Deducted\nDays" color="#d9534f" />
+                          <Box num={deducted.size} label={'Deducted\nDays'} color="#d9534f" />
                           <Equals />
-                          <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
+                          <Box num={paidDays} label={'Paid\nDays'} color="#5B6B4E" />
                           <Times />
-                          <Box num={'₹' + perDay.toFixed(2)} label="Per Day\nRate" color="#4F6472" />
+                          <Box num={'₹' + perDay.toFixed(2)} label={'Per Day\nRate'} color="#4F6472" />
                           <Equals />
-                          <Box num={'₹' + Math.round(normalTotalDue).toLocaleString('en-IN')} label="Normal\nTotal" color="#5B6B4E" big />
+                          <Box num={'₹' + Math.round(normalTotalDue).toLocaleString('en-IN')} label={'Normal\nTotal'} color="#5B6B4E" big />
                         </div>
                         {/* Arrow down */}
                         <div style={{ textAlign:'center', fontSize:13, color:'var(--ink-soft)', marginBottom:6 }}>
@@ -863,14 +863,14 @@ export default function EmployeeDetail({ worker, onBack }) {
                         </div>
                         {/* Step 2: Hourly override */}
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, flexWrap:'wrap' }}>
-                          <Box num={'₹' + Math.round(hourlyRate).toLocaleString('en-IN')} label="Hourly\nRate" color="#4F6472" />
+                          <Box num={'₹' + Math.round(hourlyRate).toLocaleString('en-IN')} label={'Hourly\nRate'} color="#4F6472" />
                           <Times />
-                          <Box num={totalActualHours.toFixed(1)} label="Total\nHours" color="#d9534f" />
+                          <Box num={totalActualHours.toFixed(1)} label={'Total\nHours'} color="#d9534f" />
                           <Equals />
-                          <Box num={'₹' + Math.round(hourlyRate * totalActualHours).toLocaleString('en-IN')} label="Gross\nTotal" color="#d9534f" big />
-                          {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label="Join\nDeduction" color="#8B5CF6" /></>}
+                          <Box num={'₹' + Math.round(hourlyRate * totalActualHours).toLocaleString('en-IN')} label={'Gross\nTotal'} color="#d9534f" big />
+                          {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
                           <Equals />
-                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label="Total\nDue" color="#5B6B4E" big />
+                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
                         </div>
                         <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
                           ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per day ÷ 9 hr shift = ₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr
@@ -880,16 +880,16 @@ export default function EmployeeDetail({ worker, onBack }) {
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:16, flexWrap:'wrap' }}>
                         <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
                         <Arrow />
-                        <Box num={deducted.size} label="Deducted\nDays" color="#d9534f" />
+                        <Box num={deducted.size} label={'Deducted\nDays'} color="#d9534f" />
                         <Equals />
-                        <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
+                        <Box num={paidDays} label={'Paid\nDays'} color="#5B6B4E" />
                         <Times />
-                        <Box num={'₹' + perDay.toFixed(2)} label="Per Day\nRate" color="#4F6472" />
+                        <Box num={'₹' + perDay.toFixed(2)} label={'Per Day\nRate'} color="#4F6472" />
                         <Arrow />
-                        <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label="Late\nDeduction" color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
-                        {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label="Join\nDeduction" color="#8B5CF6" /></>}
+                        <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label={'Late\nDeduction'} color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
+                        {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
                         <Equals />
-                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label="Total\nDue" color="#5B6B4E" big />
+                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
                       </div>
                     )}
 
