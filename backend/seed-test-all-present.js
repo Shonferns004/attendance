@@ -1,6 +1,6 @@
 import supabase from './src/config/supabase.js';
 
-const LOGIN_ID = process.argv[2] || 'test_ufs_58';
+const LOGIN_ID = 'test_ufs_58';
 
 const { data: worker, error: wErr } = await supabase
   .from('workers')

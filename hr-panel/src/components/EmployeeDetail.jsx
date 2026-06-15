@@ -146,6 +146,7 @@ export default function EmployeeDetail({ worker, onBack }) {
   const joinedThisMonth = joinMonth === monthKey;
   const joinDayNum = joinDate.getDate();
   const joinCutoff = data.created_at.slice(0, 10);
+  const absentDatesAfterJoin = absentDates.filter(d => !joinedThisMonth || d >= joinCutoff);
 
   const deducted = new Set();
   const deductionNotes = [];
@@ -209,7 +210,9 @@ export default function EmployeeDetail({ worker, onBack }) {
 
   let paidDays = noAttendanceData ? 0 : availableDays - deducted.size;
   if (paidDays < 0) paidDays = 0;
-  const daysWorked = monthAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
+  const daysWorked = monthAttendance.filter(a =>
+    (a.status === 'present' || a.status === 'late') && (!joinedThisMonth || a.date >= joinCutoff)
+  ).length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
   const totalDue = perDay * paidDays;
@@ -480,7 +483,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                       <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
                       <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                       <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
-                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDates.length}</span></div>
+                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDatesAfterJoin.length}</span></div>
                       <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
                       <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{paidDays}</span></div>
                       <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
