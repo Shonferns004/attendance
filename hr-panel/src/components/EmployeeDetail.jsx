@@ -873,7 +873,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label="Total\nDue" color="#5B6B4E" big />
                         </div>
                         <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
-                          ₹{Math.round(perDay).toLocaleString('en-IN')} per day ÷ 9 hr shift = ₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr
+                          ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per day ÷ 9 hr shift = ₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr
                         </div>
                       </div>
                     ) : (
@@ -911,7 +911,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                               <tr>
                                 <td style={{ padding:'3px 8px 3px 0', color:'var(--ink-soft)' }}>Without lateness penalty</td>
                                 <td style={{ padding:'3px 0', textAlign:'right', fontFamily:"'Courier New',Courier,monospace" }}>
-                                  ₹{Math.round(perDay).toLocaleString('en-IN')} × {paidDays} days
+                                  ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {paidDays} days
                                 </td>
                                 <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:600, fontFamily:"'Courier New',Courier,monospace" }}>
                                   ₹{Math.round(normalTotalDue).toLocaleString('en-IN')}
@@ -1174,7 +1174,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                         {hourlyMode ? (
                           <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr × {totalActualHours.toFixed(1)} hrs{joiningDeduction > 0 ? ' − ' + joiningDeduction + 'd join' : ''} = </span>
                         ) : (
-                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(perDay).toLocaleString('en-IN')} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
+                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
                         )}
                         <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</strong>
                       </div>
