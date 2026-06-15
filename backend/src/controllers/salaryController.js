@@ -236,6 +236,11 @@ export const getMySalaryBreakdown = async (req, res) => {
       ? perDay * Math.max(0, paidDays - joiningDeduction)
       : perDay * paidDays;
 
+    const safeRecord = (r) => ({
+      id: r.id, date: r.date, status: r.status, late_minutes: r.late_minutes || 0,
+      punch_in_time: r.punch_in_time, punch_out_time: r.punch_out_time,
+    });
+
     return res.json({
       hasSalary: true,
       salary,
@@ -257,6 +262,9 @@ export const getMySalaryBreakdown = async (req, res) => {
       absentCount: absentDatesAfterJoin.length,
       absentDates: absentDatesAfterJoin,
       extraSundayCount: extraSundays.length,
+      shift: worker.shift,
+      createdAt: worker.created_at,
+      records: records.map(safeRecord),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

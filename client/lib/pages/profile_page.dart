@@ -650,6 +650,143 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _fmtAmount(num n) => NumberFormat('#,##,##0', 'en_IN').format(n);
 
+  Map<String, dynamic> _computeLocal(Map<String, dynamic> s) {
+    final records = (s['records'] as List?) ?? [];
+    final daysInMonth = (s['daysInMonth'] as num).toInt();
+    final salary = (s['salary'] as num).toDouble();
+    final now = DateTime.now();
+
+    // Join month check
+    final createdAt = DateTime.parse(s['createdAt'] as String);
+    final joinedThisMonth = createdAt.year == now.year && createdAt.month == now.month;
+    final joinDay = joinedThisMonth ? createdAt.day : 1;
+
+    final year = now.year;
+    final month = now.month;
+    final dateStr = (d) => '${year}-${month.toString().padLeft(2, '0')}-${d.toString().padLeft(2, '0')}';
+    final joinCutoff = joinedThisMonth ? dateStr(joinDay) : '';
+
+    // Absent dates after join
+    final absentDates = records
+        .where((r) => r['status'] == 'absent')
+        .map((r) => r['date'] as String)
+        .where((d) => !joinedThisMonth || d.compareTo(joinCutoff) >= 0)
+        .toList();
+
+    // Deducted set (HR panel logic)
+    final deducted = <String>{};
+    for (final d in absentDates) {
+      final dt = DateTime.parse(d);
+      if (dt.weekday == DateTime.saturday) {
+        deducted.add(d);
+        final sun = dt.add(const Duration(days: 1));
+        final sd = dateStr(sun.day);
+        if (!joinedThisMonth || sd.compareTo(joinCutoff) >= 0) deducted.add(sd);
+      } else if (dt.weekday == DateTime.monday) {
+        deducted.add(d);
+        final sun = dt.subtract(const Duration(days: 1));
+        final sd = dateStr(sun.day);
+        if (!joinedThisMonth || sd.compareTo(joinCutoff) >= 0) deducted.add(sd);
+      } else if (dt.weekday != DateTime.sunday) {
+        deducted.add(d);
+      }
+    }
+
+    // Mon-Sat absences for ≥6 rule
+    final monSatAbsences = absentDates.where((d) {
+      final dt = DateTime.parse(d);
+      return dt.weekday != DateTime.sunday;
+    }).length;
+
+    if (monSatAbsences >= 6) {
+      for (int d = 1; d <= daysInMonth; d++) {
+        final dt = DateTime(year, month, d);
+        if (dt.weekday == DateTime.sunday) {
+          final sd = dateStr(d);
+          if (!joinedThisMonth || sd.compareTo(joinCutoff) >= 0) deducted.add(sd);
+        }
+      }
+    }
+
+    final availableDays = joinedThisMonth ? (daysInMonth - joinDay + 1) : daysInMonth;
+    final paidDays = (availableDays - deducted.length).clamp(0, daysInMonth);
+
+    // Late minutes
+    final totalLateMinutes = records
+        .where((r) => !joinedThisMonth || (r['date'] as String).compareTo(joinCutoff) >= 0)
+        .fold<num>(0, (sum, r) => sum + ((r['late_minutes'] as num?) ?? 0))
+        .toDouble();
+
+    // Shift parsing
+    final shiftStr = s['shift'] as String?;
+    Map<String, int> parseShift(String? str) {
+      if (str == null || str == 'general') return {'sh': 10, 'sm': 0, 'eh': 19, 'em': 0};
+      final cleaned = str.replaceAll(RegExp(r'\s+'), '');
+      final parts = cleaned.split(RegExp(r'[-–to]+'));
+      if (parts.length < 2) return {'sh': 10, 'sm': 0, 'eh': 19, 'em': 0};
+      int p(String s) => s.length <= 2 ? int.parse(s) * 60 : int.parse(s.substring(0, s.length - 2)) * 60 + int.parse(s.substring(s.length - 2));
+      int start = p(parts[0]);
+      int end = p(parts[1]);
+      final eh = end ~/ 60;
+      final sh = start ~/ 60;
+      if (eh <= 7 || (eh <= sh && sh > 7)) end += 12 * 60;
+      return {'sh': start ~/ 60, 'sm': start % 60, 'eh': end ~/ 60, 'em': end % 60};
+    }
+
+    final shift = parseShift(shiftStr);
+    final sMin = shift['sh']! * 60 + shift['sm']!;
+    final eMin = shift['eh']! * 60 + shift['em']!;
+
+    // calcActualHours
+    double calcHours(String? punchIn, String? punchOut) {
+      if (punchIn == null || punchOut == null) return 0;
+      final istOffset = (5.5 * 60 * 60000).toInt();
+      final inD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchIn).millisecondsSinceEpoch + istOffset);
+      final outD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchOut).millisecondsSinceEpoch + istOffset);
+      final inMin = inD.hour * 60 + inD.minute;
+      final outMin = outD.hour * 60 + outD.minute;
+      return (outMin.clamp(sMin, eMin) - inMin.clamp(sMin, eMin)).clamp(0, 99999) / 60.0;
+    }
+
+    // Late deduction
+    final lateDeductionDays = totalLateMinutes > 480 ? 0 : (totalLateMinutes > 240 ? 1 : (totalLateMinutes > 180 ? 0.5 : 0));
+    final hourlyMode = totalLateMinutes > 480;
+    final hourlyRate = hourlyMode ? salary / (daysInMonth * 9) : 0;
+    final totalActualHours = hourlyMode
+        ? records
+            .where((r) => r['status'] != 'absent' && (!joinedThisMonth || (r['date'] as String).compareTo(joinCutoff) >= 0))
+            .fold<num>(0, (sum, r) => sum + calcHours(r['punch_in_time'] as String?, r['punch_out_time'] as String?))
+            .toDouble()
+        : 0;
+
+    final joiningDeduction = joinedThisMonth ? 1.5 : 0;
+    final perDay = salary / daysInMonth;
+
+    final totalDue = hourlyMode
+        ? (hourlyRate * totalActualHours - joiningDeduction * perDay).clamp(0, 999999999)
+        : (perDay * (paidDays - lateDeductionDays - joiningDeduction)).clamp(0, 999999999);
+
+    final normalTotalDue = hourlyMode
+        ? perDay * (paidDays - joiningDeduction).clamp(0, 999999)
+        : perDay * paidDays;
+
+    return {
+      'deductedCount': deducted.length,
+      'paidDays': paidDays.toInt(),
+      'totalLateMinutes': totalLateMinutes.toInt(),
+      'lateDeductionDays': lateDeductionDays,
+      'hourlyMode': hourlyMode,
+      'hourlyRate': double.parse(hourlyRate.toStringAsFixed(2)),
+      'totalActualHours': double.parse(totalActualHours.toStringAsFixed(2)),
+      'joiningDeduction': joiningDeduction,
+      'totalDue': totalDue.round(),
+      'normalTotalDue': normalTotalDue.round(),
+      'availableDays': availableDays,
+      'absentCount': absentDates.length,
+      'monSatAbsences': monSatAbsences,
+    };
+  }
+
   Widget _expenseBreakdownCard() {
     final sb = _salaryBreakdown;
     if (sb == null) {
@@ -704,7 +841,10 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    final s = sb;
+    final c = _computeLocal(sb);
+    final salary = (sb['salary'] as num).toDouble();
+    final daysInMonth = (sb['daysInMonth'] as num).toInt();
+    final perDay = salary / daysInMonth;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -728,28 +868,30 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 14),
-          _erow('Monthly Salary', '₹${_fmtAmount(s['salary'])}'),
-          _erow('Per-day Rate', '₹${_fmtAmount(s['perDay'])}'),
-          _erow('Days in Month', '${s['daysInMonth']} days'),
-          if (s['availableDays'] != null)
-            _erow('Available Days', '${s['availableDays']} days'),
-          _erow('Absent Days', '${s['absentCount']} days', const Color(0xFFba1a1a)),
-          if ((s['extraSundayCount'] ?? 0) > 0)
-            _erow('Extra Sundays', '${s['extraSundayCount']} days', const Color(0xFFba1a1a)),
-          _erow('Deducted Days', '${s['deductedCount']} days', const Color(0xFFba1a1a)),
-          _erow('Paid Days', '${s['paidDays']} days', const Color(0xFF2a6a4b)),
+          _erow('Monthly Salary', '₹${_fmtAmount(salary.round())}'),
+          _erow('Per-day Rate', '₹${_fmtAmount(perDay.round())}'),
+          _erow('Days in Month', '$daysInMonth days'),
+          _erow('Available Days', '${c['availableDays']} days'),
+          _erow('Absent Days', '${c['absentCount']} days', const Color(0xFFba1a1a)),
+          _erow('Deducted Days', '${c['deductedCount']} days', const Color(0xFFba1a1a)),
+          _erow('Paid Days', '${c['paidDays']} days', const Color(0xFF2a6a4b)),
           const Divider(height: 16, color: Color(0xFFdfe3e7)),
-          if ((s['totalLateMinutes'] ?? 0) > 0)
-            _erow('Late Minutes', '${s['totalLateMinutes']} min', const Color(0xFFe67e22)),
-          if (!s['hourlyMode'] && (s['lateDeductionDays'] ?? 0) > 0)
-            _erow('Late Deduction', '${s['lateDeductionDays'] == 0.5 ? '½' : '1'} day', const Color(0xFFe67e22)),
-          if (s['hourlyMode'] == true) ...[
-            _erow('Hourly Rate', '₹${s['hourlyRate']}/hr', const Color(0xFFd35400)),
-            _erow('Actual Hours', '${s['totalActualHours']} hrs', const Color(0xFFd35400)),
-            _erow('Gross (Rate × Hours)', '₹${_fmtAmount((s['hourlyRate'] * s['totalActualHours']).round())}', const Color(0xFFd35400)),
+          if ((c['totalLateMinutes'] as int) > 0)
+            _erow('Late Minutes', '${c['totalLateMinutes']} min', const Color(0xFFe67e22)),
+          if (c['hourlyMode'] == true) ...[
+            _erow('Hourly Pay Mode', '', const Color(0xFFd9534f)),
+            _erow('  Hourly Rate', '₹${(c['hourlyRate'] as double).toStringAsFixed(0)}/hr', const Color(0xFFd35400)),
+            _erow('  Actual Hours', '${(c['totalActualHours'] as double).toStringAsFixed(1)} hrs', const Color(0xFFd35400)),
+            _erow('  Gross', '₹${_fmtAmount(((c['hourlyRate'] as double) * (c['totalActualHours'] as double)).round())}', const Color(0xFFd35400)),
           ],
-          if ((s['joiningDeduction'] ?? 0) > 0)
-            _erow('Joining Deduction', '${s['joiningDeduction']} days', const Color(0xFF8B5CF6)),
+          if (!c['hourlyMode'] && (c['lateDeductionDays'] as double) > 0)
+            _erow('Late Deduction', '${(c['lateDeductionDays'] as double) == 0.5 ? '½' : '1'} day', const Color(0xFFe67e22)),
+          if ((c['joiningDeduction'] as double) > 0)
+            _erow('Joining Deduction', '${(c['joiningDeduction'] as double).toStringAsFixed(1)} days', const Color(0xFF8B5CF6)),
+          if (!c['hourlyMode'] && (c['lateDeductionDays'] as double) > 0)
+            _erow('  Late Amount', '−₹${_fmtAmount((perDay * (c['lateDeductionDays'] as double)).round())}', const Color(0xFFe67e22)),
+          if ((c['joiningDeduction'] as double) > 0)
+            _erow('  Join Amount', '−₹${_fmtAmount((perDay * (c['joiningDeduction'] as double)).round())}', const Color(0xFF8B5CF6)),
           const Divider(height: 16, color: Color(0xFFdfe3e7)),
           Container(
             padding: const EdgeInsets.all(14),
@@ -766,7 +908,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                Text('₹${_fmtAmount(s['totalDue'])}',
+                Text('₹${_fmtAmount(c['totalDue'] as int)}',
                   style: GoogleFonts.hankenGrotesk(
                     fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF2a6a4b),
                   ),
@@ -787,7 +929,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Expanded(
             child: Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
           ),
-          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF171c1f))),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF171c1d))),
         ],
       ),
     );
