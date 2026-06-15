@@ -161,7 +161,7 @@ export const getMySalaryBreakdown = async (req, res) => {
       if (beforeJoinSet.has(day.date)) { deducted.add(day.date); continue; }
       if (day.dayName === 'Sun') continue;
       const rec = records.find(r => r.date === day.date);
-      if (!rec || rec.status === 'absent') {
+      if (rec?.status === 'absent') {
         deducted.add(day.date);
         if (day.dayName === 'Sat') {
           const nextSun = new Date(day.date + 'T00:00:00+05:30');
@@ -181,7 +181,7 @@ export const getMySalaryBreakdown = async (req, res) => {
     const regularAbsences = monthDays.filter(d => {
       if (d.dayName === 'Sun' || beforeJoinSet.has(d.date)) return false;
       const rec = records.find(r => r.date === d.date);
-      return !rec || rec.status === 'absent';
+      return rec?.status === 'absent';
     }).length;
 
     if (regularAbsences >= 6) {
