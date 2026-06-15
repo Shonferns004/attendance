@@ -709,9 +709,9 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <div key={i} style={{ color:'var(--ink-soft)', fontSize:12 }}>• {n.text}</div>
                         ))}
                         <div style={{ marginTop:4, fontSize:11, color:'var(--danger)' }}>
-                          Saturday absences: {absentDates.filter(d => new Date(d).getDay() === 6).length} |
-                          Monday absences: {absentDates.filter(d => new Date(d).getDay() === 1).length} |
-                          Other absences: {absentDates.filter(d => { const day = new Date(d).getDay(); return day !== 6 && day !== 1 && day !== 0; }).length}
+                          Saturday absences: {absentDatesAfterJoin.filter(d => new Date(d).getDay() === 6).length} |
+                          Monday absences: {absentDatesAfterJoin.filter(d => new Date(d).getDay() === 1).length} |
+                          Other absences: {absentDatesAfterJoin.filter(d => { const day = new Date(d).getDay(); return day !== 6 && day !== 1 && day !== 0; }).length}
                         </div>
                       </div>
                     )}
@@ -739,7 +739,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
                         {joinedThisMonth && <><span style={{ color:'var(--ink-soft)' }}>Available (from join date)</span><span style={{ textAlign:'right' }}>{availableDays}</span></>}
                         <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
-                        <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{joinedThisMonth ? absentDates.filter(d => d >= joinCutoff).length : absentDates.length}</span>
+                        <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{absentDatesAfterJoin.length}</span>
                         <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{paidDays}</span>
