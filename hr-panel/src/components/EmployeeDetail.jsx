@@ -44,7 +44,7 @@ function calcActualHours(punchInISO, punchOutISO, sMin, eMin) {
 }
 
 export default function EmployeeDetail({ worker, onBack }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +79,7 @@ export default function EmployeeDetail({ worker, onBack }) {
     if (!attendance.length) fetchAttendance();
     if (!leaves.length) fetchLeaves();
     if (!ngos.length) fetchNGOs();
+    if (!holidays.length) fetchHolidays();
     return () => { cancelled = true; };
   }, [worker.id]);
 
@@ -154,6 +155,9 @@ export default function EmployeeDetail({ worker, onBack }) {
   const yr = now.getFullYear();
   const mo = now.getMonth() + 1;
   const monthKey = `${yr}-${String(mo).padStart(2, '0')}`;
+  const holidayDates = new Set(
+    holidays.filter(h => h.date?.startsWith(monthKey)).map(h => h.date)
+  );
   const daysInMonth = new Date(yr, mo, 0).getDate();
 
   const activeSalary = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month))
@@ -162,7 +166,9 @@ export default function EmployeeDetail({ worker, onBack }) {
 
   const monthAttendance = empAttendance.filter(a => a.date && a.date.startsWith(monthKey));
   const noAttendanceData = monthAttendance.length === 0;
-  const absentDates = monthAttendance.filter(a => a.status === 'absent').map(a => a.date);
+  const absentDates = monthAttendance
+    .filter(a => a.status === 'absent' && !holidayDates.has(a.date))
+    .map(a => a.date);
 
   const joinDate = new Date(data.created_at);
   const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
@@ -273,7 +279,7 @@ export default function EmployeeDetail({ worker, onBack }) {
 
   // Pay date: 10th of next month + absent days on 1st–10th (excl Sundays)
   const absent1to10 = monthAttendance.filter(a =>
-    a.status === 'absent' && a.date.slice(8, 10) <= '10' && new Date(a.date).getDay() !== 0
+    a.status === 'absent' && a.date.slice(8, 10) <= '10' && new Date(a.date).getDay() !== 0 && !holidayDates.has(a.date)
   );
   const extendDays = absent1to10.length;
   const payDate = new Date(yr, mo, 10 + extendDays);
