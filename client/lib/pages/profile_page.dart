@@ -650,43 +650,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _fmtAmount(num n) => NumberFormat('#,##,##0', 'en_IN').format(n);
 
-  Widget _flowBox(String text, String label, Color color, {bool big = false}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: big ? 14 : 10, vertical: big ? 10 : 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(text,
-            style: TextStyle(fontSize: big ? 16 : 13, fontWeight: FontWeight.w800, color: color),
-          ),
-          if (label.isNotEmpty)
-            Text(label,
-              style: TextStyle(fontSize: 9, color: color, height: 1.2),
-              textAlign: TextAlign.center,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _flowArrow(String label) {
-    return Column(
-      children: [
-        Icon(Icons.arrow_forward, size: 14, color: const Color(0xFF9a9ea6)),
-        if (label.isNotEmpty)
-          Text(label, style: TextStyle(fontSize: 7, color: const Color(0xFF9a9ea6))),
-      ],
-    );
-  }
-
-  Widget _flowEquals() {
-    return Text('=', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF9a9ea6)));
-  }
-
   Widget _expenseBreakdownCard() {
     final sb = _salaryBreakdown;
     if (sb == null) {
@@ -741,19 +704,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    final salary = sb['salary'] as num;
-    final perDay = sb['perDay'] as num;
-    final paidDays = sb['paidDays'] as num;
-    final totalLateMinutes = sb['totalLateMinutes'] as num;
-    final lateDeductionDays = (sb['lateDeductionDays'] as num).toDouble();
-    final hourlyMode = sb['hourlyMode'] as bool;
-    final hourlyRate = (sb['hourlyRate'] as num).toDouble();
-    final totalActualHours = (sb['totalActualHours'] as num).toDouble();
-    final joiningDeduction = (sb['joiningDeduction'] as num).toDouble();
-    final totalDue = sb['totalDue'] as num;
-    final normalTotalDue = sb['normalTotalDue'] as num;
-    final deductedCount = sb['deductedCount'] as num;
-    final availableDays = (sb['availableDays'] ?? paidDays + deductedCount + joiningDeduction) as num;
+    final s = sb;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -777,208 +728,29 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 14),
-
-          // --- Flow chart ---
-          _bdRow('Monthly Salary', '₹${_fmtAmount(salary)}', null),
-          _bdRow('Per-day Rate', '₹${_fmtAmount(perDay)}', null),
-          _bdRow('Available Days', '${availableDays.toInt()} days', null),
-          _bdRow('Deducted Days', '${deductedCount.toInt()} days', const Color(0xFFba1a1a)),
-          _bdRow('Paid Days', '${paidDays.toInt()} days', const Color(0xFF2a6a4b)),
+          _erow('Monthly Salary', '₹${_fmtAmount(s['salary'])}'),
+          _erow('Per-day Rate', '₹${_fmtAmount(s['perDay'])}'),
+          _erow('Days in Month', '${s['daysInMonth']} days'),
+          if (s['availableDays'] != null)
+            _erow('Available Days', '${s['availableDays']} days'),
+          _erow('Absent Days', '${s['absentCount']} days', const Color(0xFFba1a1a)),
+          if ((s['extraSundayCount'] ?? 0) > 0)
+            _erow('Extra Sundays', '${s['extraSundayCount']} days', const Color(0xFFba1a1a)),
+          _erow('Deducted Days', '${s['deductedCount']} days', const Color(0xFFba1a1a)),
+          _erow('Paid Days', '${s['paidDays']} days', const Color(0xFF2a6a4b)),
           const Divider(height: 16, color: Color(0xFFdfe3e7)),
-
-          // Normal mode flow
-          if (!hourlyMode) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _flowBox('${availableDays.toInt()}', 'Available', const Color(0xFF5B6B4E)),
-                  _flowArrow(''),
-                  _flowBox('${deductedCount.toInt()}', 'Deducted', const Color(0xFFba1a1a)),
-                  _flowEquals(),
-                  _flowBox('${paidDays.toInt()}', 'Paid Days', const Color(0xFF5B6B4E)),
-                  _flowArrow('×'),
-                  _flowBox('₹${_fmtAmount(perDay)}', 'Per Day', const Color(0xFF4F6472)),
-                  if (lateDeductionDays > 0) ...[
-                    _flowArrow(''),
-                    _flowBox('−${lateDeductionDays.toStringAsFixed(0)}d', 'Late', const Color(0xFFe67e22)),
-                  ],
-                  if (joiningDeduction > 0) ...[
-                    _flowArrow(''),
-                    _flowBox('−${joiningDeduction.toStringAsFixed(0)}d', 'Join', const Color(0xFF8B5CF6)),
-                  ],
-                  _flowEquals(),
-                  _flowBox('₹${_fmtAmount(totalDue)}', 'Total', const Color(0xFF2a6a4b), big: true),
-                ],
-              ),
-            ),
+          if ((s['totalLateMinutes'] ?? 0) > 0)
+            _erow('Late Minutes', '${s['totalLateMinutes']} min', const Color(0xFFe67e22)),
+          if (!s['hourlyMode'] && (s['lateDeductionDays'] ?? 0) > 0)
+            _erow('Late Deduction', '${s['lateDeductionDays'] == 0.5 ? '½' : '1'} day', const Color(0xFFe67e22)),
+          if (s['hourlyMode'] == true) ...[
+            _erow('Hourly Rate', '₹${s['hourlyRate']}/hr', const Color(0xFFd35400)),
+            _erow('Actual Hours', '${s['totalActualHours']} hrs', const Color(0xFFd35400)),
+            _erow('Gross (Rate × Hours)', '₹${_fmtAmount((s['hourlyRate'] * s['totalActualHours']).round())}', const Color(0xFFd35400)),
           ],
-
-          // Hourly mode flow
-          if (hourlyMode) ...[
-            // First flow: normal calculation without late penalty
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _flowBox('${availableDays.toInt()}', 'Available', const Color(0xFF5B6B4E)),
-                  _flowArrow(''),
-                  _flowBox('${deductedCount.toInt()}', 'Deducted', const Color(0xFFba1a1a)),
-                  _flowEquals(),
-                  _flowBox('${paidDays.toInt()}', 'Paid Days', const Color(0xFF5B6B4E)),
-                  _flowArrow('×'),
-                  _flowBox('₹${_fmtAmount(perDay)}', 'Per Day', const Color(0xFF4F6472)),
-                  _flowEquals(),
-                  _flowBox('₹${_fmtAmount(normalTotalDue)}', 'Normal', const Color(0xFF5B6B4E), big: true),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFd9534f).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_downward, size: 14, color: const Color(0xFFd9534f)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('$totalLateMinutes min late (>480) → hourly mode',
-                      style: TextStyle(fontSize: 11, color: const Color(0xFFd9534f), fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            // Second flow: hourly calculation
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _flowBox('₹${_fmtAmount(hourlyRate.round())}', 'Rate/hr', const Color(0xFF4F6472)),
-                  _flowArrow('×'),
-                  _flowBox('${totalActualHours.toStringAsFixed(1)}', 'Hours', const Color(0xFFd9534f)),
-                  _flowEquals(),
-                  _flowBox('₹${_fmtAmount((hourlyRate * totalActualHours).round())}', 'Gross', const Color(0xFFd9534f), big: true),
-                  if (joiningDeduction > 0) ...[
-                    _flowArrow(''),
-                    _flowBox('−${joiningDeduction.toStringAsFixed(0)}d', 'Join', const Color(0xFF8B5CF6)),
-                  ],
-                  _flowEquals(),
-                  _flowBox('₹${_fmtAmount(totalDue)}', 'Total', const Color(0xFF2a6a4b), big: true),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text('₹${_fmtAmount(perDay)} per day ÷ 9 hr shift = ₹${_fmtAmount(hourlyRate.round())}/hr',
-              style: TextStyle(fontSize: 10, color: const Color(0xFF9a9ea6)),
-            ),
-          ],
-
-          if (!hourlyMode) ...[
-            const SizedBox(height: 12),
-            // Late minutes badge
-            if (totalLateMinutes > 240)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: totalLateMinutes > 480 ? const Color(0xFFd9534f).withValues(alpha: 0.08) :
-                           totalLateMinutes > 240 ? const Color(0xFFe67e22).withValues(alpha: 0.08) :
-                           const Color(0xFF5B6B4E).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: totalLateMinutes > 480 ? const Color(0xFFd9534f).withValues(alpha: 0.3) :
-                           totalLateMinutes > 240 ? const Color(0xFFe67e22).withValues(alpha: 0.3) :
-                           const Color(0xFF5B6B4E).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14,
-                      color: totalLateMinutes > 480 ? const Color(0xFFd9534f) :
-                             totalLateMinutes > 240 ? const Color(0xFFe67e22) :
-                             const Color(0xFF5B6B4E),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        totalLateMinutes > 480 ? '$totalLateMinutes min late → 1 day deducted' :
-                        totalLateMinutes > 240 ? '$totalLateMinutes min late → 1 day deducted' :
-                        '$totalLateMinutes min late → ½ day deducted',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                          color: totalLateMinutes > 480 ? const Color(0xFFd9534f) :
-                                 totalLateMinutes > 240 ? const Color(0xFFe67e22) :
-                                 const Color(0xFF5B6B4E),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-
-          const Divider(height: 20, color: Color(0xFFdfe3e7)),
-
-          // Breakdown details
-          _bdRow('Monthly Expense', '₹${_fmtAmount(salary)}', null),
-          _bdRow('Per-day Rate', '₹${_fmtAmount(perDay)}', null),
-          _bdRow('Paid Days', '${paidDays.toInt()} days', null),
-          if (deductedCount > 0)
-            _bdRow('Absent / Sunday Deduction', '−${deductedCount.toInt()} days', const Color(0xFFba1a1a)),
-
-          // Late deduction
-          if (!hourlyMode && lateDeductionDays > 0) ...[
-            _bdRow('Late Deduction', '${lateDeductionDays == 0.5 ? '½' : '1'} day', const Color(0xFFe67e22)),
-            _bdRow('  → Amount', '−₹${_fmtAmount((perDay * lateDeductionDays).round())}', const Color(0xFFe67e22)),
-          ],
-
-          // Hourly mode details
-          if (hourlyMode) ...[
-            _bdRow('Hourly Rate', '₹${hourlyRate.toStringAsFixed(0)}/hr', const Color(0xFFd35400)),
-            _bdRow('Actual Hours', '${totalActualHours.toStringAsFixed(1)} hrs', const Color(0xFFd35400)),
-            _bdRow('  → Gross Pay', '₹${_fmtAmount((hourlyRate * totalActualHours).round())}', const Color(0xFFd35400)),
-          ],
-
-          // Joining deduction
-          if (joiningDeduction > 0) ...[
-            _bdRow('Joining Deduction', '${joiningDeduction.toStringAsFixed(1)} days', const Color(0xFF8B5CF6)),
-            _bdRow('  → Amount', '−₹${_fmtAmount((perDay * joiningDeduction).round())}', const Color(0xFF8B5CF6)),
-          ],
-
-          if (totalLateMinutes > 0)
-            _bdRow('Total Late Minutes', '$totalLateMinutes min', const Color(0xFFc28228)),
-
-          // Comparison table for hourly mode
-          if (hourlyMode && normalTotalDue != totalDue) ...[
-            const Divider(height: 20, color: Color(0xFFdfe3e7)),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFfff8f0),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFe67e22).withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('How lateness affects your expense',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.05, color: const Color(0xFF74777e)),
-                  ),
-                  const SizedBox(height: 6),
-                  _cmpRow('Without lateness', '₹${_fmtAmount(perDay)} × ${(paidDays - joiningDeduction).toInt()} days', '₹${_fmtAmount(normalTotalDue)}', const Color(0xFF2a6a4b)),
-                  _cmpRow('With lateness', '₹${hourlyRate.toStringAsFixed(0)}/hr × ${totalActualHours.toStringAsFixed(1)} hrs', '₹${_fmtAmount(totalDue)}', const Color(0xFFba1a1a)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          const Divider(height: 20, color: Color(0xFFdfe3e7)),
-
-          // Total
+          if ((s['joiningDeduction'] ?? 0) > 0)
+            _erow('Joining Deduction', '${s['joiningDeduction']} days', const Color(0xFF8B5CF6)),
+          const Divider(height: 16, color: Color(0xFFdfe3e7)),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -994,7 +766,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                Text('₹${_fmtAmount(totalDue)}',
+                Text('₹${_fmtAmount(s['totalDue'])}',
                   style: GoogleFonts.hankenGrotesk(
                     fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF2a6a4b),
                   ),
@@ -1007,44 +779,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _bdRow(String label, String value, Color? valueColor) {
+  Widget _erow(String label, String value, [Color? valueColor]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-              style: TextStyle(fontSize: 12, color: const Color(0xFF43474d)),
-            ),
+            child: Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
           ),
-          Text(value,
-            style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: valueColor ?? const Color(0xFF171c1f),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _cmpRow(String label, String formula, String amount, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
-            ),
-          ),
-          Text(formula,
-            style: TextStyle(fontSize: 10, color: const Color(0xFF74777e)),
-          ),
-          const SizedBox(width: 8),
-          Text(amount,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
-          ),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF171c1f))),
         ],
       ),
     );
