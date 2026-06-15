@@ -264,7 +264,7 @@ export const getMySalaryBreakdown = async (req, res) => {
       extraSundayCount: extraSundays.length,
       shift: worker.shift,
       createdAt: worker.created_at,
-      records: records.map(safeRecord),
+      records: (records || []).map(safeRecord),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

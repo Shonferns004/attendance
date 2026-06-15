@@ -761,8 +761,8 @@ class _ProfilePageState extends State<ProfilePage> {
     double calcHours(String? punchIn, String? punchOut) {
       if (punchIn == null || punchOut == null) return 0;
       final istOffset = (5.5 * 60 * 60000).toInt();
-      final inD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchIn).millisecondsSinceEpoch + istOffset);
-      final outD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchOut).millisecondsSinceEpoch + istOffset);
+      final inD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchIn).millisecondsSinceEpoch + istOffset, isUtc: true);
+      final outD = DateTime.fromMillisecondsSinceEpoch(DateTime.parse(punchOut).millisecondsSinceEpoch + istOffset, isUtc: true);
       final inMin = inD.hour * 60 + inD.minute;
       final outMin = outD.hour * 60 + outD.minute;
       return (outMin.clamp(sMin, eMin) - inMin.clamp(sMin, eMin)).clamp(0, 99999) / 60.0;
