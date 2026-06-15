@@ -113,14 +113,10 @@ export default function EmployeeDetail({ worker, onBack }) {
 
   const color = avatarColor(data.name);
 
-  const empAttendance = attendance.filter(a =>
-    a.workers?.name === data.name || a.workers?.email === data.email
-  );
+  const empAttendance = attendance.filter(a => a.worker_id === worker.id);
   const filteredAttendance = attStatus ? empAttendance.filter(a => a.status === attStatus) : empAttendance;
 
-  const empLeaves = leaves.filter(l =>
-    l.workers?.name === data.name || l.workers?.email === data.email
-  );
+  const empLeaves = leaves.filter(l => l.worker_id === worker.id);
 
   const ngoName = ngos.find(n => n.id === data.ngo_id)?.name || 'NA';
 
