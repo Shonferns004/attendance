@@ -549,48 +549,6 @@ export default function EmployeeDetail({ worker, onBack }) {
                       )}
                       <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span></div>
                       <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{Math.round(totalDue).toLocaleString('en-IN')}</span></div>
-                      <div className="ss-item">
-                        <span className="ss-lbl">Extra Amount</span>
-                        <span className="ss-num" style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'flex-end' }}>
-                          {extraInput === activeSalary?.id ? (
-                            <>
-                              <input type="number" min="0" step="1"
-                                defaultValue={parseFloat(activeSalary?.extra_amount || 0)}
-                                onChange={e => setExtraInput(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Escape') setExtraInput(''); }}
-                                style={{ width:90, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'3px 6px', fontSize:13, textAlign:'right' }}
-                                autoFocus />
-                              <button className="btn btn-icon btn-sm" disabled={extraSaving}
-                                onClick={async () => {
-                                  setExtraSaving(true);
-                                  try {
-                                    const val = parseFloat(extraInput) || 0;
-                                    await updateWorkerSalary(activeSalary.id, { extra_amount: val });
-                                    setSalaries(p => p.map(x => x.id === activeSalary.id ? { ...x, extra_amount: val } : x));
-                                    setExtraInput('');
-                                  } catch (e) { alert(e.message); }
-                                  finally { setExtraSaving(false); }
-                                }}>
-                                {extraSaving ? '\u2026' : '\u2713'}
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <span>₹{parseFloat(activeSalary?.extra_amount || 0).toLocaleString('en-IN')}</span>
-                              <button className="btn btn-icon btn-sm" title="Add extra amount"
-                                onClick={() => setExtraInput(activeSalary?.id || '')}>
-                                <Pencil width={13} />
-                              </button>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      {parseFloat(activeSalary?.extra_amount || 0) > 0 && (
-                        <div className="ss-item ss-total" style={{ borderTop:'2px solid var(--sage)' }}>
-                          <span className="ss-lbl">Grand Total</span>
-                          <span className="ss-num" style={{ color:'var(--sage)', fontSize:18 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -1056,9 +1014,6 @@ export default function EmployeeDetail({ worker, onBack }) {
                         )}
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span>
-                        {parseFloat(activeSalary?.extra_amount || 0) > 0 && (
-                          <><span style={{ color:'var(--ink-soft)' }}>Extra Amount</span><span style={{ textAlign:'right' }}>₹{parseFloat(activeSalary.extra_amount).toLocaleString('en-IN')}</span></>
-                        )}
                       </div>
                       <div style={{ marginTop:10, textAlign:'center' }}>
                         {hourlyMode ? (
@@ -1067,11 +1022,48 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(perDay).toLocaleString('en-IN')} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
                         )}
                         <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</strong>
-                        {parseFloat(activeSalary?.extra_amount || 0) > 0 && (
-                          <span style={{ marginLeft:8, color:'var(--ink-soft)', fontSize:12 }}>
-                            + ₹{parseFloat(activeSalary.extra_amount).toLocaleString('en-IN')} extra = <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{(Math.round(totalDue) + parseFloat(activeSalary.extra_amount)).toLocaleString('en-IN')}</strong>
-                          </span>
+                      </div>
+
+                      {/* Extra Amount */}
+                      <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid var(--line)', display:'flex', alignItems:'center', gap:8, fontSize:13 }}>
+                        <span style={{ color:'var(--ink-soft)' }}>Extra Amount</span>
+                        {extraInput === activeSalary?.id ? (
+                          <>
+                            <input type="number" min="0" step="1"
+                              defaultValue={parseFloat(activeSalary?.extra_amount || 0)}
+                              onChange={e => setExtraInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Escape') setExtraInput(''); }}
+                              style={{ width:100, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'4px 8px', fontSize:13, textAlign:'right' }}
+                              autoFocus />
+                            <button className="btn btn-icon btn-sm" disabled={extraSaving}
+                              onClick={async () => {
+                                setExtraSaving(true);
+                                try {
+                                  const val = parseFloat(extraInput) || 0;
+                                  await updateWorkerSalary(activeSalary.id, { extra_amount: val });
+                                  setSalaries(p => p.map(x => x.id === activeSalary.id ? { ...x, extra_amount: val } : x));
+                                  setExtraInput('');
+                                } catch (e) { alert(e.message); }
+                                finally { setExtraSaving(false); }
+                              }}>
+                              {extraSaving ? '\u2026' : '\u2713'}
+                            </button>
+                            <button className="btn btn-icon btn-sm" onClick={() => setExtraInput('')}>
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ fontWeight:600, fontSize:15 }}>₹{parseFloat(activeSalary?.extra_amount || 0).toLocaleString('en-IN')}</span>
+                            <button className="btn btn-icon btn-sm" title="Set extra amount"
+                              onClick={() => setExtraInput(activeSalary?.id || '')}>
+                              <Pencil width={14} />
+                            </button>
+                          </>
                         )}
+                        <span style={{ marginLeft:'auto', fontSize:13, color:'var(--ink-soft)' }}>
+                          Total: <strong style={{ fontSize:18, color:'var(--sage)' }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}</strong>
+                        </span>
                       </div>
                     </div>
                   </div>
