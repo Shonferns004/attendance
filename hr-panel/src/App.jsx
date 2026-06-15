@@ -73,7 +73,6 @@ function LoginScreen() {
 }
 
 function Sidebar({ active, setActive, open, onClose }) {
-  const { logout } = useHR();
 
   return (
     <>
@@ -95,10 +94,6 @@ function Sidebar({ active, setActive, open, onClose }) {
             );
           })}
         </nav>
-
-        <div className="sidebar-foot">
-          <button className="btn btn-icon sfoot-logout" onClick={logout}>Sign out</button>
-        </div>
       </aside>
     </>
   );

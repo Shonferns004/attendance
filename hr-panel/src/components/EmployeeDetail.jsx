@@ -1,47 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useHR, avatarColor, avatarTint, initials, DEPTS } from '../store';
-import { ArrowLeft, Pencil, Trash } from '../icons';
+import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
 
-const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
-const DEFAULT_LATE_BALANCE = 180;
-
-function getLateBalance(workerId, allAttendance) {
-  const used = allAttendance
-    .filter(a => a.worker_id === workerId)
-    .reduce((sum, a) => sum + (a.late_minutes || 0), 0);
-  const extra = parseInt(localStorage.getItem('hr_late_extra_' + workerId) || '0', 10);
-  const balance = DEFAULT_LATE_BALANCE + extra;
-  return { used, balance, remaining: balance - used };
-}
-
-function fmtTime(iso) {
-  if (!iso) return '\u2014';
-  const d = new Date(new Date(iso).getTime() + IST_OFFSET);
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mm = String(d.getUTCMinutes()).padStart(2, '0');
-  return <span style={{ fontFamily: "'Courier New', Courier, monospace", fontSize: 12 }}>{hh}:{mm}</span>;
-}
-
-function parseShift(shiftStr) {
-  if (!shiftStr || shiftStr === 'general') return { startH: 10, startM: 0, endH: 19, endM: 0 };
-  const parts = shiftStr.replace(/\s/g, '').split(/[-–to]+/);
-  if (parts.length < 2) return { startH: 10, startM: 0, endH: 19, endM: 0 };
-  const p = (s) => s.length <= 2 ? { h: +s, m: 0 } : { h: +s.slice(0, -2), m: +s.slice(-2) };
-  let start = p(parts[0]);
-  let end = p(parts[1]);
-  if (end.h <= 7 || (end.h <= start.h && start.h > 7)) end.h += 12;
-  return { startH: start.h, startM: start.m, endH: end.h, endM: end.m };
-}
-
-function calcActualHours(punchInISO, punchOutISO, sMin, eMin) {
-  if (!punchInISO || !punchOutISO) return 0;
-  const toMin = (d) => {
-    const ist = new Date(new Date(d).getTime() + 5.5 * 60 * 60000);
-    return ist.getUTCHours() * 60 + ist.getUTCMinutes();
-  };
-  return Math.max(0, Math.min(toMin(punchOutISO), eMin) - Math.max(toMin(punchInISO), sMin)) / 60;
-}
 
 export default function EmployeeDetail({ worker, onBack }) {
   const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
@@ -61,6 +22,7 @@ export default function EmployeeDetail({ worker, onBack }) {
   const [extraEditing, setExtraEditing] = useState(false);
   const [extraVal, setExtraVal] = useState('');
   const [extraSaving, setExtraSaving] = useState(false);
+  const [viewingMonthKey, setViewingMonthKey] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -152,16 +114,22 @@ export default function EmployeeDetail({ worker, onBack }) {
   ];
 
   const now = new Date();
-  const yr = now.getFullYear();
-  const mo = now.getMonth() + 1;
-  const monthKey = `${yr}-${String(mo).padStart(2, '0')}`;
+  const defaultMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const sortedSalaries = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+
+  const effectiveMonthKey = viewingMonthKey || defaultMonthKey;
+  const [yr, mo] = effectiveMonthKey.split('-').map(Number);
+  const monthKey = effectiveMonthKey;
   const holidayDates = new Set(
     holidays.filter(h => h.date?.startsWith(monthKey)).map(h => h.date)
   );
   const daysInMonth = new Date(yr, mo, 0).getDate();
 
-  const activeSalary = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month))
-    .find(s => s.from_month.slice(0, 7) <= monthKey && (!s.to_month || s.to_month.slice(0, 7) >= monthKey));
+  // Salary covering the viewing month
+  const activeSalary = sortedSalaries.find(s =>
+    s.from_month.slice(0, 7) <= effectiveMonthKey &&
+    (!s.to_month || s.to_month.slice(0, 7) >= effectiveMonthKey)
+  ) || sortedSalaries[0] || null;
   const salaryPaid = activeSalary?.paid_at;
 
   const monthAttendance = empAttendance.filter(a => a.date && a.date.startsWith(monthKey));
@@ -248,43 +216,90 @@ export default function EmployeeDetail({ worker, onBack }) {
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
 
   // Late-minutes-based deductions
-  const SHIFT = parseShift(data?.shift);
-  const SHIFT_START = SHIFT.startH * 60 + SHIFT.startM;
-  const SHIFT_END   = SHIFT.endH * 60 + SHIFT.endM;
-
   const totalLateMinutes = monthAttendance
     .filter(a => !joinedThisMonth || a.date >= joinCutoff)
     .reduce((sum, a) => sum + (a.late_minutes || 0), 0);
 
   let lateDeductionDays = 0;
-  let hourlyMode = false;
-  let hourlyRate = 0;
-  let totalActualHours = 0;
   let totalDue;
-  let normalTotalDue = 0;
 
-  if (totalLateMinutes > 480) {
-    hourlyMode = true;
-    hourlyRate = parseFloat(activeSalary.salary) / (daysInMonth * 9);
-    totalActualHours = monthAttendance
-      .filter(a => (!joinedThisMonth || a.date >= joinCutoff) && a.status !== 'absent')
-      .reduce((sum, a) => sum + calcActualHours(a.punch_in_time, a.punch_out_time, SHIFT_START, SHIFT_END), 0);
-    totalDue = Math.max(0, hourlyRate * totalActualHours - joiningDeduction * perDay);
-    normalTotalDue = perDay * Math.max(0, paidDays);
-  } else {
-    if (totalLateMinutes > 240) lateDeductionDays = 1;
-    else if (totalLateMinutes > 180) lateDeductionDays = 0.5;
-    totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+  if (totalLateMinutes > 540) {
+    lateDeductionDays = Math.round((totalLateMinutes / 540) * 2) / 2;
+  } else if (totalLateMinutes > 270) {
+    lateDeductionDays = 1;
+  } else if (totalLateMinutes > 180) {
+    lateDeductionDays = 0.5;
   }
+  totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
 
   // Pay date: 10th of next month + absent days on 1st–10th (excl Sundays)
   const absent1to10 = monthAttendance.filter(a =>
     a.status === 'absent' && a.date.slice(8, 10) <= '10' && new Date(a.date).getDay() !== 0 && !holidayDates.has(a.date)
   );
   const extendDays = absent1to10.length;
-  const payDate = new Date(yr, mo, 10 + extendDays);
+  const payDate = new Date(yr, mo - 1, 10 + extendDays);
   if (payDate.getDay() === 0) payDate.setDate(payDate.getDate() + 1);
   const payDateStr = payDate.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+
+  // Previous month data for compact summary
+  const prevMonthDate = new Date(yr, mo - 2, 1);
+  const prevMonthKey = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+  const prevSalaryRec = sortedSalaries.find(s =>
+    s.from_month.slice(0, 7) <= prevMonthKey &&
+    (!s.to_month || s.to_month.slice(0, 7) >= prevMonthKey)
+  );
+  let prevTotalDue = null;
+  if (prevSalaryRec) {
+    const pYr = parseInt(prevMonthKey.split('-')[0]);
+    const pMo = parseInt(prevMonthKey.split('-')[1]);
+    const pDays = new Date(pYr, pMo, 0).getDate();
+    const pHolidays = new Set(holidays.filter(h => h.date?.startsWith(prevMonthKey)).map(h => h.date));
+    const pAtt = empAttendance.filter(a => a.date?.startsWith(prevMonthKey));
+    const pJoinMonth = `${new Date(data.created_at).getFullYear()}-${String(new Date(data.created_at).getMonth() + 1).padStart(2, '0')}`;
+    const pJoined = pJoinMonth === prevMonthKey;
+    const pJoinCutoff = data.created_at.slice(0, 10);
+    const pAbsent = pAtt.filter(a => a.status === 'absent' && !pHolidays.has(a.date)).map(a => a.date);
+    const pAvailable = pJoined ? (pDays - new Date(data.created_at).getDate() + 1) : pDays;
+    const pPerDay = parseFloat(prevSalaryRec.salary) / pDays;
+
+    const pDeducted = new Set();
+    for (const d of pAbsent) {
+      if (pJoined && d < pJoinCutoff) continue;
+      const dt = new Date(d);
+      const pDay = dt.getDay();
+      if (pDay === 6) {
+        pDeducted.add(d);
+        const sun = new Date(dt); sun.setDate(sun.getDate() + 1);
+        const sd = sun.toISOString().slice(0, 10);
+        if (!pJoined || sd >= pJoinCutoff) pDeducted.add(sd);
+      } else if (pDay === 1) {
+        pDeducted.add(d);
+        const sun = new Date(dt); sun.setDate(sun.getDate() - 1);
+        const sd = sun.toISOString().slice(0, 10);
+        if (!pJoined || sd >= pJoinCutoff) pDeducted.add(sd);
+      } else {
+        pDeducted.add(d);
+      }
+    }
+    const pMonSat = pAbsent.filter(d => new Date(d).getDay() !== 0 && d >= pJoinCutoff).length;
+    if (pMonSat >= 6) {
+      for (let d = 1; d <= pDays; d++) {
+        const dt = new Date(pYr, pMo - 1, d);
+        if (dt.getDay() === 0) {
+          const ds = `${pYr}-${String(pMo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          if (!pJoined || ds >= pJoinCutoff) pDeducted.add(ds);
+        }
+      }
+    }
+    const pLateMins = pAtt.filter(a => !pJoined || a.date >= pJoinCutoff).reduce((s, a) => s + (a.late_minutes || 0), 0);
+    let pLateDays = 0;
+    if (pLateMins > 540) pLateDays = Math.round((pLateMins / 540) * 2) / 2;
+    else if (pLateMins > 270) pLateDays = 1;
+    else if (pLateMins > 180) pLateDays = 0.5;
+    const pPaid = Math.max(0, pAvailable - pDeducted.size);
+    const pJoining = pJoined ? 1.5 : 0;
+    prevTotalDue = pPerDay * Math.max(0, pPaid - pLateDays - pJoining);
+  }
 
   const fmtMonthYear = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
 
@@ -305,7 +320,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       {err && <div className="err-banner">{err}</div>}
 
       <div className="detail-split">
-        {/* LEFT SIDEBAR */}
+        <div style={{ display:'flex', flexDirection:'column', gap:16, width:250, flexShrink:0 }}>
         <div className="card detail-sidebar">
           <div style={{ textAlign:'center', padding:'24px 0 12px' }}>
             {data.photo_url && !imgErr ? (
@@ -336,6 +351,89 @@ export default function EmployeeDetail({ worker, onBack }) {
             <SideField label="Date of Birth" value={data.dob || '\u2014'} />
             <SideField label="Joined" value={new Date(data.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} />
           </div>
+        </div>
+
+        {tab === 'salary' && prevSalaryRec && (
+          <div className="card" style={{ padding:'14px 18px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+              <div>
+                <span style={{ color:'var(--ink-soft)', fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Previous Month</span>
+                <div style={{ fontWeight:600, fontSize:15 }}>{fmtMonthYear(prevMonthDate)}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontWeight:700, fontSize:16 }}>
+                  {prevSalaryRec.paid_at
+                    ? `₹${parseFloat(prevSalaryRec.salary).toLocaleString('en-IN')}`
+                    : `₹${(Math.round(prevTotalDue) + parseFloat(prevSalaryRec.extra_amount || 0)).toLocaleString('en-IN')}`
+                  }
+                </div>
+                <div style={{ fontSize:12, color: prevSalaryRec.paid_at ? 'var(--sage)' : 'var(--danger)' }}>
+                  {prevSalaryRec.paid_at
+                    ? `✓ Paid on ${new Date(prevSalaryRec.paid_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`
+                    : `⏳ Due by ${payDateStr}${extendDays > 0 ? ` (delayed ${extendDays}d)` : ''}`
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'salary' && (
+        <div className="card">
+          <div className="card-head"><h3>Add Salary</h3></div>
+          <div className="card-pad">
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <div>
+                <span className="detail-label">Salary Amount</span>
+                <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
+                  value={salaryForm.salary}
+                  onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
+                  style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }} />
+              </div>
+              <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
+                onClick={async () => {
+                  setSalarySubmitting(true);
+                  try {
+                    const joinDate = new Date(data.created_at);
+                    const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
+                    const now = new Date();
+                    const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+                    const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+                    const latest = sorted[0];
+
+                    let from_month;
+                    if (!latest) {
+                      from_month = joinMonth;
+                    } else {
+                      from_month = currMonth;
+                    }
+
+                    if (latest && !latest.to_month) {
+                      const d = new Date(from_month);
+                      d.setDate(0);
+                      const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                      await updateWorkerSalary(latest.id, { to_month: prevMonth });
+                      setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
+                    }
+
+                    const res = await addWorkerSalary({
+                      worker_id: worker.id,
+                      salary: parseFloat(salaryForm.salary),
+                      from_month,
+                      to_month: null,
+                    });
+                    setSalaries(p => [res.record, ...p]);
+                    setSalaryForm({ salary: '' });
+                  } catch (e) { alert(e.message); }
+                  finally { setSalarySubmitting(false); }
+                }}>
+                {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
+              </button>
+            </div>
+          </div>
+        </div>
+        )}
         </div>
 
         {/* RIGHT CONTENT */}
@@ -451,20 +549,34 @@ export default function EmployeeDetail({ worker, onBack }) {
                   </div>
                 </div>
               )}
-            </div>
+
+              </div>
           )}
 
           {tab === 'attendance' && (
             <div>
-              {/* Late Balance Card */}
-              <div className="card" style={{ marginBottom:16, padding:'20px 22px' }}>
-                <LateBalanceCard workerId={worker.id} attendance={attendance} />
-              </div>
-
               {/* Attendance Records */}
               <div className="card" style={{ padding:'20px 22px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                  <h3 style={{ fontSize:16 }}>{fmtMonthYear(new Date(yr, mo - 1))}</h3>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <button className="btn btn-icon"
+                      onClick={() => {
+                        const d = new Date(yr, mo - 2, 1);
+                        setViewingMonthKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                      }}
+                      style={{ padding:4, cursor:'pointer', background:'none', border:'1px solid var(--line)', borderRadius:'var(--radius-sm)' }}>
+                      <ArrowLeft width={14} />
+                    </button>
+                    <h3 style={{ fontSize:16, minWidth:160, textAlign:'center' }}>{fmtMonthYear(new Date(yr, mo - 1))}</h3>
+                    <button className="btn btn-icon"
+                      onClick={() => {
+                        const d = new Date(yr, mo, 1);
+                        setViewingMonthKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                      }}
+                      style={{ padding:4, cursor:'pointer', background:'none', border:'1px solid var(--line)', borderRadius:'var(--radius-sm)' }}>
+                      <ArrowRight width={14} />
+                    </button>
+                  </div>
                   <select className="filter-select" value={attStatus} onChange={e => setAttStatus(e.target.value)}>
                     <option value="">All</option>
                     <option value="present">Present</option>
@@ -473,6 +585,44 @@ export default function EmployeeDetail({ worker, onBack }) {
                     <option value="leave">Leave</option>
                   </select>
                 </div>
+
+                {(() => {
+                  const mLate = monthAttendance.reduce((s, a) => s + (a.late_minutes || 0), 0);
+                  const activeIdx = mLate > 540 ? 3 : mLate > 270 ? 2 : mLate > 180 ? 1 : 0;
+                  const tiers = [
+                    { label:'None', sub:'≤180 min', color:'var(--sage)' },
+                    { label:'Half', sub:'181–270 min', color:'var(--gold)' },
+                    { label:'1 Day', sub:'271–540 min', color:'#e67e22' },
+                    { label:'Proportional', sub:'>540 min', color:'var(--danger)' },
+                  ];
+                  return (
+                    <div style={{ marginBottom:16, padding:'12px 16px', background:'var(--bg)', borderRadius:'var(--radius-sm)' }}>
+                      <div style={{ fontWeight:600, fontSize:12, color:'var(--ink)', marginBottom:8 }}>Late Deduction Threshold</div>
+                      <div style={{ display:'flex', gap:0 }}>
+                        {tiers.map((t, i) => {
+                          const active = i === activeIdx;
+                          return (
+                            <div key={t.label}
+                              style={{
+                                flex:1, textAlign:'center', padding:'6px 2px', fontSize:10,
+                                background: active ? t.color : 'var(--paper)',
+                                color: active ? '#fff' : 'var(--ink-soft)',
+                                fontWeight: active ? 700 : 400,
+                                border: '1px solid ' + (active ? t.color : 'var(--line)'),
+                                borderLeft: i > 0 ? 'none' : '1px solid ' + (active ? t.color : 'var(--line)'),
+                                borderRight: i < 3 ? 'none' : '1px solid ' + (active ? t.color : 'var(--line)'),
+                                position:'relative',
+                              }}>
+                              {t.label}
+                              <div style={{ fontSize:8, opacity:0.8 }}>{t.sub}</div>
+                              {active && <div style={{ position:'absolute', bottom:-14, left:'50%', marginLeft:-5, width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid ' + t.color }} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div style={{ display:'flex', gap:24, alignItems:'flex-start' }}>
                   {/* Calendar */}
@@ -522,6 +672,31 @@ export default function EmployeeDetail({ worker, onBack }) {
                 {filteredAttendance.length === 0 && (
                   <div className="empty" style={{ marginTop:12 }}>No attendance records found.</div>
                 )}
+
+                {prevSalaryRec && (
+                <div className="card" style={{ marginTop:16, padding:'14px 18px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+                    <div>
+                      <span style={{ color:'var(--ink-soft)', fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Previous Month</span>
+                      <div style={{ fontWeight:600, fontSize:15 }}>{fmtMonthYear(prevMonthDate)}</div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <div style={{ fontWeight:700, fontSize:16 }}>
+                        {prevSalaryRec.paid_at
+                          ? `₹${parseFloat(prevSalaryRec.salary).toLocaleString('en-IN')}`
+                          : `₹${(Math.round(prevTotalDue) + parseFloat(prevSalaryRec.extra_amount || 0)).toLocaleString('en-IN')}`
+                        }
+                      </div>
+                      <div style={{ fontSize:12, color: prevSalaryRec.paid_at ? 'var(--sage)' : 'var(--danger)' }}>
+                        {prevSalaryRec.paid_at
+                          ? `✓ Paid on ${new Date(prevSalaryRec.paid_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`
+                          : `⏳ Due by ${payDateStr}${extendDays > 0 ? ` (delayed ${extendDays}d)` : ''}`
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                )}
               </div>
             </div>
           )}
@@ -530,24 +705,34 @@ export default function EmployeeDetail({ worker, onBack }) {
             <div>
               {/* Salary Calculator — auto for current month */}
               <div className="card" style={{ marginBottom:16 }}>
-                <div className="card-head"><h3>This Month's Salary</h3><span className="sub">{monthKey}</span></div>
+                <div className="card-head">
+                  <h3>Salary</h3>
+                  <select value={effectiveMonthKey} onChange={e => setViewingMonthKey(e.target.value)}
+                    style={{ fontSize:13, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'4px 8px', background:'var(--paper)', color:'var(--ink)' }}>
+                    <option value={defaultMonthKey}>Current Month ({fmtMonthYear(now)})</option>
+                    {[...new Set(sortedSalaries.map(s => s.from_month.slice(0, 7)))].filter(mk => mk !== defaultMonthKey).map(mk => {
+                      const d = new Date(mk + '-01');
+                      const s = sortedSalaries.find(x => x.from_month.slice(0, 7) <= mk && (!x.to_month || x.to_month.slice(0, 7) >= mk));
+                      return (
+                        <option key={mk} value={mk}>
+                          {d.toLocaleDateString('en-GB', { month:'long', year:'numeric' })} {s?.paid_at ? '(Paid)' : '(Unpaid)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
                 <div className="card-pad">
                   {!activeSalary ? (
                     <div className="empty" style={{ padding:0 }}>No salary record for this month.</div>
                   ) : noAttendanceData ? (
                     <div className="empty" style={{ padding:0 }}>No attendance data for this month yet.</div>
-                  ) : salaryPaid ? (
-                    <div className="salary-stats">
-                      <div className="ss-item"><span className="ss-lbl">Monthly Salary</span><span className="ss-num">₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Days in Month</span><span className="ss-num">{daysInMonth}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Per-Day Rate</span><span className="ss-num">₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Status</span><span className="ss-num" style={{ color:'var(--sage)', fontSize:16 }}>Paid</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Paid On</span><span className="ss-num" style={{ fontSize:13 }}>{new Date(salaryPaid).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></div>
-                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num" style={{ color:'var(--sage)' }}>₹0.00</span></div>
-                    </div>
                   ) : (
                     <>
+                      {salaryPaid && (
+                        <div style={{ textAlign:'center', marginBottom:12, padding:'8px 14px', background:'var(--sage)', color:'#fff', borderRadius:6, fontWeight:600, fontSize:13 }}>
+                          ✓ Paid on {new Date(salaryPaid).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+                        </div>
+                      )}
                       {/* Visual header: donut + total */}
                       <div className="salary-visual">
                         <svg width="72" height="72" viewBox="0 0 72 72">
@@ -579,7 +764,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                         </svg>
                         <div className="salary-visual-main">
                           <div className="salary-visual-total">₹{Math.round(totalDue).toLocaleString('en-IN')}</div>
-                          <div className="salary-visual-label">Total Due{hourlyMode ? ' (Hourly Mode)' : ''}</div>
+                          <div className="salary-visual-label">Total Due</div>
                         </div>
                       </div>
 
@@ -628,37 +813,17 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <div className="salary-metric-num" style={{ color:'var(--danger)' }}>{totalLateMinutes}</div>
                           <div className="salary-metric-lbl">Late Minutes</div>
                         </div>
-                        {hourlyMode ? (
-                          <div className="salary-metric">
-                            <div className="salary-metric-num" style={{ color:'var(--sage)' }}>₹{hourlyRate.toFixed(0)}/hr</div>
-                            <div className="salary-metric-lbl">Hourly Rate</div>
-                          </div>
-                        ) : lateDeductionDays > 0 ? (
+                        {lateDeductionDays > 0 && (
                           <div className="salary-metric">
                             <div className="salary-metric-num" style={{ color:'var(--danger)' }}>{lateDeductionDays}d</div>
                             <div className="salary-metric-lbl">Late Deduction</div>
                           </div>
-                        ) : null}
+                        )}
                         {joiningDeduction > 0 && (
                           <div className="salary-metric">
                             <div className="salary-metric-num" style={{ color:'#8B5CF6' }}>{joiningDeduction}d</div>
                             <div className="salary-metric-lbl">Joining Deduction</div>
                           </div>
-                        )}
-                        {hourlyMode && (
-                          <div className="salary-metric">
-                            <div className="salary-metric-num">{totalActualHours.toFixed(1)}</div>
-                            <div className="salary-metric-lbl">Actual Hours</div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Pay Date */}
-                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', fontSize:13 }}>
-                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>Expected Pay Date</span>
-                        <span style={{ fontWeight:600, fontSize:15 }}>{payDateStr}</span>
-                        {extendDays > 0 && (
-                          <span style={{ color:'var(--danger)', fontSize:11 }}>(delayed by {extendDays}d{extendDays > 1 ? 's' : ''} of absent on 1st–10th)</span>
                         )}
                       </div>
 
@@ -704,63 +869,214 @@ export default function EmployeeDetail({ worker, onBack }) {
                           Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}</span>
                         </span>
                       </div>
+
+                      {/* Visual flow */}
+                      <div style={{ borderTop:'1px solid var(--line)', marginTop:16, paddingTop:16 }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+                        <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
+                        <Arrow />
+                        <Box num={deducted.size} label={'Deducted\nDays'} color="#d9534f" />
+                        <Equals />
+                        <Box num={paidDays} label={'Paid\nDays'} color="#5B6B4E" />
+                        <Times />
+                        <Box num={'₹' + perDay.toFixed(2)} label={'Per Day\nRate'} color="#4F6472" />
+                        <Arrow />
+                        <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label={'Late\nDeduction'} color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
+                        {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
+                        <Equals />
+                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
+                      </div>
+
+                      {/* Late minutes badge */}
+                      <div style={{ marginBottom:14 }}>
+                        {totalLateMinutes > 540 ? (
+                          <div style={{ padding:'10px 14px', border:'1px solid #d9534f', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
+                            <div style={{ fontWeight:600, color:'#d9534f' }}>⚠ {totalLateMinutes} min late ({Math.round(totalLateMinutes / 60 * 10) / 10} hrs) → {lateDeductionDays} day{lateDeductionDays !== 1 ? 's' : ''} deducted (proportional)</div>
+                            <div style={{ color:'var(--ink-soft)', marginTop:4 }}>
+                              Every 9 hours (540 min) of lateness = 1 day deducted.
+                            </div>
+                          </div>
+                        ) : totalLateMinutes > 270 ? (
+                          <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
+                            <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → 1 day deducted</strong>
+                          </div>
+                        ) : totalLateMinutes > 180 ? (
+                          <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
+                            <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → Half day deducted</strong>
+                          </div>
+                        ) : totalLateMinutes > 0 ? (
+                          <div style={{ padding:'8px 14px', border:'1px solid #5B6B4E', borderRadius:8, background:'#f6f9f4', fontSize:12 }}>
+                            <strong style={{ color:'#5B6B4E' }}>{totalLateMinutes} min late — No deduction (≤ 180 min)</strong>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Join info — highlighted box */}
+                      {joinedThisMonth && (
+                        <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid #f0d58c', borderRadius:8, background:'#fffbea', fontSize:12 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:4 }}>
+                            <span><strong>Joined:</strong> {new Date(data.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</span>
+                            <span><strong>Available:</strong> {joinDayNum} – {daysInMonth} → <span style={{ fontWeight:700, fontSize:14 }}>{availableDays} days</span></span>
+                            <span><strong>Joining deduction:</strong> {joiningDeduction} days</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* What's deducted — visual breakdown */}
+                      {(() => {
+                        const autoSundays = [...deducted].filter(d =>
+                          !absentDatesAfterJoin.includes(d) &&
+                          new Date(d).getDay() === 0 &&
+                          !extraSundays.includes(d)
+                        );
+                        const hasAny = absentDatesAfterJoin.length > 0 || autoSundays.length > 0 || extraSundays.length > 0 || lateDeductionDays > 0 || joiningDeduction > 0;
+                        if (!hasAny) return null;
+                        return (
+                          <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid var(--danger)', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
+                            <div style={{ fontWeight:600, color:'var(--danger)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>
+                              Why {deducted.size} day{deducted.size != 1 ? 's' : ''} are deducted
+                            </div>
+                            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                              <tbody>
+                                {absentDatesAfterJoin.length > 0 && (
+                                  <tr>
+                                    <td style={{ padding:'2px 6px 2px 0', width:80, verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                      <span style={{ display:'inline-block', width:8, height:8, background:'#ffe0e0', borderRadius:2, marginRight:4 }} />
+                                      <strong>{absentDatesAfterJoin.length} absent</strong>
+                                    </td>
+                                    <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                      {absentDatesAfterJoin.map(d => {
+                                        const dt = new Date(d);
+                                        return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()] + ' ' + dt.getDate();
+                                      }).join(', ')}
+                                    </td>
+                                  </tr>
+                                )}
+                                {autoSundays.length > 0 && (
+                                  <tr>
+                                    <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                      <span style={{ display:'inline-block', width:8, height:8, background:'#fce4b0', borderRadius:2, marginRight:4 }} />
+                                      <strong>{autoSundays.length} Sun{autoSundays.length > 1 ? 's' : ''}</strong>
+                                    </td>
+                                    <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                      {autoSundays.map(d => {
+                                        const dt = new Date(d);
+                                        return 'Sun ' + dt.getDate();
+                                      }).join(', ')}
+                                      {' (Sat/Mon → next/prev Sun)'}
+                                    </td>
+                                  </tr>
+                                )}
+                                {extraSundays.length > 0 && (
+                                  <tr>
+                                    <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                      <span style={{ display:'inline-block', width:8, height:8, background:'#f0c0c0', borderRadius:2, marginRight:4 }} />
+                                      <strong>{extraSundays.length} extra</strong>
+                                    </td>
+                                    <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                      {'≥6 absences rule → ' + extraSundays.map(d => {
+                                        const dt = new Date(d);
+                                        return 'Sun ' + dt.getDate();
+                                      }).join(', ')}
+                                    </td>
+                                  </tr>
+                                )}
+                                {lateDeductionDays > 0 && (
+                                  <tr>
+                                    <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                      <span style={{ display:'inline-block', width:8, height:8, background:'#e67e22', borderRadius:2, marginRight:4 }} />
+                                      <strong>{lateDeductionDays} late</strong>
+                                    </td>
+                                    <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                      {totalLateMinutes} min late → {lateDeductionDays} day{lateDeductionDays !== 1 ? 's' : ''} deducted
+                                    </td>
+                                  </tr>
+                                )}
+                                {joiningDeduction > 0 && (
+                                  <tr>
+                                    <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                      <span style={{ display:'inline-block', width:8, height:8, background:'#8B5CF6', borderRadius:2, marginRight:4 }} />
+                                      <strong>{joiningDeduction} joining</strong>
+                                    </td>
+                                    <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                      First month deduction for new joiners
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Day grid */}
+                      <div style={{ marginBottom:12 }}>
+                        <div style={{ color:'var(--ink-soft)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Day-by-day status</div>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, fontSize:10 }}>
+                          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
+                            <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'2px 0' }}>{d}</div>
+                          )}
+                          {(() => {
+                            const firstDay = new Date(yr, mo - 1, 1).getDay();
+                            const cells = [];
+                            for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+                            for (const md of monthDays) {
+                              const isDeducted = deducted.has(md.date);
+                              const isWeekend = md.dayName === 'Sun';
+                              const beforeJoin = joinedThisMonth && md.date < joinCutoff;
+                              let bg, label, title;
+                              if (beforeJoin) { bg = '#e8e8e8'; label = '—'; title = 'Before join'; }
+                              else if (isDeducted) { bg = '#ffe0e0'; label = '✗'; title = 'Deducted'; }
+                              else if (md.status === 'present' || md.status === 'late') { bg = '#d4edda'; label = '✓'; title = 'Present/Late'; }
+                              else if (isWeekend) { bg = '#f0f0f0'; label = '—'; title = 'Weekend'; }
+                              else { bg = '#fff'; label = ''; title = ''; }
+                              cells.push(
+                                <div key={md.date} style={{ textAlign:'center', padding:'3px 0', borderRadius:3, background:bg, fontSize:9, position:'relative' }}>
+                                  <div>{md.day}</div>
+                                  <div style={{ fontWeight:600 }} title={title}>{label}</div>
+                                </div>
+                              );
+                            }
+                            return cells;
+                          })()}
+                        </div>
+                        <div style={{ display:'flex', gap:16, marginTop:6, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#d4edda', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Present/Late</span>
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffe0e0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Deducted</span>
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Weekend</span>
+                          {joinedThisMonth && <span><span style={{ display:'inline-block', width:10, height:10, background:'#e8e8e8', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Before join</span>}
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff', border:'1px solid #ddd', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />No record</span>
+                        </div>
+                      </div>
+
+                      {/* Summary totals */}
+                      <div style={{ borderTop:'2px solid var(--line)', paddingTop:12, marginTop:12 }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', fontSize:12 }}>
+                          <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
+                          {joinedThisMonth && <><span style={{ color:'var(--ink-soft)' }}>Available (from join date)</span><span style={{ textAlign:'right' }}>{availableDays}</span></>}
+                          <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
+                          <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{absentDatesAfterJoin.length}</span>
+                          <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
+                          {lateDeductionDays > 0 && (
+                            <>
+                              <span style={{ color:'var(--danger)' }}>Late deduction</span><span style={{ textAlign:'right' }}>{lateDeductionDays} day{lateDeductionDays > 1 ? 's' : ''}</span>
+                              <span style={{ color:'var(--ink-soft)' }}>Late minutes</span><span style={{ textAlign:'right' }}>{totalLateMinutes}</span>
+                            </>
+                          )}
+                          {joiningDeduction > 0 && (
+                            <><span style={{ color:'#8B5CF6' }}>Joining deduction</span><span style={{ textAlign:'right', color:'#8B5CF6' }}>{joiningDeduction} day{joiningDeduction > 1 ? 's' : ''}</span></>
+                          )}
+                          <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
+                          <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{paidDays}</span>
+                        </div>
+                        <div style={{ marginTop:10, textAlign:'center' }}>
+                            <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
+                          <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</strong>
+                        </div>
+                      </div>
+                      </div>
                     </>
                   )}
-                </div>
-              </div>
-
-              <div className="card" style={{ marginBottom:16 }}>
-                <div className="card-head"><h3>Add Salary</h3></div>
-                <div className="card-pad">
-                  <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
-                    <div>
-                      <span className="detail-label">Salary Amount</span>
-                      <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
-                        value={salaryForm.salary}
-                        onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
-                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
-                    </div>
-                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
-                      onClick={async () => {
-                        setSalarySubmitting(true);
-                        try {
-                          const joinDate = new Date(data.created_at);
-                          const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
-                          const now = new Date();
-                          const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
-                          const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
-                          const latest = sorted[0];
-
-                          let from_month;
-                          if (!latest) {
-                            from_month = joinMonth;
-                          } else {
-                            from_month = currMonth;
-                          }
-
-                          if (latest && !latest.to_month) {
-                            const d = new Date(from_month);
-                            d.setDate(0);
-                            const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-                            await updateWorkerSalary(latest.id, { to_month: prevMonth });
-                            setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
-                          }
-
-                          const res = await addWorkerSalary({
-                            worker_id: worker.id,
-                            salary: parseFloat(salaryForm.salary),
-                            from_month,
-                            to_month: null,
-                          });
-                          setSalaries(p => [res.record, ...p]);
-                          setSalaryForm({ salary: '' });
-                        } catch (e) { alert(e.message); }
-                        finally { setSalarySubmitting(false); }
-                      }}>
-                      {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -777,7 +1093,6 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <th>From</th>
                         <th>To</th>
                         <th>Status</th>
-                        <th>Added On</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -800,22 +1115,8 @@ export default function EmployeeDetail({ worker, onBack }) {
                                 <span className="pill pill-gold">Unpaid</span>
                               )}
                             </td>
-                            <td style={{ color:'var(--ink-soft)', fontSize:12 }}>
-                              {new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
-                            </td>
                             <td>
                               <div style={{ display:'flex', gap:4 }}>
-                                {!paid && (
-                                  <button className="btn btn-sm btn-primary" title="Mark as paid"
-                                    onClick={async () => {
-                                      try {
-                                        await fetch(API_BASE + '/salary/' + s.id + '/pay', { method:'PUT', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
-                                        setSalaries(p => p.map(x => x.id === s.id ? { ...x, paid_at: new Date().toISOString() } : x));
-                                      } catch (e) { alert(e.message); }
-                                    }}>
-                                    Pay
-                                  </button>
-                                )}
                                 <button className="btn btn-icon" title="Delete"
                                   onClick={async () => {
                                     if (!confirm('Delete this salary record?')) return;
@@ -836,353 +1137,6 @@ export default function EmployeeDetail({ worker, onBack }) {
                 )}
               </div>
 
-              {/* Calculation Breakdown Notepad */}
-              {activeSalary && !salaryPaid && !noAttendanceData && (
-                <div className="card" style={{ marginTop:16 }}>
-                  <div className="card-head"><h3>Salary Breakdown</h3></div>
-                  <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
-
-                    {/* Visual flow */}
-                    {hourlyMode ? (
-                      <div style={{ marginBottom:12 }}>
-                        {/* Step 1: Normal absence-based flow */}
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10, flexWrap:'wrap' }}>
-                          <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
-                          <Arrow />
-                          <Box num={deducted.size} label={'Deducted\nDays'} color="#d9534f" />
-                          <Equals />
-                          <Box num={paidDays} label={'Paid\nDays'} color="#5B6B4E" />
-                          <Times />
-                          <Box num={'₹' + perDay.toFixed(2)} label={'Per Day\nRate'} color="#4F6472" />
-                          <Equals />
-                          <Box num={'₹' + Math.round(normalTotalDue).toLocaleString('en-IN')} label={'Normal\nTotal'} color="#5B6B4E" big />
-                        </div>
-                        {/* Arrow down */}
-                        <div style={{ textAlign:'center', fontSize:13, color:'var(--ink-soft)', marginBottom:6 }}>
-                          ↓ {totalLateMinutes} min late ({'>'}480) → hourly mode
-                        </div>
-                        {/* Step 2: Hourly override */}
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, flexWrap:'wrap' }}>
-                          <Box num={'₹' + Math.round(hourlyRate).toLocaleString('en-IN')} label={'Hourly\nRate'} color="#4F6472" />
-                          <Times />
-                          <Box num={totalActualHours.toFixed(1)} label={'Total\nHours'} color="#d9534f" />
-                          <Equals />
-                          <Box num={'₹' + Math.round(hourlyRate * totalActualHours).toLocaleString('en-IN')} label={'Gross\nTotal'} color="#d9534f" big />
-                          {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
-                          <Equals />
-                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
-                        </div>
-                        <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
-                          ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per day ÷ 9 hr shift = ₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-                        <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
-                        <Arrow />
-                        <Box num={deducted.size} label={'Deducted\nDays'} color="#d9534f" />
-                        <Equals />
-                        <Box num={paidDays} label={'Paid\nDays'} color="#5B6B4E" />
-                        <Times />
-                        <Box num={'₹' + perDay.toFixed(2)} label={'Per Day\nRate'} color="#4F6472" />
-                        <Arrow />
-                        <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label={'Late\nDeduction'} color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
-                        {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
-                        <Equals />
-                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
-                      </div>
-                    )}
-
-                    {/* Late minutes badge */}
-                    <div style={{ marginBottom:14 }}>
-                      {totalLateMinutes > 480 ? (
-                        <>
-                        <div style={{ padding:'10px 14px', border:'1px solid #d9534f', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
-                          <div style={{ fontWeight:600, color:'#d9534f' }}>⚠ {totalLateMinutes} min late — Hourly pay mode</div>
-                          <div style={{ color:'var(--ink-soft)', marginTop:4 }}>
-                            Late minutes exceed 480 (8 hrs). Salary is now calculated per actual hours worked instead of per-day rate.
-                          </div>
-                        </div>
-                        {/* Comparison: normal vs hourly */}
-                        <div style={{ marginTop:8, padding:'10px 14px', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)', fontSize:12 }}>
-                          <div style={{ fontWeight:600, marginBottom:8, fontSize:11, textTransform:'uppercase', letterSpacing:0.5, color:'var(--ink-soft)' }}>How lateness affects the salary</div>
-                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                            <tbody>
-                              <tr>
-                                <td style={{ padding:'3px 8px 3px 0', color:'var(--ink-soft)' }}>Without lateness penalty</td>
-                                <td style={{ padding:'3px 0', textAlign:'right', fontFamily:"'Courier New',Courier,monospace" }}>
-                                  ₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {paidDays} days
-                                </td>
-                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:600, fontFamily:"'Courier New',Courier,monospace" }}>
-                                  ₹{Math.round(normalTotalDue).toLocaleString('en-IN')}
-                                </td>
-                              </tr>
-                              <tr>
-                                <td style={{ padding:'3px 8px 3px 0', color:'var(--ink-soft)' }}>With lateness (hourly)</td>
-                                <td style={{ padding:'3px 0', textAlign:'right', fontFamily:"'Courier New',Courier,monospace" }}>
-                                  ₹{Math.round(hourlyRate).toLocaleString('en-IN')} × {totalActualHours.toFixed(1)} hrs
-                                </td>
-                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:600, color:'#d9534f', fontFamily:"'Courier New',Courier,monospace" }}>
-                                  ₹{Math.round(totalDue).toLocaleString('en-IN')}
-                                </td>
-                              </tr>
-                              <tr style={{ borderTop:'1px solid var(--line)' }}>
-                                <td style={{ padding:'3px 8px 3px 0', fontWeight:600 }}>Difference</td>
-                                <td style={{ padding:'3px 0', textAlign:'right' }}></td>
-                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:700, color: normalTotalDue > totalDue ? '#d9534f' : '#5B6B4E', fontFamily:"'Courier New',Courier,monospace" }}>
-                                  {normalTotalDue > totalDue ? '−' : '+'}₹{Math.round(Math.abs(normalTotalDue - totalDue)).toLocaleString('en-IN')}
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          {normalTotalDue > totalDue && (
-                            <div style={{ marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
-                              {Math.round(normalTotalDue - totalDue).toLocaleString('en-IN')} less due to {totalLateMinutes} min of lateness
-                            </div>
-                          )}
-                        </div>
-                        </>
-                      ) : totalLateMinutes > 240 ? (
-                        <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
-                          <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → 1 day deducted</strong>
-                        </div>
-                      ) : totalLateMinutes > 180 ? (
-                        <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
-                          <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → Half day deducted</strong>
-                        </div>
-                      ) : totalLateMinutes > 0 ? (
-                        <div style={{ padding:'8px 14px', border:'1px solid #5B6B4E', borderRadius:8, background:'#f6f9f4', fontSize:12 }}>
-                          <strong style={{ color:'#5B6B4E' }}>{totalLateMinutes} min late — No deduction (≤ 180 min)</strong>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Join info — highlighted box */}
-                    {joinedThisMonth && (
-                      <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid #f0d58c', borderRadius:8, background:'#fffbea', fontSize:12 }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:4 }}>
-                          <span><strong>Joined:</strong> {new Date(data.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</span>
-                          <span><strong>Available:</strong> {joinDayNum} – {daysInMonth} → <span style={{ fontWeight:700, fontSize:14 }}>{availableDays} days</span></span>
-                          <span><strong>Joining deduction:</strong> {joiningDeduction} days</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* What's deducted — visual breakdown */}
-                    {(() => {
-                      const autoSundays = [...deducted].filter(d =>
-                        !absentDatesAfterJoin.includes(d) &&
-                        new Date(d).getDay() === 0 &&
-                        !extraSundays.includes(d)
-                      );
-                      const hasAny = absentDatesAfterJoin.length > 0 || autoSundays.length > 0 || extraSundays.length > 0 || (!hourlyMode && lateDeductionDays > 0) || joiningDeduction > 0;
-                      if (!hasAny) return null;
-                      return (
-                        <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid var(--danger)', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
-                          <div style={{ fontWeight:600, color:'var(--danger)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>
-                            Why {deducted.size} day{deducted.size != 1 ? 's' : ''} are deducted{!hourlyMode && lateDeductionDays > 0 ? ' (absence)' : ''}
-                          </div>
-                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                            <tbody>
-                              {absentDatesAfterJoin.length > 0 && (
-                                <tr>
-                                  <td style={{ padding:'2px 6px 2px 0', width:80, verticalAlign:'top', whiteSpace:'nowrap' }}>
-                                    <span style={{ display:'inline-block', width:8, height:8, background:'#ffe0e0', borderRadius:2, marginRight:4 }} />
-                                    <strong>{absentDatesAfterJoin.length} absent</strong>
-                                  </td>
-                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
-                                    {absentDatesAfterJoin.map(d => {
-                                      const dt = new Date(d);
-                                      return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()] + ' ' + dt.getDate();
-                                    }).join(', ')}
-                                  </td>
-                                </tr>
-                              )}
-                              {autoSundays.length > 0 && (
-                                <tr>
-                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
-                                    <span style={{ display:'inline-block', width:8, height:8, background:'#fce4b0', borderRadius:2, marginRight:4 }} />
-                                    <strong>{autoSundays.length} Sun{autoSundays.length > 1 ? 's' : ''}</strong>
-                                  </td>
-                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
-                                    {autoSundays.map(d => {
-                                      const dt = new Date(d);
-                                      return 'Sun ' + dt.getDate();
-                                    }).join(', ')}
-                                    {' (Sat/Mon → next/prev Sun)'}
-                                  </td>
-                                </tr>
-                              )}
-                              {extraSundays.length > 0 && (
-                                <tr>
-                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
-                                    <span style={{ display:'inline-block', width:8, height:8, background:'#f0c0c0', borderRadius:2, marginRight:4 }} />
-                                    <strong>{extraSundays.length} extra</strong>
-                                  </td>
-                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
-                                    {'≥6 absences rule → ' + extraSundays.map(d => {
-                                      const dt = new Date(d);
-                                      return 'Sun ' + dt.getDate();
-                                    }).join(', ')}
-                                  </td>
-                                </tr>
-                              )}
-                              {!hourlyMode && lateDeductionDays > 0 && (
-                                <tr>
-                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
-                                    <span style={{ display:'inline-block', width:8, height:8, background:'#e67e22', borderRadius:2, marginRight:4 }} />
-                                    <strong>{lateDeductionDays} late</strong>
-                                  </td>
-                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
-                                    {totalLateMinutes} min late → {lateDeductionDays === 1 ? '1 day' : '½ day'} deducted
-                                  </td>
-                                </tr>
-                              )}
-                              {joiningDeduction > 0 && (
-                                <tr>
-                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
-                                    <span style={{ display:'inline-block', width:8, height:8, background:'#8B5CF6', borderRadius:2, marginRight:4 }} />
-                                    <strong>{joiningDeduction} joining</strong>
-                                  </td>
-                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
-                                    First month deduction for new joiners
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Day grid */}
-                    <div style={{ marginBottom:12 }}>
-                      <div style={{ color:'var(--ink-soft)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Day-by-day status</div>
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, fontSize:10 }}>
-                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
-                          <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'2px 0' }}>{d}</div>
-                        )}
-                        {(() => {
-                          const firstDay = new Date(yr, mo - 1, 1).getDay();
-                          const cells = [];
-                          for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
-                          for (const md of monthDays) {
-                            const isDeducted = deducted.has(md.date);
-                            const isWeekend = md.dayName === 'Sun';
-                            const beforeJoin = joinedThisMonth && md.date < joinCutoff;
-                            let bg, label, title;
-                            if (beforeJoin) { bg = '#e8e8e8'; label = '—'; title = 'Before join'; }
-                            else if (isDeducted) { bg = '#ffe0e0'; label = '✗'; title = 'Deducted'; }
-                            else if (md.status === 'present' || md.status === 'late') { bg = '#d4edda'; label = '✓'; title = 'Present/Late'; }
-                            else if (isWeekend) { bg = '#f0f0f0'; label = '—'; title = 'Weekend'; }
-                            else { bg = '#fff'; label = ''; title = ''; }
-                            cells.push(
-                              <div key={md.date} style={{ textAlign:'center', padding:'3px 0', borderRadius:3, background:bg, fontSize:9, position:'relative' }}>
-                                <div>{md.day}</div>
-                                <div style={{ fontWeight:600 }} title={title}>{label}</div>
-                              </div>
-                            );
-                          }
-                          return cells;
-                        })()}
-                      </div>
-                      <div style={{ display:'flex', gap:16, marginTop:6, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
-                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#d4edda', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Present/Late</span>
-                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffe0e0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Deducted</span>
-                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#f0f0f0', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Weekend</span>
-                        {joinedThisMonth && <span><span style={{ display:'inline-block', width:10, height:10, background:'#e8e8e8', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Before join</span>}
-                        <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff', border:'1px solid #ddd', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />No record</span>
-                      </div>
-                    </div>
-
-                    {/* Hours breakdown (hourly mode only) */}
-                    {hourlyMode && (
-                      <div style={{ marginBottom:12 }}>
-                        <div style={{ color:'var(--ink-soft)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Hours breakdown</div>
-                        <div style={{ fontSize:11, border:'1px solid var(--line)', borderRadius:6, overflow:'hidden' }}>
-                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                            <thead>
-                              <tr style={{ background:'var(--bg)', fontWeight:600 }}>
-                                <th style={{ padding:'4px 6px', textAlign:'left' }}>Date</th>
-                                <th style={{ padding:'4px 6px', textAlign:'left' }}>Day</th>
-                                <th style={{ padding:'4px 6px', textAlign:'center' }}>In</th>
-                                <th style={{ padding:'4px 6px', textAlign:'center' }}>Out</th>
-                                <th style={{ padding:'4px 6px', textAlign:'right' }}>Hours</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {monthAttendance.filter(a => !joinedThisMonth || a.date >= joinCutoff).map(a => {
-                                const dt = new Date(a.date);
-                                const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
-                                const hrs = a.status === 'absent' ? 0 : calcActualHours(a.punch_in_time, a.punch_out_time, SHIFT_START, SHIFT_END);
-                                const isDeductedDay = deducted.has(a.date);
-                                return (
-                                  <tr key={a.id} style={{ borderTop:'1px solid var(--line)', background: a.status === 'absent' || isDeductedDay ? '#fff5f5' : hrs < 9 ? '#fff8f0' : 'transparent' }}>
-                                    <td style={{ padding:'3px 6px' }}>{dt.getDate()}</td>
-                                    <td style={{ padding:'3px 6px' }}>{dayName}</td>
-                                    <td style={{ padding:'3px 6px', textAlign:'center', fontFamily:"'Courier New',Courier,monospace" }}>{fmtTime(a.punch_in_time)}</td>
-                                    <td style={{ padding:'3px 6px', textAlign:'center', fontFamily:"'Courier New',Courier,monospace" }}>{fmtTime(a.punch_out_time)}</td>
-                                    <td style={{ padding:'3px 6px', textAlign:'right', fontWeight:600 }}>{hrs.toFixed(2)}</td>
-                                  </tr>
-                                );
-                              })}
-                              <tr style={{ borderTop:'2px solid var(--line)', fontWeight:700, background:'var(--bg)' }}>
-                                <td colSpan={4} style={{ padding:'4px 6px', textAlign:'right' }}>Total hours</td>
-                                <td style={{ padding:'4px 6px', textAlign:'right' }}>{totalActualHours.toFixed(2)}</td>
-                              </tr>
-                              <tr style={{ fontWeight:700 }}>
-                                <td colSpan={4} style={{ padding:'4px 6px', textAlign:'right' }}>Expected (paid days × 9)</td>
-                                <td style={{ padding:'4px 6px', textAlign:'right' }}>{(paidDays * 9).toFixed(2)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                        <div style={{ display:'flex', gap:12, marginTop:4, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
-                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff8f0', border:'1px solid #e67e22', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Less than 9 hrs</span>
-                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff5f5', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Absent / Deducted</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Summary totals */}
-                    <div style={{ borderTop:'2px solid var(--line)', paddingTop:12, marginTop:12 }}>
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', fontSize:12 }}>
-                        <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
-                        {joinedThisMonth && <><span style={{ color:'var(--ink-soft)' }}>Available (from join date)</span><span style={{ textAlign:'right' }}>{availableDays}</span></>}
-                        <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
-                        <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{absentDatesAfterJoin.length}</span>
-                        <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
-                        {hourlyMode ? (
-                          <>
-                            <span style={{ color:'var(--ink-soft)' }}>Hourly rate</span><span style={{ textAlign:'right' }}>₹{hourlyRate.toFixed(2)}</span>
-                            <span style={{ color:'var(--ink-soft)' }}>Total actual hours</span><span style={{ textAlign:'right' }}>{totalActualHours.toFixed(2)}</span>
-                            <span style={{ color:'var(--ink-soft)' }}>Late minutes</span><span style={{ textAlign:'right' }}>{totalLateMinutes}</span>
-                          </>
-                        ) : lateDeductionDays > 0 ? (
-                          <>
-                            <span style={{ color:'var(--danger)' }}>Late deduction</span><span style={{ textAlign:'right' }}>{lateDeductionDays} day{lateDeductionDays > 1 ? 's' : ''}</span>
-                            <span style={{ color:'var(--ink-soft)' }}>Late minutes</span><span style={{ textAlign:'right' }}>{totalLateMinutes}</span>
-                          </>
-                        ) : null}
-                        {joiningDeduction > 0 && (
-                          <><span style={{ color:'#8B5CF6' }}>Joining deduction</span><span style={{ textAlign:'right', color:'#8B5CF6' }}>{joiningDeduction} day{joiningDeduction > 1 ? 's' : ''}</span></>
-                        )}
-                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
-                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span>
-                      </div>
-                      <div style={{ marginTop:10, textAlign:'center' }}>
-                        {hourlyMode ? (
-                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr × {totalActualHours.toFixed(1)} hrs{joiningDeduction > 0 ? ' − ' + joiningDeduction + 'd join' : ''} = </span>
-                        ) : (
-                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
-                        )}
-                        <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</strong>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -1330,47 +1284,6 @@ function AttendanceChart({ records }) {
         ))}
       </div>
     </div>
-  );
-}
-
-function LateBalanceCard({ workerId, attendance: allAtt }) {
-  const [version, setVersion] = useState(0);
-  const [amt, setAmt] = useState(30);
-  const lb = getLateBalance(workerId, allAtt);
-  const pct = lb.balance > 0 ? Math.min(lb.used / lb.balance * 100, 100) : 100;
-  const barColor = pct < 60 ? 'var(--sage)' : pct < 85 ? 'var(--gold)' : 'var(--danger)';
-
-  const addTime = () => {
-    const cur = parseInt(localStorage.getItem('hr_late_extra_' + workerId) || '0', 10);
-    localStorage.setItem('hr_late_extra_' + workerId, cur + amt);
-    setVersion(v => v + 1);
-  };
-
-  return (
-    <>
-      <h3 style={{ fontSize:16, marginBottom:14 }}>Late Balance</h3>
-      <div className="lb-cards">
-        <div className="lb-stat"><span className="lb-stat-lbl">Used</span><span className="lb-stat-num" style={{ color: barColor }}>{lb.used}m</span></div>
-        <div className="lb-stat"><span className="lb-stat-lbl">Remaining</span><span className="lb-stat-num" style={{ color: lb.remaining <= 0 ? 'var(--danger)' : 'var(--sage)' }}>{Math.max(0, lb.remaining)}m</span></div>
-        <div className="lb-stat"><span className="lb-stat-lbl">Total Balance</span><span className="lb-stat-num">{lb.balance}m</span></div>
-      </div>
-      <div className="lb-track-wrap">
-        <div className="lb-track"><div className="lb-fill" style={{ width: pct + '%', background: barColor }} /></div>
-        <span className="lb-track-pct">{Math.round(pct)}%</span>
-      </div>
-      {lb.remaining <= 30 && (
-        <div style={{ marginTop:14, display:'flex', gap:8, alignItems:'center' }}>
-          <span style={{ fontSize:13, color:'var(--ink-soft)' }}>Add time:</span>
-          <select className="filter-select" value={amt} onChange={e => setAmt(parseInt(e.target.value,10))}>
-            <option value={15}>15 min</option>
-            <option value={30}>30 min</option>
-            <option value={60}>60 min</option>
-            <option value={120}>120 min</option>
-          </select>
-          <button className="btn btn-primary btn-sm" onClick={addTime}>Add</button>
-        </div>
-      )}
-    </>
   );
 }
 

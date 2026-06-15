@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useHR } from '../store';
 import { Who } from './ui';
 import { Plus, Trash } from '../icons';
@@ -14,7 +14,8 @@ export default function Workers({ onSelect, onOffboard }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [salaryMap, setSalaryMap] = useState({});
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 20;
+  const tableRef = useRef(null);
 
   useEffect(() => {
     fetchWorkers().catch(() => {});
@@ -45,6 +46,9 @@ export default function Workers({ onSelect, onOffboard }) {
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => {
+    if (tableRef.current) tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [safePage]);
 
   const submit = async () => {
     if (!name.trim()) return;
@@ -90,7 +94,7 @@ export default function Workers({ onSelect, onOffboard }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" ref={tableRef}>
         <div className="card-head"><h3>Employees</h3>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span className="sub">{filtered.length} total</span>
@@ -132,11 +136,13 @@ export default function Workers({ onSelect, onOffboard }) {
         </table>
         {totalPages > 1 && (
           <div className="pagination">
-            <button className="btn btn-sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>Prev</button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : ''}`} onClick={() => setPage(p)}>{p}</button>
-            ))}
-            <button className="btn btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Next</button>
+            <button className="btn btn-sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>← Prev</button>
+            <div className="pagination-dots">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <span key={p} className={`dot ${p === safePage ? 'dot-active' : ''}`} onClick={() => setPage(p)} />
+              ))}
+            </div>
+            <button className="btn btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Next →</button>
           </div>
         )}
       </div>
