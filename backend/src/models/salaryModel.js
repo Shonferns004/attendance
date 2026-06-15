@@ -10,6 +10,17 @@ export const getSalariesByWorker = async (workerId) => {
   return data;
 };
 
+export const getActiveSalaryByWorker = async (workerId) => {
+  const { data, error } = await supabase
+    .from('salary_history')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('from_month', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data && data.length > 0 ? data[0] : null;
+};
+
 export const createSalary = async (salaryData) => {
   const { data, error } = await supabase
     .from('salary_history')

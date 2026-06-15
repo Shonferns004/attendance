@@ -6,8 +6,9 @@ import {
   getWorkersSummary,
   paySalary,
   removeSalary,
+  getMySalaryBreakdown,
 } from '../controllers/salaryController.js';
-import { authenticateRole } from '../middleware/authMiddleware.js';
+import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.post('/', adminOrHrOrHo, addSalary);
 router.put('/:id', adminOrHrOrHo, editSalary);
 router.put('/:id/pay', adminOrHrOrHo, paySalary);
 router.delete('/:id', adminOrHrOrHo, removeSalary);
+router.get('/my-breakdown', authenticateWorker, getMySalaryBreakdown);
 
 export default router;

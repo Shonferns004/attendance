@@ -23,6 +23,26 @@ function fmtTime(iso) {
   return <span style={{ fontFamily: "'Courier New', Courier, monospace", fontSize: 12 }}>{hh}:{mm}</span>;
 }
 
+function parseShift(shiftStr) {
+  if (!shiftStr || shiftStr === 'general') return { startH: 10, startM: 0, endH: 19, endM: 0 };
+  const parts = shiftStr.replace(/\s/g, '').split(/[-–to]+/);
+  if (parts.length < 2) return { startH: 10, startM: 0, endH: 19, endM: 0 };
+  const p = (s) => s.length <= 2 ? { h: +s, m: 0 } : { h: +s.slice(0, -2), m: +s.slice(-2) };
+  let start = p(parts[0]);
+  let end = p(parts[1]);
+  if (end.h <= 7 || (end.h <= start.h && start.h > 7)) end.h += 12;
+  return { startH: start.h, startM: start.m, endH: end.h, endM: end.m };
+}
+
+function calcActualHours(punchInISO, punchOutISO, sMin, eMin) {
+  if (!punchInISO || !punchOutISO) return 0;
+  const toMin = (d) => {
+    const ist = new Date(new Date(d).getTime() + 5.5 * 60 * 60000);
+    return ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  };
+  return Math.max(0, Math.min(toMin(punchOutISO), eMin) - Math.max(toMin(punchInISO), sMin)) / 60;
+}
+
 export default function EmployeeDetail({ worker, onBack }) {
   const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs } = useHR();
   const [data, setData] = useState(null);
@@ -214,8 +234,39 @@ export default function EmployeeDetail({ worker, onBack }) {
     (a.status === 'present' || a.status === 'late') && (!joinedThisMonth || a.date >= joinCutoff)
   ).length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
+  const JOINING_DEDUCTION = 1.5;
+  const joiningDeduction = joinedThisMonth ? JOINING_DEDUCTION : 0;
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
-  const totalDue = perDay * paidDays;
+
+  // Late-minutes-based deductions
+  const SHIFT = parseShift(data?.shift);
+  const SHIFT_START = SHIFT.startH * 60 + SHIFT.startM;
+  const SHIFT_END   = SHIFT.endH * 60 + SHIFT.endM;
+
+  const totalLateMinutes = monthAttendance
+    .filter(a => !joinedThisMonth || a.date >= joinCutoff)
+    .reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+
+  let lateDeductionDays = 0;
+  let hourlyMode = false;
+  let hourlyRate = 0;
+  let totalActualHours = 0;
+  let totalDue;
+  let normalTotalDue = 0;
+
+  if (totalLateMinutes > 480) {
+    hourlyMode = true;
+    hourlyRate = parseFloat(activeSalary.salary) / (daysInMonth * 9);
+    totalActualHours = monthAttendance
+      .filter(a => (!joinedThisMonth || a.date >= joinCutoff) && a.status !== 'absent')
+      .reduce((sum, a) => sum + calcActualHours(a.punch_in_time, a.punch_out_time, SHIFT_START, SHIFT_END), 0);
+    totalDue = Math.max(0, hourlyRate * totalActualHours - joiningDeduction * perDay);
+    normalTotalDue = perDay * Math.max(0, paidDays - joiningDeduction);
+  } else {
+    if (totalLateMinutes > 240) lateDeductionDays = 1;
+    else if (totalLateMinutes > 180) lateDeductionDays = 0.5;
+    totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+  }
 
   const fmtMonthYear = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
 
@@ -485,8 +536,17 @@ export default function EmployeeDetail({ worker, onBack }) {
                       <div className="ss-item"><span className="ss-lbl">Days Worked</span><span className="ss-num">{daysWorked}</span></div>
                       <div className="ss-item ss-item-warn"><span className="ss-lbl">Absent Days</span><span className="ss-num">{absentDatesAfterJoin.length}</span></div>
                       <div className="ss-item ss-item-warn"><span className="ss-lbl">Sundays Deducted</span><span className="ss-num">{sundayDeductions}</span></div>
-                      <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{paidDays}</span></div>
-                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div className="ss-item ss-item-warn"><span className="ss-lbl">Late Minutes</span><span className="ss-num">{totalLateMinutes}</span></div>
+                      {hourlyMode ? (
+                        <div className="ss-item"><span className="ss-lbl">Hourly Rate</span><span className="ss-num">₹{hourlyRate.toFixed(2)}</span></div>
+                      ) : lateDeductionDays > 0 ? (
+                        <div className="ss-item ss-item-warn"><span className="ss-lbl">Late Deduction</span><span className="ss-num">{lateDeductionDays} day{lateDeductionDays > 1 ? 's' : ''}</span></div>
+                      ) : null}
+                      {joiningDeduction > 0 && (
+                        <div className="ss-item ss-item-warn"><span className="ss-lbl">Joining Deduction</span><span className="ss-num">{joiningDeduction} day{joiningDeduction > 1 ? 's' : ''}</span></div>
+                      )}
+                      <div className="ss-item"><span className="ss-lbl">Paid Days</span><span className="ss-num">{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span></div>
+                      <div className="ss-item ss-total"><span className="ss-lbl">Total Due</span><span className="ss-num">₹{Math.round(totalDue).toLocaleString('en-IN')}</span></div>
                     </div>
                   )}
                 </div>
@@ -625,45 +685,222 @@ export default function EmployeeDetail({ worker, onBack }) {
                   <div className="card-head"><h3>Salary Breakdown</h3></div>
                   <div className="card-pad" style={{ fontSize:13, lineHeight:1.8 }}>
 
-                    {/* Formula */}
-                    <div style={{ marginBottom:12, background:'var(--bg)', padding:10, borderRadius:6, fontFamily:'monospace', fontSize:12, lineHeight:1.9 }}>
-                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Formula</div>
-                      {joinedThisMonth ? (
-                        <>
-                          <div>Employee gets = perDay × (availableDays − deductedDays)</div>
-                          <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({availableDays} − {deducted.size})</div>
-                          <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
-                          <div style={{ fontWeight:600, fontSize:14, marginTop:2, borderTop:'1px dashed var(--line)', paddingTop:4 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                        </>
-                      ) : (
-                        <>
-                          <div>Employee gets = perDay × (daysInMonth − deductedDays)</div>
-                          <div style={{ marginTop:2 }}>= ₹{perDay.toFixed(2)} × ({daysInMonth} − {deducted.size})</div>
-                          <div>= ₹{perDay.toFixed(2)} × {paidDays}</div>
-                          <div style={{ fontWeight:600, fontSize:14, marginTop:2 }}>= ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Join info */}
-                    {joinedThisMonth && (
-                      <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6, background:'#fffbea' }}>
-                        <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Joined this month</div>
-                        <div>Joined on <strong>{new Date(data.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</strong></div>
-                        <div>Available days (join date → month end): {joinDayNum} – {daysInMonth} = <strong>{availableDays} days</strong></div>
+                    {/* Visual flow */}
+                    {hourlyMode ? (
+                      <div style={{ marginBottom:12 }}>
+                        {/* Step 1: Normal absence-based flow */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10, flexWrap:'wrap' }}>
+                          <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
+                          <Arrow />
+                          <Box num={deducted.size} label="Deducted\nDays" color="#d9534f" />
+                          <Equals />
+                          <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
+                          <Times />
+                          <Box num={'₹' + perDay.toFixed(0)} label="Per Day\nRate" color="#4F6472" />
+                          <Equals />
+                          <Box num={'₹' + Math.round(normalTotalDue).toLocaleString('en-IN')} label="Normal\nTotal" color="#5B6B4E" big />
+                        </div>
+                        {/* Arrow down */}
+                        <div style={{ textAlign:'center', fontSize:13, color:'var(--ink-soft)', marginBottom:6 }}>
+                          ↓ {totalLateMinutes} min late ({'>'}480) → hourly mode
+                        </div>
+                        {/* Step 2: Hourly override */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, flexWrap:'wrap' }}>
+                          <Box num={'₹' + Math.round(hourlyRate).toLocaleString('en-IN')} label="Hourly\nRate" color="#4F6472" />
+                          <Times />
+                          <Box num={totalActualHours.toFixed(1)} label="Total\nHours" color="#d9534f" />
+                          <Equals />
+                          <Box num={'₹' + Math.round(hourlyRate * totalActualHours).toLocaleString('en-IN')} label="Gross\nTotal" color="#d9534f" big />
+                          {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label="Join\nDeduction" color="#8B5CF6" /></>}
+                          <Equals />
+                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label="Total\nDue" color="#5B6B4E" big />
+                        </div>
+                        <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
+                          ₹{Math.round(perDay).toLocaleString('en-IN')} per day ÷ 9 hr shift = ₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+                        <Box num={availableDays} label={joinedThisMonth ? 'Available\nDays' : 'Days in\nMonth'} color="#5B6B4E" />
+                        <Arrow />
+                        <Box num={deducted.size} label="Deducted\nDays" color="#d9534f" />
+                        <Equals />
+                        <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
+                        <Times />
+                        <Box num={'₹' + perDay.toFixed(0)} label="Per Day\nRate" color="#4F6472" />
+                        <Arrow />
+                        <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label="Late\nDeduction" color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
+                        {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label="Join\nDeduction" color="#8B5CF6" /></>}
+                        <Equals />
+                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label="Total\nDue" color="#5B6B4E" big />
                       </div>
                     )}
 
-                    {/* Per-day breakdown */}
-                    <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6 }}>
-                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Rate</div>
-                      <div>₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')} (salary) ÷ {daysInMonth} (days)</div>
-                      <div>= <strong>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong> per day</div>
+                    {/* Late minutes badge */}
+                    <div style={{ marginBottom:14 }}>
+                      {totalLateMinutes > 480 ? (
+                        <>
+                        <div style={{ padding:'10px 14px', border:'1px solid #d9534f', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
+                          <div style={{ fontWeight:600, color:'#d9534f' }}>⚠ {totalLateMinutes} min late — Hourly pay mode</div>
+                          <div style={{ color:'var(--ink-soft)', marginTop:4 }}>
+                            Late minutes exceed 480 (8 hrs). Salary is now calculated per actual hours worked instead of per-day rate.
+                          </div>
+                        </div>
+                        {/* Comparison: normal vs hourly */}
+                        <div style={{ marginTop:8, padding:'10px 14px', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)', fontSize:12 }}>
+                          <div style={{ fontWeight:600, marginBottom:8, fontSize:11, textTransform:'uppercase', letterSpacing:0.5, color:'var(--ink-soft)' }}>How lateness affects the salary</div>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <tbody>
+                              <tr>
+                                <td style={{ padding:'3px 8px 3px 0', color:'var(--ink-soft)' }}>Without lateness penalty</td>
+                                <td style={{ padding:'3px 0', textAlign:'right', fontFamily:"'Courier New',Courier,monospace" }}>
+                                  ₹{Math.round(perDay).toLocaleString('en-IN')} × {paidDays} days
+                                </td>
+                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:600, fontFamily:"'Courier New',Courier,monospace" }}>
+                                  ₹{Math.round(normalTotalDue).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style={{ padding:'3px 8px 3px 0', color:'var(--ink-soft)' }}>With lateness (hourly)</td>
+                                <td style={{ padding:'3px 0', textAlign:'right', fontFamily:"'Courier New',Courier,monospace" }}>
+                                  ₹{Math.round(hourlyRate).toLocaleString('en-IN')} × {totalActualHours.toFixed(1)} hrs
+                                </td>
+                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:600, color:'#d9534f', fontFamily:"'Courier New',Courier,monospace" }}>
+                                  ₹{Math.round(totalDue).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                              <tr style={{ borderTop:'1px solid var(--line)' }}>
+                                <td style={{ padding:'3px 8px 3px 0', fontWeight:600 }}>Difference</td>
+                                <td style={{ padding:'3px 0', textAlign:'right' }}></td>
+                                <td style={{ padding:'3px 0 3px 12px', textAlign:'right', fontWeight:700, color: normalTotalDue > totalDue ? '#d9534f' : '#5B6B4E', fontFamily:"'Courier New',Courier,monospace" }}>
+                                  {normalTotalDue > totalDue ? '−' : '+'}₹{Math.round(Math.abs(normalTotalDue - totalDue)).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          {normalTotalDue > totalDue && (
+                            <div style={{ marginTop:6, fontSize:11, color:'var(--ink-soft)' }}>
+                              {Math.round(normalTotalDue - totalDue).toLocaleString('en-IN')} less due to {totalLateMinutes} min of lateness
+                            </div>
+                          )}
+                        </div>
+                        </>
+                      ) : totalLateMinutes > 240 ? (
+                        <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
+                          <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → 1 day deducted</strong>
+                        </div>
+                      ) : totalLateMinutes > 180 ? (
+                        <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
+                          <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → Half day deducted</strong>
+                        </div>
+                      ) : totalLateMinutes > 0 ? (
+                        <div style={{ padding:'8px 14px', border:'1px solid #5B6B4E', borderRadius:8, background:'#f6f9f4', fontSize:12 }}>
+                          <strong style={{ color:'#5B6B4E' }}>{totalLateMinutes} min late — No deduction (≤ 180 min)</strong>
+                        </div>
+                      ) : null}
                     </div>
+
+                    {/* Join info — highlighted box */}
+                    {joinedThisMonth && (
+                      <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid #f0d58c', borderRadius:8, background:'#fffbea', fontSize:12 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:4 }}>
+                          <span><strong>Joined:</strong> {new Date(data.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</span>
+                          <span><strong>Available:</strong> {joinDayNum} – {daysInMonth} → <span style={{ fontWeight:700, fontSize:14 }}>{availableDays} days</span></span>
+                          <span><strong>Joining deduction:</strong> {joiningDeduction} days</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* What's deducted — visual breakdown */}
+                    {(() => {
+                      const autoSundays = [...deducted].filter(d =>
+                        !absentDatesAfterJoin.includes(d) &&
+                        new Date(d).getDay() === 0 &&
+                        !extraSundays.includes(d)
+                      );
+                      const hasAny = absentDatesAfterJoin.length > 0 || autoSundays.length > 0 || extraSundays.length > 0 || (!hourlyMode && lateDeductionDays > 0) || joiningDeduction > 0;
+                      if (!hasAny) return null;
+                      return (
+                        <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid var(--danger)', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
+                          <div style={{ fontWeight:600, color:'var(--danger)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>
+                            Why {deducted.size} day{deducted.size != 1 ? 's' : ''} are deducted{!hourlyMode && lateDeductionDays > 0 ? ' (absence)' : ''}
+                          </div>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <tbody>
+                              {absentDatesAfterJoin.length > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', width:80, verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#ffe0e0', borderRadius:2, marginRight:4 }} />
+                                    <strong>{absentDatesAfterJoin.length} absent</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    {absentDatesAfterJoin.map(d => {
+                                      const dt = new Date(d);
+                                      return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()] + ' ' + dt.getDate();
+                                    }).join(', ')}
+                                  </td>
+                                </tr>
+                              )}
+                              {autoSundays.length > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#fce4b0', borderRadius:2, marginRight:4 }} />
+                                    <strong>{autoSundays.length} Sun{autoSundays.length > 1 ? 's' : ''}</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    {autoSundays.map(d => {
+                                      const dt = new Date(d);
+                                      return 'Sun ' + dt.getDate();
+                                    }).join(', ')}
+                                    {' (Sat/Mon → next/prev Sun)'}
+                                  </td>
+                                </tr>
+                              )}
+                              {extraSundays.length > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#f0c0c0', borderRadius:2, marginRight:4 }} />
+                                    <strong>{extraSundays.length} extra</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    {'≥6 absences rule → ' + extraSundays.map(d => {
+                                      const dt = new Date(d);
+                                      return 'Sun ' + dt.getDate();
+                                    }).join(', ')}
+                                  </td>
+                                </tr>
+                              )}
+                              {!hourlyMode && lateDeductionDays > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#e67e22', borderRadius:2, marginRight:4 }} />
+                                    <strong>{lateDeductionDays} late</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    {totalLateMinutes} min late → {lateDeductionDays === 1 ? '1 day' : '½ day'} deducted
+                                  </td>
+                                </tr>
+                              )}
+                              {joiningDeduction > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#8B5CF6', borderRadius:2, marginRight:4 }} />
+                                    <strong>{joiningDeduction} joining</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    First month deduction for new joiners
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
 
                     {/* Day grid */}
                     <div style={{ marginBottom:12 }}>
-                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Day-by-day status</div>
+                      <div style={{ color:'var(--ink-soft)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Day-by-day status</div>
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, fontSize:10 }}>
                         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
                           <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'2px 0' }}>{d}</div>
@@ -701,39 +938,56 @@ export default function EmployeeDetail({ worker, onBack }) {
                       </div>
                     </div>
 
-                    {/* Deductions */}
-                    {deductionNotes.length > 0 && (
-                      <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--danger)', borderRadius:6, background:'#fff5f5' }}>
-                        <div style={{ color:'var(--danger)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Absence deductions ({deductionNotes.length})</div>
-                        {deductionNotes.map((n, i) => (
-                          <div key={i} style={{ color:'var(--ink-soft)', fontSize:12 }}>• {n.text}</div>
-                        ))}
-                        <div style={{ marginTop:4, fontSize:11, color:'var(--danger)' }}>
-                          Saturday absences: {absentDatesAfterJoin.filter(d => new Date(d).getDay() === 6).length} |
-                          Monday absences: {absentDatesAfterJoin.filter(d => new Date(d).getDay() === 1).length} |
-                          Other absences: {absentDatesAfterJoin.filter(d => { const day = new Date(d).getDay(); return day !== 6 && day !== 1 && day !== 0; }).length}
+                    {/* Hours breakdown (hourly mode only) */}
+                    {hourlyMode && (
+                      <div style={{ marginBottom:12 }}>
+                        <div style={{ color:'var(--ink-soft)', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Hours breakdown</div>
+                        <div style={{ fontSize:11, border:'1px solid var(--line)', borderRadius:6, overflow:'hidden' }}>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <thead>
+                              <tr style={{ background:'var(--bg)', fontWeight:600 }}>
+                                <th style={{ padding:'4px 6px', textAlign:'left' }}>Date</th>
+                                <th style={{ padding:'4px 6px', textAlign:'left' }}>Day</th>
+                                <th style={{ padding:'4px 6px', textAlign:'center' }}>In</th>
+                                <th style={{ padding:'4px 6px', textAlign:'center' }}>Out</th>
+                                <th style={{ padding:'4px 6px', textAlign:'right' }}>Hours</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {monthAttendance.filter(a => !joinedThisMonth || a.date >= joinCutoff).map(a => {
+                                const dt = new Date(a.date);
+                                const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+                                const hrs = a.status === 'absent' ? 0 : calcActualHours(a.punch_in_time, a.punch_out_time, SHIFT_START, SHIFT_END);
+                                const isDeductedDay = deducted.has(a.date);
+                                return (
+                                  <tr key={a.id} style={{ borderTop:'1px solid var(--line)', background: a.status === 'absent' || isDeductedDay ? '#fff5f5' : hrs < 9 ? '#fff8f0' : 'transparent' }}>
+                                    <td style={{ padding:'3px 6px' }}>{dt.getDate()}</td>
+                                    <td style={{ padding:'3px 6px' }}>{dayName}</td>
+                                    <td style={{ padding:'3px 6px', textAlign:'center', fontFamily:"'Courier New',Courier,monospace" }}>{fmtTime(a.punch_in_time)}</td>
+                                    <td style={{ padding:'3px 6px', textAlign:'center', fontFamily:"'Courier New',Courier,monospace" }}>{fmtTime(a.punch_out_time)}</td>
+                                    <td style={{ padding:'3px 6px', textAlign:'right', fontWeight:600 }}>{hrs.toFixed(2)}</td>
+                                  </tr>
+                                );
+                              })}
+                              <tr style={{ borderTop:'2px solid var(--line)', fontWeight:700, background:'var(--bg)' }}>
+                                <td colSpan={4} style={{ padding:'4px 6px', textAlign:'right' }}>Total hours</td>
+                                <td style={{ padding:'4px 6px', textAlign:'right' }}>{totalActualHours.toFixed(2)}</td>
+                              </tr>
+                              <tr style={{ fontWeight:700 }}>
+                                <td colSpan={4} style={{ padding:'4px 6px', textAlign:'right' }}>Expected (paid days × 9)</td>
+                                <td style={{ padding:'4px 6px', textAlign:'right' }}>{(paidDays * 9).toFixed(2)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <div style={{ display:'flex', gap:12, marginTop:4, fontSize:10, color:'var(--ink-soft)', flexWrap:'wrap' }}>
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff8f0', border:'1px solid #e67e22', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Less than 9 hrs</span>
+                          <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff5f5', borderRadius:2, marginRight:4, verticalAlign:'middle' }} />Absent / Deducted</span>
                         </div>
                       </div>
                     )}
 
-                    {/* ≥6 Sunday rule */}
-                    <div style={{ marginBottom:12, padding:'8px 10px', border:'1px solid var(--line)', borderRadius:6 }}>
-                      <div style={{ color:'var(--ink-soft)', marginBottom:4, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>≥6 Absence Rule</div>
-                      <div>Mon–Sat absences this month: <strong>{monSatAbsences}</strong></div>
-                      {extraSundays.length > 0 ? (
-                        <div style={{ color:'var(--danger)' }}>
-                          ≥ 6 → {extraSundays.length} extra Sunday{extraSundays.length > 1 ? 's' : ''} deducted:
-                          {extraSundays.map(d => {
-                            const dt = new Date(d);
-                            return ` Sun ${dt.getDate()} ${dt.toLocaleString('en-GB',{month:'short'})}`;
-                          })}
-                        </div>
-                      ) : (
-                        <div style={{ color:'var(--ink-soft)' }}>&lt; 6 → no extra Sunday deduction</div>
-                      )}
-                    </div>
-
-                    {/* Summary */}
+                    {/* Summary totals */}
                     <div style={{ borderTop:'2px solid var(--line)', paddingTop:12, marginTop:12 }}>
                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', fontSize:12 }}>
                         <span style={{ color:'var(--ink-soft)' }}>Days in month</span><span style={{ textAlign:'right' }}>{daysInMonth}</span>
@@ -741,12 +995,31 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <span style={{ color:'var(--ink-soft)' }}>Days worked (present + late)</span><span style={{ textAlign:'right' }}>{daysWorked}</span>
                         <span style={{ color:'var(--danger)' }}>Absent days (on/after join)</span><span style={{ textAlign:'right' }}>{absentDatesAfterJoin.length}</span>
                         <span style={{ color:'var(--danger)' }}>Total deducted days</span><span style={{ textAlign:'right' }}>{deducted.size}</span>
+                        {hourlyMode ? (
+                          <>
+                            <span style={{ color:'var(--ink-soft)' }}>Hourly rate</span><span style={{ textAlign:'right' }}>₹{hourlyRate.toFixed(2)}</span>
+                            <span style={{ color:'var(--ink-soft)' }}>Total actual hours</span><span style={{ textAlign:'right' }}>{totalActualHours.toFixed(2)}</span>
+                            <span style={{ color:'var(--ink-soft)' }}>Late minutes</span><span style={{ textAlign:'right' }}>{totalLateMinutes}</span>
+                          </>
+                        ) : lateDeductionDays > 0 ? (
+                          <>
+                            <span style={{ color:'var(--danger)' }}>Late deduction</span><span style={{ textAlign:'right' }}>{lateDeductionDays} day{lateDeductionDays > 1 ? 's' : ''}</span>
+                            <span style={{ color:'var(--ink-soft)' }}>Late minutes</span><span style={{ textAlign:'right' }}>{totalLateMinutes}</span>
+                          </>
+                        ) : null}
+                        {joiningDeduction > 0 && (
+                          <><span style={{ color:'#8B5CF6' }}>Joining deduction</span><span style={{ textAlign:'right', color:'#8B5CF6' }}>{joiningDeduction} day{joiningDeduction > 1 ? 's' : ''}</span></>
+                        )}
                         <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, fontWeight:600 }}>Paid days</span>
-                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{paidDays}</span>
+                        <span style={{ borderTop:'1px solid var(--line)', paddingTop:4, textAlign:'right', fontWeight:600 }}>{hourlyMode ? totalActualHours.toFixed(1) + ' hrs' : paidDays}</span>
                       </div>
                       <div style={{ marginTop:10, textAlign:'center' }}>
-                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{perDay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {paidDays} days = </span>
-                        <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                        {hourlyMode ? (
+                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr × {totalActualHours.toFixed(1)} hrs{joiningDeduction > 0 ? ' − ' + joiningDeduction + 'd join' : ''} = </span>
+                        ) : (
+                          <span style={{ color:'var(--ink-soft)', fontSize:12 }}>₹{Math.round(perDay).toLocaleString('en-IN')} × {paidDays} day{paidDays !== 1 ? 's' : ''}{lateDeductionDays > 0 ? ' − ' + lateDeductionDays + ' late' : ''}{joiningDeduction > 0 ? ' − ' + joiningDeduction + ' join' : ''} = </span>
+                        )}
+                        <strong style={{ fontSize:20, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</strong>
                       </div>
                     </div>
                   </div>
@@ -941,6 +1214,34 @@ function LateBalanceCard({ workerId, attendance: allAtt }) {
       )}
     </>
   );
+}
+
+function Box({ num, label, color, big }) {
+  return (
+    <div style={{
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      background: color + '15',
+      border: '2px solid ' + color,
+      borderRadius: 10,
+      padding: big ? '10px 18px' : '8px 14px',
+      minWidth: big ? 100 : 70,
+    }}>
+      <span style={{ fontSize: big ? 24 : 18, fontWeight:700, color, lineHeight:1.2 }}>{num}</span>
+      <span style={{ fontSize:10, color:'var(--ink-soft)', textAlign:'center', whiteSpace:'pre-line', lineHeight:1.3 }}>{label}</span>
+    </div>
+  );
+}
+
+function Arrow() {
+  return <span style={{ fontSize:20, color:'var(--ink-soft)', fontWeight:300 }}>→</span>;
+}
+
+function Equals() {
+  return <span style={{ fontSize:20, color:'var(--ink-soft)', fontWeight:300 }}>=</span>;
+}
+
+function Times() {
+  return <span style={{ fontSize:18, color:'var(--ink-soft)', fontWeight:300 }}>×</span>;
 }
 
 function SkeletonDetail({ onBack }) {

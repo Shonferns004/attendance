@@ -415,6 +415,43 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return (_present + _late) / total;
   }
 
+  int get _lateTier {
+    if (_lateUsed <= 180) return 0;
+    if (_lateUsed <= 240) return 1;
+    if (_lateUsed <= 480) return 2;
+    return 3;
+  }
+
+  Color get _lateTierColor {
+    switch (_lateTier) {
+      case 0: return const Color(0xFF2a6a4b);
+      case 1: return const Color(0xFFe67e22);
+      case 2: return const Color(0xFFd35400);
+      case 3: return const Color(0xFFba1a1a);
+      default: return const Color(0xFFc28228);
+    }
+  }
+
+  String get _lateTierLabel {
+    switch (_lateTier) {
+      case 0: return 'Within grace limit';
+      case 1: return 'Half-day deduction';
+      case 2: return 'One-day deduction';
+      case 3: return 'Hourly pay mode';
+      default: return '';
+    }
+  }
+
+  double get _lateProgressMax {
+    switch (_lateTier) {
+      case 0: return 180;
+      case 1: return 240;
+      case 2: return 480;
+      case 3: return 480;
+      default: return 180;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const HomeSkeleton();
@@ -802,14 +839,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     Text(
                                       '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
                                       style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f),
+                                        fontSize: 24, fontWeight: FontWeight.w700, color: _lateTierColor,
                                       ),
                                     ),
                                     const Spacer(),
                                     ProgressCircle(
                                       size: 40, thickness: 3,
-                                      value: (_lateUsed / 180).clamp(0.0, 1.0),
-                                      color: const Color(0xFFc28228),
+                                      value: (_lateUsed / _lateProgressMax).clamp(0.0, 1.0),
+                                      color: _lateTierColor,
                                     ),
                                   ],
                                 ),
@@ -819,6 +856,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   style: TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
                                     color: const Color(0xFF43474d),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _lateTierColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Text(
+                                    _lateTierLabel,
+                                    style: TextStyle(
+                                      fontSize: 10, fontWeight: FontWeight.w700,
+                                      color: _lateTierColor,
+                                    ),
                                   ),
                                 ),
                               ],

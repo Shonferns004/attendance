@@ -74,6 +74,18 @@ export const getAttendanceHistory = async (worker_id) => {
   return data;
 };
 
+export const getMonthlyAttendance = async (worker_id, startDate, endDate) => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('worker_id', worker_id)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
 export const getAllAttendance = async () => {
   const { data, error } = await supabase
     .from('attendance')

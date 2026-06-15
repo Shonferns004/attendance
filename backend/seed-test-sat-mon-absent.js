@@ -1,7 +1,7 @@
 import supabase from './src/config/supabase.js';
 
 // Sat + Mon absent → tests the adjacency deduction rule
-const LOGIN_ID = process.argv[2] || 'demo_ufs_59';
+const LOGIN_ID = 'test_ufs_58';
 
 const { data: worker, error: wErr } = await supabase
   .from('workers')

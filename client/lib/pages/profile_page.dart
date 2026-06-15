@@ -26,6 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _worker;
   List<dynamic> _history = [];
   bool _loading = true;
+  Map<String, dynamic>? _salaryBreakdown;
 
   int _present = 0, _absent = 0, _late = 0, _leave = 0, _lateUsed = 0;
   Map<String, String> _statusByDate = {};
@@ -86,6 +87,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (_) {}
 
     await _refreshHistoryFromNetwork();
+    _fetchSalaryBreakdown();
     _fetchCalendar();
 
     // Subscribe to realtime updates
@@ -201,6 +203,15 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (_) {}
   }
 
+  Future<void> _fetchSalaryBreakdown() async {
+    try {
+      final data = await ApiService.getMySalaryBreakdown();
+      if (mounted) setState(() => _salaryBreakdown = data ?? {});
+    } catch (_) {
+      if (mounted) setState(() => _salaryBreakdown = {});
+    }
+  }
+
   Future<void> _fetchCalendar() async {
     try {
       final data = await ApiService.getCalendar(year: _calYear, month: _calMonth);
@@ -252,6 +263,10 @@ class _ProfilePageState extends State<ProfilePage> {
             _profileCard(name, loginId, role, initials),
             const SizedBox(height: 24),
             _monthlyOverview(monthYear),
+            const SizedBox(height: 24),
+            _lateDeductionCard(colors, scheme, tt),
+            const SizedBox(height: 24),
+            _expenseBreakdownCard(),
             const SizedBox(height: 24),
             _attendanceCalendar(
               presentFraction, absentFraction, leaveFraction, lateFraction,
@@ -407,6 +422,453 @@ class _ProfilePageState extends State<ProfilePage> {
   double get _lateStatsValue => _totalDays > 0 ? _late / _totalDays : 0;
   double get _leaveStatsValue => _totalDays > 0 ? _leave / _totalDays : 0;
   int get _totalDays => _present + _absent + _late + _leave;
+
+  int get _lateTier {
+    if (_lateUsed <= 180) return 0;
+    if (_lateUsed <= 240) return 1;
+    if (_lateUsed <= 480) return 2;
+    return 3;
+  }
+
+  Color get _lateTierColor {
+    switch (_lateTier) {
+      case 0: return const Color(0xFF2a6a4b);
+      case 1: return const Color(0xFFe67e22);
+      case 2: return const Color(0xFFd35400);
+      case 3: return const Color(0xFFba1a1a);
+      default: return const Color(0xFFc28228);
+    }
+  }
+
+  Color get _lateTierBg {
+    switch (_lateTier) {
+      case 0: return const Color(0xFFf0f9f4);
+      case 1: return const Color(0xFFfff8f0);
+      case 2: return const Color(0xFFfff3eb);
+      case 3: return const Color(0xFFfff5f5);
+      default: return const Color(0xFFf0f4f8);
+    }
+  }
+
+  Color get _lateTierBorder {
+    switch (_lateTier) {
+      case 0: return const Color(0xFF2a6a4b);
+      case 1: return const Color(0xFFe67e22);
+      case 2: return const Color(0xFFd35400);
+      case 3: return const Color(0xFFba1a1a);
+      default: return const Color(0xFFc3c6ce);
+    }
+  }
+
+  String get _lateTierLabel {
+    switch (_lateTier) {
+      case 0: return 'No deduction';
+      case 1: return 'Half-day deduction';
+      case 2: return 'One-day deduction';
+      case 3: return 'Hourly pay mode';
+      default: return '';
+    }
+  }
+
+  String get _lateTierDesc {
+    switch (_lateTier) {
+      case 0: return '$_lateUsed min used — within the 180 min grace period. No expense deduction for lateness.';
+      case 1: return '$_lateUsed min used — exceeds grace limit. Half-day (0.5 day) will be deducted from expenses.';
+      case 2: return '$_lateUsed min used — exceeds half-day threshold. One full day will be deducted from expenses.';
+      case 3: return '$_lateUsed min used — exceeds 480 min. Expenses are calculated from actual working hours instead of per-day rate.';
+      default: return '';
+    }
+  }
+
+  bool get _joinedThisMonth {
+    final created = _worker?['created_at'];
+    if (created == null) return false;
+    final dt = DateTime.tryParse(created.toString());
+    if (dt == null) return false;
+    final now = DateTime.now();
+    return dt.year == now.year && dt.month == now.month;
+  }
+
+  Widget _lateDeductionCard(AppColors colors, ColorScheme scheme, TextTheme tt) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _lateTierBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _lateTierBorder.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.access_time, size: 16, color: _lateTierColor),
+              const SizedBox(width: 8),
+              Text('Late Deduction Status',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _lateTierColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${_lateUsed} min',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 24, fontWeight: FontWeight.w800, color: _lateTierColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _lateTierColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(_lateTierLabel,
+                        style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700,
+                          color: _lateTierColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _lateTierDesc,
+                      style: TextStyle(
+                        fontSize: 11, color: const Color(0xFF43474d), height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Deduction rules',
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.05,
+                    color: const Color(0xFF74777e),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _ruleRow('0 – 180 min', 'No deduction', _lateTier == 0),
+                _ruleRow('181 – 240 min', 'Half-day deduction', _lateTier == 1),
+                _ruleRow('241 – 480 min', 'One-day deduction', _lateTier == 2),
+                _ruleRow('> 480 min', 'Hourly pay mode', _lateTier == 3),
+              ],
+            ),
+          ),
+          if (_joinedThisMonth) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFf3e8ff).withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: const Color(0xFF8B5CF6)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'First month joining: 1.5 days deducted from expenses (new joiner policy).',
+                      style: TextStyle(fontSize: 11, color: const Color(0xFF43474d), height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _ruleRow(String range, String desc, bool active) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Container(
+            width: 8, height: 8,
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFF2a6a4b) : const Color(0xFFdfe3e7),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(range,
+            style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600,
+              color: active ? const Color(0xFF171c1f) : const Color(0xFF74777e),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('→',
+            style: TextStyle(
+              fontSize: 11, color: const Color(0xFFc3c6ce),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(desc,
+              style: TextStyle(
+                fontSize: 11, fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active ? const Color(0xFF171c1f) : const Color(0xFF74777e),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtAmount(num n) => NumberFormat('#,##,##0', 'en_IN').format(n);
+
+  Widget _expenseBreakdownCard() {
+    final sb = _salaryBreakdown;
+    if (sb == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFffffff),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFc3c6ce)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.account_balance_wallet, size: 16, color: const Color(0xFF74777e)),
+            const SizedBox(width: 8),
+            Text('Expense Breakdown',
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+              ),
+            ),
+            const Spacer(),
+            Text('Loading...', style: TextStyle(fontSize: 12, color: const Color(0xFF74777e))),
+          ],
+        ),
+      );
+    }
+
+    final hasSalary = sb['hasSalary'] == true;
+    if (!hasSalary) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFffffff),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFc3c6ce)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.account_balance_wallet, size: 16, color: const Color(0xFF74777e)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Expense Breakdown',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
+            ),
+            Text('No salary record',
+              style: TextStyle(fontSize: 11, color: const Color(0xFF74777e)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final salary = sb['salary'] as num;
+    final perDay = sb['perDay'] as num;
+    final paidDays = sb['paidDays'] as num;
+    final totalLateMinutes = sb['totalLateMinutes'] as num;
+    final lateDeductionDays = (sb['lateDeductionDays'] as num).toDouble();
+    final hourlyMode = sb['hourlyMode'] as bool;
+    final hourlyRate = (sb['hourlyRate'] as num).toDouble();
+    final totalActualHours = (sb['totalActualHours'] as num).toDouble();
+    final joiningDeduction = (sb['joiningDeduction'] as num).toDouble();
+    final totalDue = sb['totalDue'] as num;
+    final normalTotalDue = sb['normalTotalDue'] as num;
+    final deductedCount = sb['deductedCount'] as num;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFffffff),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFc3c6ce)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet, size: 16, color: const Color(0xFF2a6a4b)),
+              const SizedBox(width: 8),
+              Text('Expense Breakdown',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Salary & rate
+          _bdRow('Monthly Expense', '₹${_fmtAmount(salary)}', null),
+          _bdRow('Per-day Rate', '₹${_fmtAmount(perDay)}', null),
+          _bdRow('Paid Days', '$paidDays days', null),
+          if (deductedCount > 0)
+            _bdRow('Deducted Days', '$deductedCount days', const Color(0xFFba1a1a)),
+
+          const Divider(height: 20, color: Color(0xFFdfe3e7)),
+
+          // Late deduction (non-hourly mode)
+          if (!hourlyMode && lateDeductionDays > 0) ...[
+            _bdRow('Late Deduction', '${lateDeductionDays == 0.5 ? '½' : '1'} day', const Color(0xFFe67e22)),
+            _bdRow('  → Amount', '−₹${_fmtAmount((perDay * lateDeductionDays).round())}', const Color(0xFFe67e22)),
+          ],
+
+          // Hourly mode
+          if (hourlyMode) ...[
+            _bdRow('Hourly Rate', '₹${hourlyRate.toStringAsFixed(2)}/hr', const Color(0xFFd35400)),
+            _bdRow('Actual Hours', '${totalActualHours.toStringAsFixed(1)} hrs', const Color(0xFFd35400)),
+            _bdRow('  → Gross', '₹${_fmtAmount((hourlyRate * totalActualHours).round())}', const Color(0xFFd35400)),
+          ],
+
+          // Joining deduction
+          if (joiningDeduction > 0) ...[
+            _bdRow('Joining Deduction', '${joiningDeduction.toStringAsFixed(1)} days', const Color(0xFF8B5CF6)),
+            _bdRow('  → Amount', '−₹${_fmtAmount((perDay * joiningDeduction).round())}', const Color(0xFF8B5CF6)),
+          ],
+
+          // Late minutes
+          if (totalLateMinutes > 0)
+            _bdRow('Late minutes', '$totalLateMinutes min', const Color(0xFFc28228)),
+
+          const Divider(height: 20, color: Color(0xFFdfe3e7)),
+
+          // Comparison (hourly mode)
+          if (hourlyMode && normalTotalDue != totalDue) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFfff8f0),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFe67e22).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('How lateness affects your expense',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.05, color: const Color(0xFF74777e)),
+                  ),
+                  const SizedBox(height: 6),
+                  _cmpRow('Without lateness', '₹${_fmtAmount(perDay)} × ${(paidDays - joiningDeduction).toInt()} days', '₹${_fmtAmount(normalTotalDue)}', const Color(0xFF2a6a4b)),
+                  _cmpRow('With lateness', '₹${hourlyRate.toStringAsFixed(0)}/hr × ${totalActualHours.toStringAsFixed(1)} hrs', '₹${_fmtAmount(totalDue)}', const Color(0xFFba1a1a)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Total due
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFaff1ca).withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Total Expense',
+                    style: GoogleFonts.hankenGrotesk(
+                      fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                    ),
+                  ),
+                ),
+                Text('₹${_fmtAmount(totalDue)}',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF2a6a4b),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bdRow(String label, String value, Color? valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label,
+              style: TextStyle(fontSize: 12, color: const Color(0xFF43474d)),
+            ),
+          ),
+          Text(value,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700,
+              color: valueColor ?? const Color(0xFF171c1f),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cmpRow(String label, String formula, String amount, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
+          Text(formula,
+            style: TextStyle(fontSize: 10, color: const Color(0xFF74777e)),
+          ),
+          const SizedBox(width: 8),
+          Text(amount,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _statProgressCard(String count, String label, double value, Color color, IconData icon) {
     return Container(

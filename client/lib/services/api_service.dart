@@ -362,6 +362,24 @@ class ApiService {
     return body;
   }
 
+  // ---- Salary / Expense Breakdown API ----
+
+  static Future<Map<String, dynamic>?> getMySalaryBreakdown() async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/salary/my-breakdown'),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return null;
+      final body = jsonDecode(res.body);
+      return body;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ---- Calendar API ----
 
   static Future<Map<String, dynamic>> getCalendar({int? year, int? month}) async {
