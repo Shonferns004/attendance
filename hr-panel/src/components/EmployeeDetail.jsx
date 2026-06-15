@@ -853,7 +853,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                           <Equals />
                           <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
                           <Times />
-                          <Box num={'₹' + perDay.toFixed(0)} label="Per Day\nRate" color="#4F6472" />
+                          <Box num={'₹' + perDay.toFixed(2)} label="Per Day\nRate" color="#4F6472" />
                           <Equals />
                           <Box num={'₹' + Math.round(normalTotalDue).toLocaleString('en-IN')} label="Normal\nTotal" color="#5B6B4E" big />
                         </div>
@@ -884,7 +884,7 @@ export default function EmployeeDetail({ worker, onBack }) {
                         <Equals />
                         <Box num={paidDays} label="Paid\nDays" color="#5B6B4E" />
                         <Times />
-                        <Box num={'₹' + perDay.toFixed(0)} label="Per Day\nRate" color="#4F6472" />
+                        <Box num={'₹' + perDay.toFixed(2)} label="Per Day\nRate" color="#4F6472" />
                         <Arrow />
                         <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label="Late\nDeduction" color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
                         {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label="Join\nDeduction" color="#8B5CF6" /></>}
