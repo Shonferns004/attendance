@@ -270,7 +270,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       .filter(a => (!joinedThisMonth || a.date >= joinCutoff) && a.status !== 'absent')
       .reduce((sum, a) => sum + calcActualHours(a.punch_in_time, a.punch_out_time, SHIFT_START, SHIFT_END), 0);
     totalDue = Math.max(0, hourlyRate * totalActualHours - joiningDeduction * perDay);
-    normalTotalDue = perDay * Math.max(0, paidDays - joiningDeduction);
+    normalTotalDue = perDay * Math.max(0, paidDays);
   } else {
     if (totalLateMinutes > 240) lateDeductionDays = 1;
     else if (totalLateMinutes > 180) lateDeductionDays = 0.5;
