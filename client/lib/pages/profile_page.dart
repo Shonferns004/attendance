@@ -656,6 +656,26 @@ class _ProfilePageState extends State<ProfilePage> {
     final salary = (s['salary'] as num).toDouble();
     final now = DateTime.now();
 
+    // If backend didn't return raw data yet, fall back to its computed values
+    if (records.isEmpty || s['createdAt'] == null) {
+      final ld = (s['lateDeductionDays'] as num?)?.toDouble() ?? 0;
+      return {
+        'deductedCount': (s['deductedCount'] as num?)?.toInt() ?? 0,
+        'paidDays': (s['paidDays'] as num?)?.toInt() ?? 0,
+        'totalLateMinutes': (s['totalLateMinutes'] as num?)?.toInt() ?? 0,
+        'lateDeductionDays': ld,
+        'hourlyMode': s['hourlyMode'] == true,
+        'hourlyRate': (s['hourlyRate'] as num?)?.toDouble() ?? 0,
+        'totalActualHours': (s['totalActualHours'] as num?)?.toDouble() ?? 0,
+        'joiningDeduction': (s['joiningDeduction'] as num?)?.toDouble() ?? 0,
+        'totalDue': (s['totalDue'] as num?)?.toInt() ?? 0,
+        'normalTotalDue': (s['normalTotalDue'] as num?)?.toInt() ?? 0,
+        'availableDays': (s['availableDays'] as num?)?.toInt() ?? daysInMonth,
+        'absentCount': (s['absentCount'] as num?)?.toInt() ?? 0,
+        'monSatAbsences': 0,
+      };
+    }
+
     // Join month check
     final createdAt = DateTime.parse(s['createdAt'] as String);
     final joinedThisMonth = createdAt.year == now.year && createdAt.month == now.month;
