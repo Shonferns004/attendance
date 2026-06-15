@@ -271,6 +271,15 @@ export default function EmployeeDetail({ worker, onBack }) {
     totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
   }
 
+  // Pay date: 10th of next month + absent days on 1st–10th (excl Sundays)
+  const absent1to10 = monthAttendance.filter(a =>
+    a.status === 'absent' && a.date.slice(8, 10) <= '10' && new Date(a.date).getDay() !== 0
+  );
+  const extendDays = absent1to10.length;
+  const payDate = new Date(yr, mo, 10 + extendDays);
+  if (payDate.getDay() === 0) payDate.setDate(payDate.getDate() + 1);
+  const payDateStr = payDate.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+
   const fmtMonthYear = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
 
   return (
@@ -635,6 +644,15 @@ export default function EmployeeDetail({ worker, onBack }) {
                             <div className="salary-metric-num">{totalActualHours.toFixed(1)}</div>
                             <div className="salary-metric-lbl">Actual Hours</div>
                           </div>
+                        )}
+                      </div>
+
+                      {/* Pay Date */}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', fontSize:13 }}>
+                        <span style={{ color:'var(--ink-soft)', fontSize:12 }}>Expected Pay Date</span>
+                        <span style={{ fontWeight:600, fontSize:15 }}>{payDateStr}</span>
+                        {extendDays > 0 && (
+                          <span style={{ color:'var(--danger)', fontSize:11 }}>(delayed by {extendDays}d{extendDays > 1 ? 's' : ''} of absent on 1st–10th)</span>
                         )}
                       </div>
 
