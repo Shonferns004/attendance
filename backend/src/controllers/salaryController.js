@@ -39,11 +39,12 @@ export const addSalary = async (req, res) => {
 
 export const editSalary = async (req, res) => {
   try {
-    const { salary, from_month, to_month } = req.body;
+    const { salary, from_month, to_month, extra_amount } = req.body;
     const updates = {};
     if (salary !== undefined) updates.salary = salary;
     if (from_month !== undefined) updates.from_month = from_month;
     if (to_month !== undefined) updates.to_month = to_month;
+    if (extra_amount !== undefined) updates.extra_amount = extra_amount;
     const record = await updateSalary(req.params.id, updates);
     return res.json({ message: 'Salary updated', record });
   } catch (error) {
