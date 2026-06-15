@@ -67,7 +67,7 @@ export function HRProvider({ children }) {
         },
         ...options,
       });
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
         setToken(''); setUser(null);
         localStorage.removeItem('hr_token'); localStorage.removeItem('hr_user');
         throw new Error('Session expired. Please login again.');
