@@ -170,6 +170,26 @@ export default function Visualizations() {
     return Object.values(m).sort((a, b) => b.total - a.total);
   }, [salSum]);
 
+  /* Upcoming events */
+  const upcomingEvents = useMemo(() => {
+    const events = [];
+    const today = new Date();
+    const sixWeeks = new Date(); sixWeeks.setDate(sixWeeks.getDate() + 42);
+    (holidays || []).forEach(hol => {
+      const d = new Date(hol.date + 'T00:00:00');
+      if (d >= today && d <= sixWeeks) events.push({ date: d, title: hol.name, type: 'holiday' });
+    });
+    (leaves || []).forEach(lv => {
+      if (lv.status !== 'approved') return;
+      const sd = lv.start_date ? new Date(lv.start_date + 'T00:00:00') : null;
+      if (!sd) return;
+      if (sd >= today && sd <= sixWeeks)
+        events.push({ date: sd, title: (lv.workers?.name || 'Leave') + ' — ' + (lv.reason || 'vacation'), type: 'leave' });
+    });
+    events.sort((a, b) => a.date - b.date);
+    return events.slice(0, 10);
+  }, [holidays, leaves]);
+
   /* Bubble data */
   const bubbleData = useMemo(() => {
     const s30 = new Date(); s30.setDate(s30.getDate() - 30);
@@ -317,6 +337,29 @@ export default function Visualizations() {
             </div>
           </>
         ) : <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 8 }}>No data</div>}
+      </div>
+
+      {/* Upcoming events — 4th col */}
+      <div className="mc" style={{ position: 'relative', maxHeight: 240 }}>
+        <div style={{ fontSize: 10, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Events</div>
+        <div style={{ overflowY: 'auto', maxHeight: 220, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {upcomingEvents.length ? upcomingEvents.map((ev, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 30, lineHeight: 1.1 }}>
+                <span style={{ fontSize: 14, fontWeight: 800 }}>{ev.date.getDate()}</span>
+                <span style={{ fontSize: 8, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>
+                  {ev.date.toLocaleDateString('en', { month: 'short' })}
+                </span>
+              </div>
+              <div style={{ fontSize: 10, lineHeight: 1.3 }}>
+                <div style={{ fontWeight: 600 }}>{ev.title}</div>
+                <div style={{ color: 'var(--ink-soft)', fontSize: 9, marginTop: 1 }}>
+                  {ev.type === 'holiday' ? 'Holiday' : 'Leave'}
+                </div>
+              </div>
+            </div>
+          )) : <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 12 }}>No upcoming events</div>}
+        </div>
       </div>
     </div>
   );
