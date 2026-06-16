@@ -50,6 +50,16 @@ export const getWorkerCount = async () => {
   return count || 0;
 };
 
+export const getRecruiterWorkers = async () => {
+  const { data, error } = await supabase
+    .from('workers')
+    .select('*')
+    .or('department.ilike.*recruit*,department.ilike.hr*')
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return data;
+};
+
 export const getWorkerByLoginId = async (login_id) => {
   const { data, error } = await supabase
     .from('workers')

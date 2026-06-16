@@ -54,12 +54,16 @@ export default function Recruiters() {
 
   const scheduledLeads = leads.filter(l => l.status === 'scheduled');
 
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); const tomorrowStr = tomorrow.toISOString().slice(0, 10);
   const stats = {
     total: leads.length,
     filtered: filteredLeads.length,
     newToday: leads.filter(l => l.created_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length,
-    joined: leads.filter(l => l.status === 'joined').length,
+    scheduled: leads.filter(l => l.status === 'scheduled').length,
+    scheduledTomorrow: leads.filter(l => l.status === 'scheduled' && l.scheduled_date === tomorrowStr).length,
     rejected: leads.filter(l => l.status === 'rejected').length,
+    selected: leads.filter(l => l.status === 'selected').length,
+    joined: leads.filter(l => l.status === 'joined').length,
     active: leads.filter(l => !['rejected', 'joined'].includes(l.status)).length,
     conversion: leads.length > 0 ? ((leads.filter(l => l.status === 'joined').length / Math.max(1, leads.filter(l => l.status === 'joined' || l.status === 'rejected').length)) * 100).toFixed(1) : 0,
   };
@@ -130,9 +134,11 @@ export default function Recruiters() {
       <div className="stats">
         <div className="stat"><div className="stat-label">Total Leads</div><div className="stat-value info">{stats.total}</div></div>
         <div className="stat"><div className="stat-label">New Today</div><div className="stat-value success">{stats.newToday}</div></div>
-        <div className="stat"><div className="stat-label">Active</div><div className="stat-value warning">{stats.active}</div></div>
+        <div className="stat"><div className="stat-label">Scheduled</div><div className="stat-value warning">{stats.scheduled}</div></div>
+        <div className="stat"><div className="stat-label">Shecdule Tomorrow</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.scheduledTomorrow}</div></div>
+        <div className="stat"><div className="stat-label">Rejected</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.rejected}</div></div>
+        <div className="stat"><div className="stat-label">Selected</div><div className="stat-value leave">{stats.selected}</div></div>
         <div className="stat"><div className="stat-label">Joined</div><div className="stat-value leave">{stats.joined}</div></div>
-        <div className="stat"><div className="stat-label">Conversion</div><div className="stat-value info">{stats.conversion}%</div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -149,7 +155,7 @@ export default function Recruiters() {
                   <div className="recruiter-card-name">{r.name}</div>
                   <div className="recruiter-card-stats">
                     <span><strong>{r.leadsCount || 0}</strong> leads</span>
-                    <span className="recruiter-card-joined"><strong>{r.placed || 0}</strong> joined</span>
+                    <span className="recruiter-card-joined"><strong>{r.joined || 0}</strong> joined</span>
                     <span className="recruiter-card-conv">{r.conversionRate || 0}% conv</span>
                   </div>
                 </div>
