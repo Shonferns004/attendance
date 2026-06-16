@@ -1,7 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, Component } from 'react';
 import { useHR } from '../store';
 import { Who, Pill } from './ui';
 import { Users, Check, Plane, Bell } from '../icons';
+import Visualizations from './Visualizations';
+
+class VizBoundary extends Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: e }; }
+  render() {
+    if (this.state.err) return <div className="empty" style={{ padding: 40 }}>Viz error: {this.state.err.message}</div>;
+    return this.props.children;
+  }
+}
 
 export default function Overview() {
   const { workers, attendance, leaves, feed, fetchWorkers, fetchAttendance, fetchLeaves } = useHR();
@@ -33,10 +43,10 @@ export default function Overview() {
   }));
 
   const cards = [
-    { label:'Total workers', icon:<Users width={15}/>, num:total, foot:'across all teams', c:'#5B6B4E' },
-    { label:'Present today',  icon:<Check width={15}/>, num:presentCount, foot:total ? `${Math.round(presentCount/total*100)}% of team` : 'no data', c:'#5B6B4E' },
-    { label:'On leave',       icon:<Plane width={15}/>, num:onLeaveCount, foot:'away today', c:'#C08A2E' },
-    { label:'Pending requests',icon:<Bell width={15}/>, num:pendingCount, foot:'need a decision', c:'#B5603A' },
+    { label:'Total workers', icon:<Users width={15}/>, num:total, foot:'across all teams', c:'var(--sage)' },
+    { label:'Present today',  icon:<Check width={15}/>, num:presentCount, foot:total ? `${Math.round(presentCount/total*100)}% of team` : 'no data', c:'var(--sage)' },
+    { label:'On leave',       icon:<Plane width={15}/>, num:onLeaveCount, foot:'away today', c:'var(--gold)' },
+    { label:'Pending requests',icon:<Bell width={15}/>, num:pendingCount, foot:'need a decision', c:'var(--danger)' },
   ];
 
   return (
@@ -78,6 +88,8 @@ export default function Overview() {
           ))}
         </div>
       </div>
+
+      <VizBoundary><Visualizations /></VizBoundary>
     </>
   );
 }

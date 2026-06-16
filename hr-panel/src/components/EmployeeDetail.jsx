@@ -320,7 +320,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       {err && <div className="err-banner">{err}</div>}
 
       <div className="detail-split">
-        <div style={{ display:'flex', flexDirection:'column', gap:16, width:250, flexShrink:0 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:16, width:250, flexShrink:0, position:'sticky', top:20, alignSelf:'flex-start' }}>
         <div className="card detail-sidebar">
           <div style={{ textAlign:'center', padding:'24px 0 12px' }}>
             {data.photo_url && !imgErr ? (
@@ -351,89 +351,7 @@ export default function EmployeeDetail({ worker, onBack }) {
             <SideField label="Date of Birth" value={data.dob || '\u2014'} />
             <SideField label="Joined" value={new Date(data.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} />
           </div>
-        </div>
-
-        {tab === 'salary' && prevSalaryRec && (
-          <div className="card" style={{ padding:'14px 18px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-              <div>
-                <span style={{ color:'var(--ink-soft)', fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Previous Month</span>
-                <div style={{ fontWeight:600, fontSize:15 }}>{fmtMonthYear(prevMonthDate)}</div>
-              </div>
-              <div style={{ textAlign:'right' }}>
-                <div style={{ fontWeight:700, fontSize:16 }}>
-                  {prevSalaryRec.paid_at
-                    ? `₹${parseFloat(prevSalaryRec.salary).toLocaleString('en-IN')}`
-                    : `₹${(Math.round(prevTotalDue) + parseFloat(prevSalaryRec.extra_amount || 0)).toLocaleString('en-IN')}`
-                  }
-                </div>
-                <div style={{ fontSize:12, color: prevSalaryRec.paid_at ? 'var(--sage)' : 'var(--danger)' }}>
-                  {prevSalaryRec.paid_at
-                    ? `✓ Paid on ${new Date(prevSalaryRec.paid_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`
-                    : `⏳ Due by ${payDateStr}${extendDays > 0 ? ` (delayed ${extendDays}d)` : ''}`
-                  }
-                </div>
-              </div>
-            </div>
           </div>
-        )}
-
-        {tab === 'salary' && (
-        <div className="card">
-          <div className="card-head"><h3>Add Salary</h3></div>
-          <div className="card-pad">
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              <div>
-                <span className="detail-label">Salary Amount</span>
-                <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
-                  value={salaryForm.salary}
-                  onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
-                  style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }} />
-              </div>
-              <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
-                onClick={async () => {
-                  setSalarySubmitting(true);
-                  try {
-                    const joinDate = new Date(data.created_at);
-                    const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
-                    const now = new Date();
-                    const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
-                    const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
-                    const latest = sorted[0];
-
-                    let from_month;
-                    if (!latest) {
-                      from_month = joinMonth;
-                    } else {
-                      from_month = currMonth;
-                    }
-
-                    if (latest && !latest.to_month) {
-                      const d = new Date(from_month);
-                      d.setDate(0);
-                      const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-                      await updateWorkerSalary(latest.id, { to_month: prevMonth });
-                      setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
-                    }
-
-                    const res = await addWorkerSalary({
-                      worker_id: worker.id,
-                      salary: parseFloat(salaryForm.salary),
-                      from_month,
-                      to_month: null,
-                    });
-                    setSalaries(p => [res.record, ...p]);
-                    setSalaryForm({ salary: '' });
-                  } catch (e) { alert(e.message); }
-                  finally { setSalarySubmitting(false); }
-                }}>
-                {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
-              </button>
-            </div>
-          </div>
-        </div>
-        )}
         </div>
 
         {/* RIGHT CONTENT */}
@@ -703,6 +621,30 @@ export default function EmployeeDetail({ worker, onBack }) {
 
           {tab === 'salary' && (
             <div>
+              {prevSalaryRec && (
+              <div className="card" style={{ marginBottom:16, padding:'14px 18px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+                  <div>
+                    <span style={{ color:'var(--ink-soft)', fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>Previous Month</span>
+                    <div style={{ fontWeight:600, fontSize:15 }}>{fmtMonthYear(prevMonthDate)}</div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontWeight:700, fontSize:16 }}>
+                      {prevSalaryRec.paid_at
+                        ? `₹${parseFloat(prevSalaryRec.salary).toLocaleString('en-IN')}`
+                        : `₹${(Math.round(prevTotalDue) + parseFloat(prevSalaryRec.extra_amount || 0)).toLocaleString('en-IN')}`
+                      }
+                    </div>
+                    <div style={{ fontSize:12, color: prevSalaryRec.paid_at ? 'var(--sage)' : 'var(--danger)' }}>
+                      {prevSalaryRec.paid_at
+                        ? `✓ Paid on ${new Date(prevSalaryRec.paid_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`
+                        : `⏳ Due by ${payDateStr}${extendDays > 0 ? ` (delayed ${extendDays}d)` : ''}`
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
               {/* Salary Calculator — auto for current month */}
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head">
@@ -1077,6 +1019,61 @@ export default function EmployeeDetail({ worker, onBack }) {
                       </div>
                     </>
                   )}
+                </div>
+              </div>
+
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>Add Salary</h3></div>
+                <div className="card-pad">
+                  <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+                    <div>
+                      <span className="detail-label">Salary Amount</span>
+                      <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
+                        value={salaryForm.salary}
+                        onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
+                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
+                    </div>
+                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
+                      onClick={async () => {
+                        setSalarySubmitting(true);
+                        try {
+                          const joinDate = new Date(data.created_at);
+                          const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
+                          const now = new Date();
+                          const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+                          const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+                          const latest = sorted[0];
+
+                          let from_month;
+                          if (!latest) {
+                            from_month = joinMonth;
+                          } else {
+                            from_month = currMonth;
+                          }
+
+                          if (latest && !latest.to_month) {
+                            const d = new Date(from_month);
+                            d.setDate(0);
+                            const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                            await updateWorkerSalary(latest.id, { to_month: prevMonth });
+                            setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
+                          }
+
+                          const res = await addWorkerSalary({
+                            worker_id: worker.id,
+                            salary: parseFloat(salaryForm.salary),
+                            from_month,
+                            to_month: null,
+                          });
+                          setSalaries(p => [res.record, ...p]);
+                          setSalaryForm({ salary: '' });
+                        } catch (e) { alert(e.message); }
+                        finally { setSalarySubmitting(false); }
+                      }}>
+                      {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
