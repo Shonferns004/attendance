@@ -133,6 +133,8 @@ function Dashboard() {
 
   useEffect(() => { setSelectedEmployee(null); setOffboardingEmployee(null); setShowSettings(false); }, [active]);
 
+  useEffect(() => { window.scrollTo(0,0); document.querySelector('.content-body')?.scrollIntoView(true); }, [active, showSettings, selectedEmployee, offboardingEmployee]);
+
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
