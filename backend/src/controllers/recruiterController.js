@@ -8,7 +8,7 @@ export const listRecruiters = async (req, res) => {
 
     const leads = await getAllLeads();
     const withStats = recruiters.map((r) => {
-      const recruiterLeads = leads.filter((l) => l.recruiter_id === r.id);
+      const recruiterLeads = leads.filter((l) => l.recruiter_id === r.id || l.created_by === r.id);
       const total = recruiterLeads.length;
       const joined = recruiterLeads.filter((l) => l.status === 'joined').length;
       const selected = recruiterLeads.filter((l) => l.status === 'selected').length;

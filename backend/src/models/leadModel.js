@@ -63,7 +63,7 @@ export const getLeadsByRecruiter = async (recruiterId) => {
   const { data, error } = await supabase
     .from('leads')
     .select('*')
-    .eq('recruiter_id', recruiterId)
+    .or(`recruiter_id.eq.${recruiterId},created_by.eq.${recruiterId}`)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
