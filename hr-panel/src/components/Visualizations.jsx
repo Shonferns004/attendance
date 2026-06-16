@@ -214,7 +214,7 @@ export default function Visualizations() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
-            {['S','M','T','W','T','F','S'].map(n => <div key={n} style={{ fontSize: 8, color: 'var(--ink-soft)', textAlign: 'center' }}>{n}</div>)}
+            {['S','M','T','W','T','F','S'].map((n, i) => <div key={i} style={{ fontSize: 8, color: 'var(--ink-soft)', textAlign: 'center' }}>{n}</div>)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, flex: 1 }}>
             {Array.from({ length: fdow }).map((_, i) => <div key={`e${i}`} />)}
