@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function EmployeeDetail({ worker, onBack }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, removeWorker, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +89,14 @@ export default function EmployeeDetail({ worker, onBack }) {
       setData(fresh); setEditing(false);
     } catch (e) { setErr(e.message); }
     finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete ${data.name} permanently? This cannot be undone.`)) return;
+    try {
+      await removeWorker(worker.id);
+      onBack();
+    } catch (e) { setErr(e.message); }
   };
 
   const setField = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
@@ -308,7 +316,10 @@ export default function EmployeeDetail({ worker, onBack }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <button className="btn back-btn" onClick={onBack} style={{ marginBottom:0 }}><ArrowLeft width={16}/> Back to Employees</button>
         {!editing ? (
-          <button className="btn btn-icon" onClick={startEdit} title="Edit Employee"><Pencil width={16} /></button>
+          <div style={{ display:'flex', gap:4 }}>
+            <button className="btn btn-icon" onClick={startEdit} title="Edit Employee"><Pencil width={16} /></button>
+            <button className="btn btn-icon" onClick={handleDelete} title="Delete Employee" style={{ color:'var(--danger)' }}><Trash width={16} /></button>
+          </div>
         ) : (
           <div style={{ display:'flex', gap:8 }}>
             <button className="btn btn-sm" onClick={cancelEdit} disabled={saving}>Cancel</button>
