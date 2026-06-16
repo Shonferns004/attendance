@@ -65,6 +65,7 @@ export default function Attendance() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchToday, setSearchToday] = useState('');
   const [searchWorker, setSearchWorker] = useState('');
 
   const depts = [...new Set((workers || []).map(w => w.department).filter(Boolean))].sort();
@@ -100,7 +101,12 @@ export default function Attendance() {
     }
     return 0;
   });
-  const todayRecords = punchStatus ? todayCombined.filter(r => r.status === punchStatus) : todaySorted;
+  const todaySearched = todaySorted.filter(r => {
+    if (!searchToday) return true;
+    const n = (r.workers?.name || '').toLowerCase();
+    return n.includes(searchToday.toLowerCase());
+  });
+  const todayRecords = punchStatus ? todaySearched.filter(r => r.status === punchStatus) : todaySearched;
 
   useEffect(() => {
     const d = new Date();
@@ -179,6 +185,7 @@ export default function Attendance() {
                   <option value="late">Late</option>
                   <option value="absent">Absent</option>
                 </select>
+                <input className="search-input" type="text" placeholder="Search worker&hellip;" value={searchToday} onChange={e => setSearchToday(e.target.value)} style={{ marginTop: 0, width: 140, padding: '4px 8px', fontSize: 12 }} />
                 <button className="btn btn-sm" onClick={handleRefresh} title="Refresh">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.4-3.4L23 10M1 14l5.1 4.4A9 9 0 0 0 20.5 15"/></svg>
                 </button>
