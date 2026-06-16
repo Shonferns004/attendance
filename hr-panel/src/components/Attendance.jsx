@@ -55,17 +55,37 @@ export default function Attendance() {
   const { attendance, fetchAttendance, workers, fetchWorkers } = useHR();
   const [tab, setTab] = useState('today');
   const [punchStatus, setPunchStatus] = useState('');
+  const [deptFilter, setDeptFilter] = useState('');
+  const [deptFilterH, setDeptFilterH] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchWorker, setSearchWorker] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const depts = [...new Set((workers || []).map(w => w.department).filter(Boolean))].sort();
+
   const todayIST = getIstDateStr(new Date());
   const allToday = attendance.filter(a => a.date === todayIST);
-  const todayRecords = punchStatus ? allToday.filter(a => a.status === punchStatus) : allToday;
   const todayMap = {};
   allToday.forEach(r => { todayMap[r.worker_id] = r; });
+
+  /* Build a synthetic combined list: every worker gets a row */
+  const todayCombined = (workers || []).filter(w => !deptFilter || w.department === deptFilter).map(w => {
+    const record = todayMap[w.id];
+    return record || {
+      id: 'absent-' + w.id,
+      worker_id: w.id,
+      date: todayIST,
+      status: 'absent',
+      punch_in_time: null,
+      punch_out_time: null,
+      late_minutes: 0,
+      hours_worked: null,
+      workers: w,
+    };
+  });
+  const todayRecords = punchStatus ? todayCombined.filter(r => r.status === punchStatus) : todayCombined;
 
   useEffect(() => {
     const d = new Date();
@@ -93,6 +113,10 @@ export default function Attendance() {
     if (dateFrom && r.date < dateFrom) return false;
     if (dateTo && r.date > dateTo) return false;
     if (statusFilter && r.status !== statusFilter) return false;
+    if (deptFilterH) {
+      const w = r.workers || {};
+      if (w.department !== deptFilterH) return false;
+    }
     if (searchWorker) {
       const w = r.workers || {};
       const name = (w.name || '').toLowerCase();
@@ -103,10 +127,10 @@ export default function Attendance() {
     return true;
   });
 
-  const onTime = todayRecords.filter(r => r.status === 'present').length;
-  const lateCount = todayRecords.filter(r => r.status === 'late').length;
-  const total = workers.length || todayRecords.length;
-  const absentCount = Math.max(0, total - onTime - lateCount);
+  const onTime = todayCombined.filter(r => r.status === 'present').length;
+  const lateCount = todayCombined.filter(r => r.status === 'late').length;
+  const absentCount = todayCombined.filter(r => r.status === 'absent').length;
+  const total = todayCombined.length;
 
   const hPresent = historyRecords.filter(r => r.status === 'present').length;
   const hLate = historyRecords.filter(r => r.status === 'late').length;
@@ -134,7 +158,11 @@ export default function Attendance() {
           <div className="card" style={{ padding: '20px 22px' }}>
             <div className="card-title" style={{ justifyContent: 'space-between' }}>
               <span>Workers Present Today &mdash; <span className="today-date">{todayIST}</span></span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select className="filter-select" value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{ maxWidth: 120 }}>
+                  <option value="">All teams</option>
+                  {depts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
                 <select className="filter-select" value={punchStatus} onChange={e => setPunchStatus(e.target.value)}>
                   <option value="">All</option>
                   <option value="present">Present</option>
@@ -195,6 +223,13 @@ export default function Attendance() {
               <div className="filter-group">
                 <label>Date To</label>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </div>
+              <div className="filter-group">
+                <label>Department</label>
+                <select value={deptFilterH} onChange={e => setDeptFilterH(e.target.value)}>
+                  <option value="">All</option>
+                  {depts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
               </div>
               <div className="filter-group">
                 <label>Status</label>
