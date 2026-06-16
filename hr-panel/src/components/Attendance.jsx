@@ -19,6 +19,7 @@ function fmtDuration(mins) {
 }
 
 function LiveHours({ punchIn, punchOut }) {
+  const punchInMs = new Date(punchIn).getTime();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (punchOut) return;
@@ -27,14 +28,12 @@ function LiveHours({ punchIn, punchOut }) {
   }, [punchOut]);
 
   if (punchOut) {
-    const d = new Date(new Date(punchOut).getTime() + IST_OFFSET);
-    const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
-    const diff = Math.max(0, (d - di) / 60000);
+    const d = new Date(punchOut).getTime();
+    const diff = Math.max(0, (d - punchInMs) / 60000);
     return <span className="time-cell">{fmtDuration(diff)}</span>;
   }
 
-  const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
-  const diff = Math.max(0, (now - di) / 60000);
+  const diff = Math.max(0, (now - punchInMs) / 60000);
   return <span className="time-cell" style={{ fontWeight: 700, color: 'var(--sage)' }}>{fmtDuration(diff)}</span>;
 }
 
