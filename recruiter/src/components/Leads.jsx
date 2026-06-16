@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRec, LEAD_SOURCES, LEAD_STATUSES } from '../store';
-import { Plus, Users, Search, Funnel, RefreshCw } from '../icons';
+import { Plus, Users, Search, RefreshCw } from '../icons';
+import LeadDetail from './LeadDetail';
 
 const statusPill = (s) => {
   const m = { rejected:'pill-danger', selected:'pill-green', hold:'pill-gold' };
   return <span className={`pill ${m[s] || 'pill-gray'}`}>{s}</span>;
 };
 
+const SkeletonRow = () => (
+  <tr>
+    {[1,2,3,4,5,6,7].map(i => (
+      <td key={i}><div className="skeleton" style={{height:14,width:i===1?100:i===7?60:70}}/></td>
+    ))}
+  </tr>
+);
+
 export default function Leads() {
-  const { leads, leadsLoading, addLead, updateLead, transferLead, currentUser, user, refreshLeads, leadFilters, setLeadFilters } = useRec();
+  const { leads, leadsLoading, addLead, updateLead, currentUser, user, refreshLeads, leadFilters, setLeadFilters } = useRec();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -16,7 +25,7 @@ export default function Leads() {
   const [status, setStatus] = useState('hold');
   const [formNotes, setFormNotes] = useState([]);
   const [noteText, setNoteText] = useState('');
-  const [expanded, setExpanded] = useState(null);
+  const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [searchInput, setSearchInput] = useState(leadFilters.search || '');
 
   const addNoteToForm = () => {
@@ -36,28 +45,8 @@ export default function Leads() {
     } catch (err) { alert(err.message); }
   };
 
-  const addNoteToLead = async (id) => {
-    const t = prompt('Add a note:');
-    if (!t || !t.trim()) return;
-    const n = { text: t.trim(), date: new Date().toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}), by: currentUser.name };
-    const lead = leads.find(l => l.id === id);
-    if (!lead) return;
-    const existing = (() => { try { return JSON.parse(lead.notes || '[]'); } catch { return []; } })();
-    await updateLead(id, { notes: JSON.stringify([...existing, n]) });
-  };
-
   const updateLeadStatus = async (id, newStatus) => {
     await updateLead(id, { status: newStatus });
-  };
-
-  const handleTransfer = async (id) => {
-    const name_ = prompt('Enter the new owner name:');
-    if (!name_ || !name_.trim()) return;
-    const id_ = prompt('Enter the new owner ID (UUID):');
-    if (!id_ || !id_.trim()) return;
-    try {
-      await transferLead(id, id_.trim(), name_.trim());
-    } catch (err) { alert(err.message); }
   };
 
   const handleSearch = () => {
@@ -71,6 +60,61 @@ export default function Leads() {
   const openLeads = leads.filter(l => l.status === 'hold' || l.status === 'selected');
   const closedLeads = leads.filter(l => l.status === 'rejected');
   const myId = user?.id;
+  const selectedLead = selectedLeadId ? leads.find(l => l.id === selectedLeadId) : null;
+
+  if (selectedLead) {
+    return (
+      <>
+        <div className="card" style={{marginBottom:20}}>
+          <div className="card-head"><h3><Users width={18}/> Add new lead</h3></div>
+          <form className="card-pad" onSubmit={handleSubmit}>
+            <div className="form-row">
+              <label className="field">Name
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Arun Sharma" required />
+              </label>
+              <label className="field">Phone
+                <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="e.g. 9876543210" required />
+              </label>
+              <label className="field">Age
+                <input type="number" value={age} onChange={e=>setAge(e.target.value)} placeholder="e.g. 28" min={0} max={120} />
+              </label>
+              <label className="field">Source
+                <select value={source} onChange={e=>setSource(e.target.value)}>
+                  {LEAD_SOURCES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </label>
+              <label className="field">Status
+                <select value={status} onChange={e=>setStatus(e.target.value)}>
+                  {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </label>
+            </div>
+            <div style={{marginTop:12}}>
+              <label className="field">Notes
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:4}}>
+                  {formNotes.map((n,i) => (
+                    <span key={i} style={{background:'var(--sage-soft)',padding:'3px 8px',borderRadius:6,fontSize:12,display:'inline-flex',alignItems:'center',gap:6}}>
+                      {n.text}
+                      <button type="button" onClick={()=>removeFormNote(i)} style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:6}}>
+                  <input value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="Type a note and add..." style={{flex:1}} />
+                  <button type="button" className="btn btn-sm" onClick={addNoteToForm}>+ Add</button>
+                </div>
+              </label>
+            </div>
+            <div style={{marginTop:14}}>
+              <button className="btn btn-primary"><Plus width={15}/> Create lead</button>
+            </div>
+          </form>
+        </div>
+
+        <LeadDetail lead={selectedLead} onBack={() => setSelectedLeadId(null)} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -122,43 +166,40 @@ export default function Leads() {
 
       <div className="card" style={{marginBottom:20}}>
         <div className="card-head">
-          <h3><Funnel width={16}/> Filters</h3>
-        </div>
-        <div className="card-pad" style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'center'}}>
-          <div style={{display:'flex',gap:4,flex:1,minWidth:200}}>
-            <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={handleSearchKeyDown}
-              placeholder="Search by name, email or phone…" style={{flex:1}} />
-            <button className="btn btn-sm" onClick={handleSearch}><Search width={14}/></button>
+          <h3>Active leads</h3>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <span className="sub">{leadsLoading ? '…' : openLeads.length + ' leads'}</span>
+            <button className="btn btn-sm" onClick={refreshLeads} title="Refresh"><RefreshCw width={13}/></button>
           </div>
-          <label className="field" style={{minWidth:130,marginBottom:0}}>
-            <select value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}>
+        </div>
+        <div className="card-pad" style={{paddingTop:0,paddingBottom:0}}>
+          <div style={{display:'flex',gap:10,padding:'12px 0',flexWrap:'wrap',alignItems:'center',borderBottom:'1px solid var(--line)',marginBottom:0}}>
+            <div style={{display:'flex',gap:4,flex:1,minWidth:180}}>
+              <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={handleSearchKeyDown}
+                placeholder="Search by name, email or phone…" style={{flex:1}} />
+              <button className="btn btn-sm" onClick={handleSearch}><Search width={14}/></button>
+            </div>
+            <select value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}
+              style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
               <option value="">All statuses</option>
               {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-          </label>
-          <label className="field" style={{minWidth:130,marginBottom:0}}>
-            <select value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}>
+            <select value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}
+              style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
               <option value="">All sources</option>
               {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-          </label>
-          <button className="btn btn-sm" onClick={refreshLeads} title="Refresh leads">
-            <RefreshCw width={14}/> Refresh
-          </button>
+          </div>
         </div>
-      </div>
-
-      <div className="card" style={{marginBottom:20}}>
-        <div className="card-head"><h3>Active leads</h3>
-          <span className="sub">{leadsLoading ? 'Loading…' : openLeads.length + ' leads'}</span>
-        </div>
-        {leadsLoading ? <div className="empty">Loading…</div> : openLeads.length === 0 ? (
+        {leadsLoading ? (
+          <table><tbody>{[1,2,3,4,5].map(i => <SkeletonRow key={i}/>)}</tbody></table>
+        ) : openLeads.length === 0 ? (
           <div className="empty">No active leads yet.</div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Name</th><th>Phone</th><th>Age</th><th>Source</th><th>Status</th><th>Notes</th><th>Created by</th><th></th>
+                <th>Name</th><th>Phone</th><th>Age</th><th>Source</th><th>Status</th><th>Notes</th><th>Created by</th>
               </tr>
             </thead>
             <tbody>
@@ -166,39 +207,20 @@ export default function Leads() {
                 const isOwner = myId && l.created_by === myId;
                 let parsed = [];
                 try { parsed = JSON.parse(l.notes || '[]'); } catch {}
-                const isExpanded = expanded === l.id;
                 return (
-                  <tr key={l.id}>
+                  <tr key={l.id} onClick={() => setSelectedLeadId(l.id)} style={{cursor:'pointer'}}>
                     <td style={{fontWeight:500}}>{l.name}</td>
                     <td style={{color:'var(--ink-soft)'}}>{l.phone || '—'}</td>
                     <td>{l.age || '—'}</td>
                     <td>{l.source}</td>
-                    <td>
-                      {isOwner ? (
-                        <select value={l.status} onChange={e=>updateLeadStatus(l.id, e.target.value)}
-                          style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 6px',fontSize:12,background:'#fff'}}>
-                          {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-                        </select>
-                      ) : (
-                        statusPill(l.status)
-                      )}
-                    </td>
-                    <td>
-                      <button className="btn btn-icon" onClick={() => setExpanded(isExpanded ? null : l.id)} title="View notes">
-                        {parsed.length} <span style={{fontSize:10}}>▾</span>
-                      </button>
-                    </td>
+                    <td>{isOwner ? (
+                      <select value={l.status} onClick={e=>e.stopPropagation()} onChange={e=>updateLeadStatus(l.id, e.target.value)}
+                        style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 6px',fontSize:12,background:'#fff'}}>
+                        {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    ) : statusPill(l.status)}</td>
+                    <td><span className="sub">{parsed.length} note{parsed.length!==1?'s':''}</span></td>
                     <td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>
-                    <td>
-                      {isOwner ? (
-                        <div style={{display:'flex',gap:4}}>
-                          <button className="btn btn-sm" onClick={() => addNoteToLead(l.id)}>Note</button>
-                          <button className="btn btn-sm" style={{color:'var(--clay)'}} onClick={() => handleTransfer(l.id)}>Transfer</button>
-                        </div>
-                      ) : (
-                        <span style={{fontSize:11,color:'var(--ink-soft)'}}>Read-only</span>
-                      )}
-                    </td>
                   </tr>
                 );
               })}
@@ -206,30 +228,6 @@ export default function Leads() {
           </table>
         )}
       </div>
-
-      {openLeads.some(l => expanded === l.id) && expanded && (() => {
-        const lead = leads.find(l => l.id === expanded);
-        if (!lead) return null;
-        let notes = [];
-        try { notes = JSON.parse(lead.notes || '[]'); } catch { notes = lead.notes ? [{ text: lead.notes }] : []; }
-        return (
-          <div className="card" style={{marginBottom:20}}>
-            <div className="card-head"><h3>Notes — {lead.name}</h3><button className="btn btn-sm" onClick={() => setExpanded(null)}>Close</button></div>
-            <div className="card-pad">
-              {notes.length === 0 ? (
-                <div className="empty">No notes for this lead.</div>
-              ) : (
-                notes.map((n,i) => (
-                  <div key={i} style={{padding:'10px 0',borderBottom:i<notes.length-1?'1px solid var(--line)':'none',fontSize:13}}>
-                    <div>{n.text || n}</div>
-                    <div style={{fontSize:11,color:'var(--ink-soft)',marginTop:3}}>{(n.by || '—')} · {(n.date || '—')}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {closedLeads.length > 0 && (
         <div className="card">
@@ -242,7 +240,7 @@ export default function Leads() {
             </thead>
             <tbody>
               {closedLeads.map(l => (
-                <tr key={l.id}>
+                <tr key={l.id} onClick={() => setSelectedLeadId(l.id)} style={{cursor:'pointer'}}>
                   <td style={{fontWeight:500}}>{l.name}</td>
                   <td style={{color:'var(--ink-soft)'}}>{l.phone || '—'}</td>
                   <td>{l.age || '—'}</td>

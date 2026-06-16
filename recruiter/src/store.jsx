@@ -130,18 +130,6 @@ export function RecProvider({ children }) {
 
   const refreshLeads = useCallback(() => fetchLeads(false), [fetchLeads]);
 
-  const transferLead = useCallback(async (id, newOwnerId, newOwnerName) => {
-    const res = await fetch(API_BASE + '/leads/' + id + '/transfer', {
-      method:'PUT', headers:authHeaders,
-      body: JSON.stringify({ new_owner_id: newOwnerId, new_owner_name: newOwnerName }),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message);
-    await fetchLeads(true);
-    log('Lead transferred');
-    return result.lead;
-  }, [authHeaders, fetchLeads, log]);
-
   // ── Dashboard stats ──
   const [leadStats, setLeadStats] = useState(null);
   const fetchLeadStats = useCallback(async () => {
@@ -154,7 +142,7 @@ export function RecProvider({ children }) {
   useEffect(() => { if (token) fetchLeadStats(); }, [token, fetchLeadStats]);
 
   return (
-    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, refreshLeads, addLead, updateLead, transferLead, leadStats, fetchLeadStats, leadFilters, setLeadFilters }}>
+    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, refreshLeads, addLead, updateLead, leadStats, fetchLeadStats, leadFilters, setLeadFilters }}>
       {children}
     </RecContext.Provider>
   );

@@ -191,6 +191,9 @@ tr:hover td { background: #faf8f2; }
 .textarea{width:100%;min-height:120px;resize:vertical;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;color:var(--ink);outline:none;font-size:14px;line-height:1.6}
 .textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px var(--sage-soft)}
 
+@keyframes shimmer{0%{opacity:.4}50%{opacity:.9}100%{opacity:.4}}
+.skeleton{background:#e4decfa0;border-radius:6px;animation:shimmer 1.4s ease-in-out infinite}
+
 .login-page{min-height:100vh;display:grid;place-items:center;background:var(--sand);padding:20px}
 .login-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);width:100%;max-width:380px;padding:36px}
 .login-header{text-align:center;margin-bottom:28px}
