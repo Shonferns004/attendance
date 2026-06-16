@@ -3,19 +3,20 @@ import { Who, Score } from './ui';
 import { Users, Brief, Funnel, Star } from '../icons';
 
 export default function Dashboard() {
-  const { candidates, jobs, feed } = useRec();
-  const openRoles = jobs.filter(j => j.status === 'Open').length;
-  const totalApplicants = jobs.reduce((s,j) => s + j.applicants, 0);
-  const inInterview = candidates.filter(c => c.stage === 'Interview').length;
-  const offers = candidates.filter(c => c.stage === 'Offer').length;
+  const { leads, leadStats, candidates, jobs, feed } = useRec();
+  const total = leadStats?.total || leads.length;
+  const newToday = leadStats?.newToday || 0;
+  const byStatus = leadStats?.byStatus || {};
+  const conversion = leadStats?.conversionRate || 0;
 
   const cards = [
-    { label:'Open roles',      icon:<Brief width={15}/>,  num:openRoles, foot:`${jobs.length} total`, c:'#5B6B4E' },
-    { label:'Applicants',      icon:<Users width={15}/>,  num:totalApplicants, foot:'across all roles', c:'#4F6472' },
-    { label:'In interview',    icon:<Funnel width={15}/>, num:inInterview, foot:'active conversations', c:'#C08A2E' },
-    { label:'Offers out',      icon:<Star width={15}/>,   num:offers, foot:'awaiting response', c:'#B5603A' },
+    { label:'Total leads',    icon:<Users width={15}/>,  num:total,    foot:'all time', c:'#5B6B4E' },
+    { label:'New today',      icon:<Star width={15}/>,   num:newToday, foot:'added today', c:'#4F6472' },
+    { label:'In interview',   icon:<Funnel width={15}/>, num:byStatus?.interviewed||0, foot:'active conversations', c:'#C08A2E' },
+    { label:'Conversion',     icon:<Brief width={15}/>,  num:conversion+'%', foot:'placed vs rejected', c:'#B5603A' },
   ];
-  const top = [...candidates].sort((a,b)=>b.score-a.score).slice(0,5);
+
+  const topLeads = [...leads].slice(0, 5);
 
   return (
     <>
@@ -29,16 +30,17 @@ export default function Dashboard() {
       </div>
       <div className="grid-2">
         <div className="card">
-          <div className="card-head"><h3>Top candidates</h3><span className="sub">by AI match score</span></div>
+          <div className="card-head"><h3>Recent leads</h3><span className="sub">latest entries</span></div>
           <table>
             <tbody>
-              {top.map(c => (
-                <tr key={c.id}>
-                  <td><Who name={c.name} role={c.role} /></td>
-                  <td style={{color:'var(--ink-soft)'}}>{c.stage}</td>
-                  <td style={{textAlign:'right'}}><Score value={c.score} /></td>
+              {topLeads.map(l => (
+                <tr key={l.id}>
+                  <td><Who name={l.name} role={l.source} /></td>
+                  <td style={{color:'var(--ink-soft)'}}>{l.status}</td>
+                  <td style={{textAlign:'right',color:'var(--ink-soft)'}}>{l.phone || '—'}</td>
                 </tr>
               ))}
+              {!topLeads.length && <tr><td colSpan={3}><div className="empty">No leads yet.</div></td></tr>}
             </tbody>
           </table>
         </div>

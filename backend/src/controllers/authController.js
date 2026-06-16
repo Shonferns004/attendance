@@ -90,14 +90,15 @@ export const unifiedLogin = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid password' });
     }
+    const role = worker.department === 'HR-Recruiter' ? 'recruiter' : 'worker';
     const token = jwt.sign(
-      { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role: 'worker' },
+      { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     return res.json({
       token,
-      role: 'worker',
+      role,
       user: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, ngo_id: worker.ngo_id, gender: worker.gender, dob: worker.dob, department: worker.department },
       message: 'Login successful',
     });

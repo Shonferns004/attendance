@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 
 const RecContext = createContext(null);
 export const useRec = () => useContext(RecContext);
@@ -12,7 +12,7 @@ const now = () => new Date().toLocaleString('en-GB',{day:'numeric',month:'short'
 export const STAGES = ['New','Screening','Interview','Offer','Hired'];
 
 export const LEAD_SOURCES = ['Walk-in','LinkedIn','Referral','Job Portal','Campus','Social Media','Other'];
-export const LEAD_STATUSES = ['New','Contacted','Qualified','Proposed','In Negotiation','Converted','Lost'];
+export const LEAD_STATUSES = ['new','contacted','interviewed','offered','placed','rejected'];
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -27,6 +27,8 @@ export function RecProvider({ children }) {
   });
   const currentUser = useMemo(() => user ? { name:user.name, role:'Recruiter' } : { name:'Unknown', role:'' }, [user]);
 
+  const authHeaders = useMemo(() => ({ 'Content-Type':'application/json', Authorization:'Bearer ' + token }), [token]);
+
   const login = useCallback(async (identifier, password) => {
     const res = await fetch(API_BASE + '/auth/login', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
@@ -34,8 +36,8 @@ export function RecProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || 'Login failed');
-    if (data.role === 'worker' && data.user?.department !== 'HR-Recruiter') {
-      throw new Error('Access denied. Your department is "' + (data.user?.department || 'not set') + '". Only HR-Recruitment staff can access this panel.');
+    if (data.role !== 'recruiter') {
+      throw new Error('Access denied. Only HR-Recruitment staff can access this panel.');
     }
     setToken(data.token);
     setUser(data.user);
@@ -49,6 +51,7 @@ export function RecProvider({ children }) {
     localStorage.removeItem('rec_token');
     localStorage.removeItem('rec_user');
   }, []);
+
   const [candidates, setCandidates] = useState([
     { id:1, name:'Meera Krishnan', role:'Senior Frontend Engineer', stage:'Interview', score:91, source:'Referral', exp:'7 yrs', skills:['React','TypeScript','Design systems'], applied:'2026-06-02' },
     { id:2, name:'Daniel Osei',     role:'Senior Frontend Engineer', stage:'Screening', score:78, source:'LinkedIn', exp:'5 yrs', skills:['Vue','JavaScript','CSS'], applied:'2026-06-05' },
@@ -71,15 +74,60 @@ export function RecProvider({ children }) {
   const addCandidate = (c) => { setCandidates(p => [{ ...c, id:nid(), stage:'New', score:c.score||75, applied:new Date().toISOString().slice(0,10) }, ...p]); log(`Added candidate ${c.name}`); };
   const addJob = (j) => { setJobs(p => [...p, { ...j, id:nid(), applicants:0, status:'Open' }]); log(`Opened role · ${j.title}`); };
 
-  const [leads, setLeads] = useState([
-    { id:1, name:'Arun Sharma', phone:'9876543210', age:28, source:'LinkedIn', status:'New', notes:'[]', created_by:'Riya Kapoor', created_at:now() },
-    { id:2, name:'Priya Patel',  phone:'9988776655', age:32, source:'Referral', status:'Contacted', notes: JSON.stringify([{text:'Spoke on phone, interested in Senior role', date:now(), by:'Riya Kapoor'}]), created_by:'Riya Kapoor', created_at:now() },
-  ]);
-  const addLead = useCallback((l) => { setLeads(p => [{ ...l, id:nid(), notes:'[]', created_by:currentUser.name, created_at:now() }, ...p]); log(`Lead added · ${l.name}`); }, [log, currentUser.name]);
-  const updateLead = useCallback((id, upd) => { setLeads(p => p.map(l => { if(l.id===id) { log(`Lead updated · ${l.name}`); return {...l,...upd}; } return l; })); }, [log]);
+  // ── Leads API ──
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+
+  const fetchLeads = useCallback(async () => {
+    if (!token) return;
+    setLeadsLoading(true);
+    try {
+      const res = await fetch(API_BASE + '/leads', { headers:authHeaders });
+      if (!res.ok) throw new Error('Failed to fetch leads');
+      setLeads(await res.json());
+    } catch (e) { log('Error: ' + e.message); }
+    setLeadsLoading(false);
+  }, [token, authHeaders, log]);
+
+  useEffect(() => { if (token) fetchLeads(); }, [token, fetchLeads]);
+
+  const addLead = useCallback(async (data) => {
+    const res = await fetch(API_BASE + '/leads', {
+      method:'POST', headers:authHeaders,
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message);
+    await fetchLeads();
+    log(`Lead added · ${data.name}`);
+    return result.lead;
+  }, [authHeaders, fetchLeads, log]);
+
+  const updateLead = useCallback(async (id, data) => {
+    const res = await fetch(API_BASE + '/leads/' + id, {
+      method:'PUT', headers:authHeaders,
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message);
+    await fetchLeads();
+    log(`Lead updated`);
+    return result.lead;
+  }, [authHeaders, fetchLeads, log]);
+
+  // ── Dashboard stats ──
+  const [leadStats, setLeadStats] = useState(null);
+  const fetchLeadStats = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(API_BASE + '/leads/dashboard', { headers:authHeaders });
+      if (res.ok) setLeadStats(await res.json());
+    } catch {}
+  }, [token, authHeaders]);
+  useEffect(() => { if (token) fetchLeadStats(); }, [token, fetchLeadStats]);
 
   return (
-    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, addLead, updateLead }}>
+    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, addLead, updateLead, leadStats, fetchLeadStats }}>
       {children}
     </RecContext.Provider>
   );
