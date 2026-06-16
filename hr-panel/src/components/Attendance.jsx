@@ -12,9 +12,10 @@ function fmtTime(iso) {
 }
 
 function fmtDuration(mins) {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  return `${h}h ${m}m`;
+  const m = Math.max(0, Math.round(mins));
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm}m`;
 }
 
 function LiveHours({ punchIn, punchOut }) {
@@ -28,12 +29,12 @@ function LiveHours({ punchIn, punchOut }) {
   if (punchOut) {
     const d = new Date(new Date(punchOut).getTime() + IST_OFFSET);
     const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
-    const diff = (d - di) / 60000;
+    const diff = Math.max(0, (d - di) / 60000);
     return <span className="time-cell">{fmtDuration(diff)}</span>;
   }
 
   const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
-  const diff = (now - di) / 60000;
+  const diff = Math.max(0, (now - di) / 60000);
   return <span className="time-cell" style={{ fontWeight: 700, color: 'var(--sage)' }}>{fmtDuration(diff)}</span>;
 }
 
