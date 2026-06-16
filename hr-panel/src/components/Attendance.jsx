@@ -2,27 +2,6 @@ import { useEffect, useState } from 'react';
 import { useHR } from '../store';
 
 const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-const DEFAULT_LATE_BALANCE = 180;
-
-function getLateBalance(workerId, allAttendance) {
-  const used = allAttendance
-    .filter(a => a.worker_id === workerId)
-    .reduce((sum, a) => sum + (a.late_minutes || 0), 0);
-  const extra = parseInt(localStorage.getItem('hr_late_extra_' + workerId) || '0', 10);
-  const balance = DEFAULT_LATE_BALANCE + extra;
-  return { used, balance, remaining: balance - used };
-}
-
-function LateBar({ used, balance }) {
-  const pct = balance > 0 ? Math.min(used / balance * 100, 100) : 100;
-  const color = pct < 60 ? 'var(--sage)' : pct < 85 ? 'var(--gold)' : 'var(--danger)';
-  return (
-    <div className="lb-mini">
-      <div className="lb-mini-track"><div className="lb-mini-fill" style={{ width: pct + '%', background: color }} /></div>
-      <span className="lb-mini-txt" style={{ color }}>{used}/{balance}</span>
-    </div>
-  );
-}
 
 function fmtTime(iso) {
   if (!iso) return <span className="time-cell dim">&mdash;</span>;
@@ -30,6 +9,32 @@ function fmtTime(iso) {
   const hh = String(d.getUTCHours()).padStart(2, '0');
   const mm = String(d.getUTCMinutes()).padStart(2, '0');
   return <span className="time-cell">{hh}:{mm}</span>;
+}
+
+function fmtDuration(mins) {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return `${h}h ${m}m`;
+}
+
+function LiveHours({ punchIn, punchOut }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (punchOut) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [punchOut]);
+
+  if (punchOut) {
+    const d = new Date(new Date(punchOut).getTime() + IST_OFFSET);
+    const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
+    const diff = (d - di) / 60000;
+    return <span className="time-cell">{fmtDuration(diff)}</span>;
+  }
+
+  const di = new Date(new Date(punchIn).getTime() + IST_OFFSET);
+  const diff = (now - di) / 60000;
+  return <span className="time-cell" style={{ fontWeight: 700, color: 'var(--sage)' }}>{fmtDuration(diff)}</span>;
 }
 
 function getIstDateStr(date) {
@@ -182,24 +187,21 @@ export default function Attendance() {
               <div className="table-wrap">
                 <table>
                   <thead>
-                    <tr><th>#</th><th>Name</th><th>Login ID</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Late Balance</th><th>Hours Worked</th></tr>
+                    <tr><th>#</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
                   </thead>
                   <tbody>
                     {todayRecords.map((r, i) => {
                       const w = r.workers || {};
                       const cls = r.status === 'absent' ? 'row-absent' : r.status === 'late' ? 'row-late' : '';
-                      const lb = w.id ? getLateBalance(w.id, attendance) : { used: 0, balance: DEFAULT_LATE_BALANCE, remaining: 0 };
                       return (
                         <tr key={r.id} className={cls}>
                           <td>{i + 1}</td>
                           <td><strong>{w.name || 'Unknown'}</strong></td>
-                          <td><span className="inline-code">{w.login_id || '\u2014'}</span></td>
                           <td><Badge status={r.status} /></td>
                           <td>{fmtTime(r.punch_in_time)}</td>
                           <td>{fmtTime(r.punch_out_time)}</td>
                           <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
-                          <td><LateBar used={lb.used} balance={lb.balance} /></td>
-                          <td>{r.hours_worked || '\u2014'}</td>
+                          <td>{r.punch_in_time ? <LiveHours punchIn={r.punch_in_time} punchOut={r.punch_out_time} /> : '\u2014'}</td>
                         </tr>
                       );
                     })}
@@ -273,7 +275,7 @@ export default function Attendance() {
               <div className="table-wrap">
                 <table>
                   <thead>
-                    <tr><th>#</th><th>Date</th><th>Name</th><th>Login ID</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
+                    <tr><th>#</th><th>Date</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
                   </thead>
                   <tbody>
                     {historyRecords.map((r, i) => {
@@ -284,7 +286,6 @@ export default function Attendance() {
                           <td>{i + 1}</td>
                           <td>{r.date}</td>
                           <td><strong>{w.name || 'Unknown'}</strong></td>
-                          <td><span className="inline-code">{w.login_id || '\u2014'}</span></td>
                           <td><Badge status={r.status} /></td>
                           <td>{fmtTime(r.punch_in_time)}</td>
                           <td>{fmtTime(r.punch_out_time)}</td>
