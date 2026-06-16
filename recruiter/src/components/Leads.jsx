@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRec, LEAD_SOURCES, LEAD_STATUSES } from '../store';
 import { Plus, Users, Search, RefreshCw } from '../icons';
+import { Dropdown } from './ui';
 import LeadDetail from './LeadDetail';
 
 const calcAge = (dob) => {
@@ -116,14 +117,10 @@ export default function Leads() {
                 {age !== null && <span style={{fontSize:11,color:'var(--ink-soft)',marginTop:2}}>Age: {age}</span>}
               </label>
               <label className="field">Source
-                <select value={source} onChange={e=>setSource(e.target.value)}>
-                  {LEAD_SOURCES.map(s => <option key={s}>{s}</option>)}
-                </select>
+                <Dropdown value={source} onChange={e=>setSource(e.target.value)} options={LEAD_SOURCES} />
               </label>
               <label className="field">Status
-                <select value={status} onChange={e=>setStatus(e.target.value)}>
-                  {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-                </select>
+                <Dropdown value={status} onChange={e=>setStatus(e.target.value)} options={LEAD_STATUSES} />
               </label>
               {showScheduledDateInput && (
                 <label className="field">Interview date
@@ -175,14 +172,10 @@ export default function Leads() {
               {age !== null && <span style={{fontSize:11,color:'var(--ink-soft)',marginTop:2}}>Age: {age}</span>}
             </label>
             <label className="field">Source
-              <select value={source} onChange={e=>setSource(e.target.value)}>
-                {LEAD_SOURCES.map(s => <option key={s}>{s}</option>)}
-              </select>
+              <Dropdown value={source} onChange={e=>setSource(e.target.value)} options={LEAD_SOURCES} />
             </label>
             <label className="field">Status
-              <select value={status} onChange={e=>setStatus(e.target.value)}>
-                {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-              </select>
+              <Dropdown value={status} onChange={e=>setStatus(e.target.value)} options={LEAD_STATUSES} />
             </label>
             {showScheduledDateInput && (
               <label className="field">Interview date
@@ -235,22 +228,16 @@ export default function Leads() {
             </div>
           </div>
           <div className="card-pad" style={{paddingTop:0,paddingBottom:0}}>
-            <div style={{display:'flex',gap:10,padding:'12px 0',flexWrap:'wrap',alignItems:'center',borderBottom:'1px solid var(--line)',marginBottom:0}}>
-              <div style={{display:'flex',gap:4,flex:1,minWidth:180}}>
+            <div className="filter-bar">
+              <div className="search-group">
                 <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={handleSearchKeyDown}
-                  placeholder="Search by name or phone…" style={{flex:1}} />
+                  placeholder="Search by name or phone…" />
                 <button className="btn btn-sm" onClick={handleSearch}><Search width={14}/></button>
               </div>
-              <select value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}
-                style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
-                <option value="">All statuses</option>
-                {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}
-                style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
-                <option value="">All sources</option>
-                {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <Dropdown className="filter-select" value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}
+                options={[{value:'',label:'All statuses'}, ...LEAD_STATUSES]} />
+              <Dropdown className="filter-select" value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}
+                options={[{value:'',label:'All sources'}, ...LEAD_SOURCES]} />
             </div>
           </div>
           {leadsLoading ? (
@@ -277,10 +264,7 @@ export default function Leads() {
                       <td>{displayAge || '—'}</td>
                       <td>{l.source}</td>
                       <td>{isOwner ? (
-                        <select value={l.status} onClick={e=>e.stopPropagation()} onChange={e=>updateLeadStatus(l.id, e.target.value)}
-                          style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 6px',fontSize:12,background:'#fff'}}>
-                          {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-                        </select>
+                        <Dropdown className="inline-select" value={l.status} onChange={e=>updateLeadStatus(l.id, e.target.value)} options={LEAD_STATUSES} />
                       ) : statusPill(l.status)}</td>
                       <td><span className="sub">{parsed.length > 0 ? parsed.length + ' note' + (parsed.length!==1?'s':'') : '—'}</span></td>
                       <td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>

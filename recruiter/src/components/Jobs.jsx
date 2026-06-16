@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRec } from '../store';
-import { Pill } from './ui';
+import { Dropdown, Pill } from './ui';
 import { Plus } from '../icons';
 
 export default function Jobs() {
@@ -21,7 +21,7 @@ export default function Jobs() {
               <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Senior Frontend Engineer" onKeyDown={e=>e.key==='Enter'&&submit()} />
             </label>
             <label className="field">Department
-              <select value={dept} onChange={e=>setDept(e.target.value)}>{['Engineering','Design','Sales','People','Operations'].map(d=><option key={d}>{d}</option>)}</select>
+              <Dropdown value={dept} onChange={e=>setDept(e.target.value)} options={['Engineering','Design','Sales','People','Operations']} />
             </label>
             <label className="field" style={{flex:'0 0 90px'}}>Openings
               <input type="number" min="1" value={openings} onChange={e=>setOpenings(e.target.value)} />

@@ -89,6 +89,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .metric .label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-soft); }
 .metric .num { font-family: 'Fraunces', serif; font-size: 34px; font-weight: 500; margin-top: 8px; }
 .metric .foot { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.metric .s-num { height: 34px; width: 70px; margin-top: 8px; border-radius: 6px; }
+.metric .s-foot { height: 12px; width: 50px; margin-top: 4px; border-radius: 4px; }
 .metric .dot { width: 8px; height: 8px; border-radius: 50%; }
 
 .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
@@ -96,16 +98,17 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-soft); }
 .field input, .field select, .field textarea {
-  background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: 9px 11px; color: var(--ink); outline: none; transition: border-color .15s, box-shadow .15s;
+  background: transparent; border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  padding: 9px 11px; color: var(--ink); outline: none; transition: border-color .2s, box-shadow .2s;
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-soft); }
+.field select { cursor: pointer; }
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
 .form-row .field { flex: 1; min-width: 130px; }
 
 .btn {
-  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line);
-  background: #fff; color: var(--ink); padding: 9px 15px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid var(--line);
+  background: transparent; color: var(--ink); padding: 9px 15px; border-radius: var(--radius-sm);
   font-size: 13px; font-weight: 500; transition: background .15s, border-color .15s, transform .05s;
 }
 .btn:hover { border-color: #cfc7b3; background: #fdfcf9; }
@@ -117,10 +120,60 @@ label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; 
 .btn-icon:hover { background: var(--sand); color: var(--ink); }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; font-weight: 500; color: var(--ink-soft); font-size: 12px; padding: 10px 22px; border-bottom: 1px solid var(--line); }
+th { text-align: left; font-weight: 500; color: var(--ink-soft); font-size: 12px; padding: 10px 22px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 12px 22px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #faf8f2; }
+
+/* filter toolbar */
+.filter-bar {
+  display: flex; gap: 10px; padding: 12px 0; flex-wrap: wrap; align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.filter-bar .search-group { display: flex; gap: 4px; flex: 1; min-width: 180px; }
+.filter-bar .search-group input {
+  flex: 1; border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 12px; background: transparent; color: var(--ink); outline: none;
+  transition: border-color .2s;
+}
+.filter-bar .search-group input:focus { border-color: var(--sage); }
+.filter-bar .search-group input::placeholder { color: var(--ink-soft); opacity: .6; }
+
+/* === Custom Dropdown (ported from hr-panel) === */
+.dropdown { position: relative; display: inline-block; cursor: pointer; user-select: none; }
+.dropdown-trigger {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 9px 11px; font-size: 14px; color: var(--ink); font-family: inherit;
+  cursor: pointer; text-align: left; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.dropdown.open .dropdown-trigger { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-soft); }
+.dropdown-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dropdown-arrow { flex-shrink: 0; transition: transform .2s; color: var(--ink-soft); }
+.dropdown-arrow.up { transform: rotate(180deg); }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); max-height: 240px; overflow-y: auto;
+}
+.dropdown-item { padding: 8px 12px; font-size: 14px; cursor: pointer; transition: background .1s; color: var(--ink); }
+.dropdown-item:hover { background: var(--sand); }
+.dropdown-item.active { background: var(--sage-soft); color: var(--sage); font-weight: 500; }
+.field .dropdown-trigger { padding: 9px 11px; font-size: 14px; }
+
+/* filter dropdown (compact) */
+.filter-select.dropdown .dropdown-trigger { padding: 6px 10px; font-size: 12px; min-width: 110px; }
+
+/* inline table dropdown */
+.inline-select.dropdown { display: inline-block; vertical-align: middle; }
+.inline-select.dropdown .dropdown-trigger {
+  padding: 2px 5px; font-size: 12px; border: 1.5px solid transparent;
+  background: transparent; color: var(--ink); border-radius: 4px;
+}
+.inline-select.dropdown .dropdown-trigger:hover { border-color: var(--line); }
+.inline-select.dropdown.open .dropdown-trigger { border-color: var(--sage); }
+.inline-select .dropdown-menu { min-width: 120px; }
 
 .avatar { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .who { display: flex; align-items: center; gap: 11px; }
@@ -191,8 +244,8 @@ tr:hover td { background: #faf8f2; }
 .textarea{width:100%;min-height:120px;resize:vertical;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;color:var(--ink);outline:none;font-size:14px;line-height:1.6}
 .textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px var(--sage-soft)}
 
-@keyframes shimmer{0%{opacity:.4}50%{opacity:.9}100%{opacity:.4}}
-.skeleton{background:#e4decfa0;border-radius:6px;animation:shimmer 1.4s ease-in-out infinite}
+.skeleton{background:linear-gradient(90deg,var(--line) 25%,var(--sand) 50%,var(--line) 75%);background-size:200% 100%;border-radius:6px;animation:sk-shimmer 1.4s infinite}
+@keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 .login-page{min-height:100vh;display:grid;place-items:center;background:var(--sand);padding:20px}
 .login-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);width:100%;max-width:380px;padding:36px}

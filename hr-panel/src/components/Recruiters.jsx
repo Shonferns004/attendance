@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../store';
 import { Pill, Dropdown } from './ui';
-import { Plus, X } from '../icons';
+import { Users, Clock, Check, X, Cal, Heart, Plus } from '../icons';
 
 const calcAge = (dob) => {
   if (!dob) return null;
@@ -25,7 +25,7 @@ const formatDT = (ts) => {
 };
 
 export default function Recruiters() {
-  const { leads, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
+  const { leads, leadsLoading, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
   const [recruiterFilter, setRecruiterFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -132,13 +132,13 @@ export default function Recruiters() {
   return (
     <>
       <div className="stats">
-        <div className="stat"><div className="stat-label">Total Leads</div><div className="stat-value info">{stats.total}</div></div>
-        <div className="stat"><div className="stat-label">New Today</div><div className="stat-value success">{stats.newToday}</div></div>
-        <div className="stat"><div className="stat-label">Scheduled</div><div className="stat-value warning">{stats.scheduled}</div></div>
-        <div className="stat"><div className="stat-label">Shecdule Tomorrow</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.scheduledTomorrow}</div></div>
-        <div className="stat"><div className="stat-label">Rejected</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.rejected}</div></div>
-        <div className="stat"><div className="stat-label">Selected</div><div className="stat-value leave">{stats.selected}</div></div>
-        <div className="stat"><div className="stat-label">Joined</div><div className="stat-value leave">{stats.joined}</div></div>
+        <div className="stat"><Users width={16}/> <div className="stat-label">Total</div><div className="stat-value">{stats.total}</div></div>
+        <div className="stat"><Clock width={16}/> <div className="stat-label">Today</div><div className="stat-value">{stats.newToday}</div></div>
+        <div className="stat"><Cal width={16}/> <div className="stat-label">Scheduled</div><div className="stat-value" style={{color:'#3b82f6'}}>{stats.scheduled}</div></div>
+        <div className="stat"><Cal width={16}/> <div className="stat-label">Tomorrow</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.scheduledTomorrow}</div></div>
+        <div className="stat"><X width={16}/> <div className="stat-label">Rejected</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.rejected}</div></div>
+        <div className="stat"><Check width={16}/> <div className="stat-label">Selected</div><div className="stat-value" style={{color:'#10b981'}}>{stats.selected}</div></div>
+        <div className="stat"><Heart width={16}/> <div className="stat-label">Joined</div><div className="stat-value" style={{color:'#8b5cf6'}}>{stats.joined}</div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -205,29 +205,43 @@ export default function Recruiters() {
                 </tr>
               </thead>
               <tbody>
-                {filteredLeads.map(lead => {
-                  const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
-                  const displayAge = lead.dob ? calcAge(lead.dob) : lead.age;
-                  return (
-                    <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
-                      <td><strong>{lead.name}</strong></td>
-                      <td>{lead.phone || '\u2014'}</td>
-                      <td>{displayAge || '\u2014'}</td>
-                      <td><Pill status={lead.source} /></td>
-                      <td>
-                        <span className="status-dot" style={{ background: st.color }} />
-                        {st.label}
-                      </td>
-                      <td className="ink-soft">{lead.created_by_name || '\u2014'}</td>
-                      <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
-                      <td>
-                        <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
-                      </td>
+                {leadsLoading ? (
+                  Array.from({length:5}).map((_,i) => (
+                    <tr key={i}>
+                      <td><div className="sk" style={{height:14,width:100,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:80,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:30,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:60,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:50,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:80,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:70,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:40,borderRadius:4}}/></td>
                     </tr>
-                  );
-                })}
-                {filteredLeads.length === 0 && (
+                  ))
+                ) : filteredLeads.length === 0 ? (
                   <tr><td colSpan={8}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
+                ) : (
+                  filteredLeads.map(lead => {
+                    const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
+                    const displayAge = lead.dob ? calcAge(lead.dob) : lead.age;
+                    return (
+                      <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
+                        <td><strong>{lead.name}</strong></td>
+                        <td>{lead.phone || '\u2014'}</td>
+                        <td>{displayAge || '\u2014'}</td>
+                        <td><Pill status={lead.source} /></td>
+                        <td>
+                          <span className="status-dot" style={{ background: st.color }} />
+                          {st.label}
+                        </td>
+                        <td className="ink-soft">{lead.created_by_name || '\u2014'}</td>
+                        <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
+                        <td>
+                          <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -255,21 +269,34 @@ export default function Recruiters() {
                 </tr>
               </thead>
               <tbody>
-                {scheduledLeads.map(lead => (
-                  <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
-                    <td><strong>{lead.name}</strong></td>
-                    <td>{lead.phone || '\u2014'}</td>
-                    <td>{lead.scheduled_date ? new Date(lead.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '\u2014'}</td>
-                    <td>{lead.scheduled_by_name || lead.created_by_name || '\u2014'}</td>
-                    <td className="ink-soft">{formatDT(lead.scheduled_at)}</td>
-                    <td><Pill status={lead.source} /></td>
-                    <td>
-                      <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
-                    </td>
-                  </tr>
-                ))}
-                {scheduledLeads.length === 0 && (
+                {leadsLoading ? (
+                  Array.from({length:3}).map((_,i) => (
+                    <tr key={i}>
+                      <td><div className="sk" style={{height:14,width:100,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:80,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:80,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:80,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:70,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:60,borderRadius:4}}/></td>
+                      <td><div className="sk" style={{height:14,width:40,borderRadius:4}}/></td>
+                    </tr>
+                  ))
+                ) : scheduledLeads.length === 0 ? (
                   <tr><td colSpan={7}><div className="empty">No scheduled interviews.</div></td></tr>
+                ) : (
+                  scheduledLeads.map(lead => (
+                    <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
+                      <td><strong>{lead.name}</strong></td>
+                      <td>{lead.phone || '\u2014'}</td>
+                      <td>{lead.scheduled_date ? new Date(lead.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '\u2014'}</td>
+                      <td>{lead.scheduled_by_name || lead.created_by_name || '\u2014'}</td>
+                      <td className="ink-soft">{formatDT(lead.scheduled_at)}</td>
+                      <td><Pill status={lead.source} /></td>
+                      <td>
+                        <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

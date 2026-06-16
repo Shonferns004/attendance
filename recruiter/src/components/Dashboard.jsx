@@ -3,11 +3,12 @@ import { Who, Score } from './ui';
 import { Users, Brief, Funnel, Star } from '../icons';
 
 export default function Dashboard() {
-  const { leads, leadStats, candidates, jobs, feed } = useRec();
+  const { leads, leadsLoading, leadStats, candidates, jobs, feed } = useRec();
   const total = leadStats?.total || leads.length;
   const newToday = leadStats?.newToday || 0;
   const byStatus = leadStats?.byStatus || {};
   const conversion = leadStats?.conversionRate || 0;
+  const loading = leadsLoading && leads.length === 0;
 
   const cards = [
     { label:'Total leads',    icon:<Users width={15}/>,  num:total,    foot:'all time', c:'#5B6B4E' },
@@ -24,7 +25,11 @@ export default function Dashboard() {
         {cards.map(c => (
           <div className="metric" key={c.label}>
             <div className="label"><span className="dot" style={{background:c.c}} />{c.label}</div>
-            <div className="num">{c.num}</div><div className="foot">{c.foot}</div>
+            {loading ? (
+              <><div className="skeleton s-num" /><div className="skeleton s-foot" /></>
+            ) : (
+              <><div className="num">{c.num}</div><div className="foot">{c.foot}</div></>
+            )}
           </div>
         ))}
       </div>
@@ -33,14 +38,25 @@ export default function Dashboard() {
           <div className="card-head"><h3>Recent leads</h3><span className="sub">latest entries</span></div>
           <table>
             <tbody>
-              {topLeads.map(l => (
-                <tr key={l.id}>
-                  <td><Who name={l.name} role={l.source} /></td>
-                  <td style={{color:'var(--ink-soft)'}}>{l.status}</td>
-                  <td style={{textAlign:'right',color:'var(--ink-soft)'}}>{l.phone || '—'}</td>
-                </tr>
-              ))}
-              {!topLeads.length && <tr><td colSpan={3}><div className="empty">No leads yet.</div></td></tr>}
+              {loading ? (
+                Array.from({length:4}).map((_,i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton" style={{height:14,width:140}}/></td>
+                    <td><div className="skeleton" style={{height:14,width:60}}/></td>
+                    <td style={{textAlign:'right'}}><div className="skeleton" style={{height:14,width:80,marginLeft:'auto'}}/></td>
+                  </tr>
+                ))
+              ) : topLeads.length === 0 ? (
+                <tr><td colSpan={3}><div className="empty">No leads yet.</div></td></tr>
+              ) : (
+                topLeads.map(l => (
+                  <tr key={l.id}>
+                    <td><Who name={l.name} role={l.source} /></td>
+                    <td style={{color:'var(--ink-soft)'}}>{l.status}</td>
+                    <td style={{textAlign:'right',color:'var(--ink-soft)'}}>{l.phone || '—'}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

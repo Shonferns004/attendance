@@ -214,6 +214,7 @@ export function HRProvider({ children }) {
   }, [api, log]);
 
   const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
   const [recruiters, setRecruiters] = useState([]);
 
   const fetchHolidays = useCallback(async () => {
@@ -239,6 +240,7 @@ export function HRProvider({ children }) {
   }, [api]);
 
   const fetchLeads = useCallback(async (filters = {}) => {
+    setLeadsLoading(true);
     const params = new URLSearchParams();
     if (filters.recruiter_id) params.set('recruiter_id', filters.recruiter_id);
     if (filters.status) params.set('status', filters.status);
@@ -246,6 +248,7 @@ export function HRProvider({ children }) {
     const q = params.toString();
     const data = await api('/leads' + (q ? '?' + q : ''));
     setLeads(data);
+    setLeadsLoading(false);
     return data;
   }, [api]);
 
@@ -313,7 +316,7 @@ export function HRProvider({ children }) {
       fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
       addHoliday, removeHoliday, fetchHolidays,
       themeName, setTheme, themes,
-      leads, recruiters,
+      leads, leadsLoading, recruiters,
       fetchLeads, addLead, updateLead,
       fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
       fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRec, LEAD_STATUSES } from '../store';
+import { Dropdown } from './ui';
 import { ArrowLeft } from '../icons';
 
 const calcAge = (dob) => {
@@ -62,10 +63,7 @@ export default function LeadDetail({ lead, onBack }) {
           <div><strong>Status</strong>
             <p style={{marginTop:4}}>
               {isOwner ? (
-                <select value={lead.status} onChange={e=>updateStatus(e.target.value)}
-                  style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 8px',fontSize:13,background:'#fff'}}>
-                  {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-                </select>
+                <Dropdown className="inline-select" value={lead.status} onChange={e=>updateStatus(e.target.value)} options={LEAD_STATUSES} style={{minWidth:100}} />
               ) : statusPill(lead.status)}
             </p>
           </div>
@@ -78,7 +76,7 @@ export default function LeadDetail({ lead, onBack }) {
                   {isOwner ? (
                     <div style={{display:'flex',gap:6,alignItems:'center'}}>
                       <input type="date" value={editScheduledDate} onChange={e=>setEditScheduledDate(e.target.value)}
-                        style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 8px',fontSize:13,background:'#fff',flex:1}} />
+                        style={{flex:1,border:'1px solid var(--line)',borderRadius:'var(--radius-sm)',padding:'4px 8px',fontSize:13,background:'transparent',color:'var(--ink)',outline:'none'}} />
                       <button className="btn btn-sm" onClick={updateScheduledDate}>Save</button>
                     </div>
                   ) : (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRec } from '../store';
-import { Who, Score } from './ui';
+import { Dropdown, Who, Score } from './ui';
 import { Search } from '../icons';
 
 export default function Candidates() {
@@ -17,13 +17,12 @@ export default function Candidates() {
       <div className="card-head">
         <h3>All candidates</h3>
         <div style={{display:'flex',gap:10}}>
-          <select value={stage} onChange={e=>setStage(e.target.value)} style={{border:'1px solid var(--line)',borderRadius:9,padding:'7px 10px',background:'#fff',fontSize:13}}>
-            {['All','New','Screening','Interview','Offer','Hired'].map(s=><option key={s}>{s}</option>)}
-          </select>
+          <Dropdown className="filter-select" value={stage} onChange={e=>setStage(e.target.value)}
+            options={['All','New','Screening','Interview','Offer','Hired']} />
           <div style={{position:'relative'}}>
             <Search width={15} style={{position:'absolute',left:10,top:9,color:'var(--ink-soft)'}} />
             <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
-              style={{border:'1px solid var(--line)',borderRadius:9,padding:'7px 10px 7px 32px',background:'#fff',fontSize:13,width:180}} />
+              style={{border:'1.5px solid var(--line)',borderRadius:8,padding:'7px 10px 7px 32px',background:'transparent',fontSize:13,width:180,outline:'none',transition:'border-color .2s'}} />
           </div>
         </div>
       </div>
