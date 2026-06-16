@@ -300,6 +300,7 @@ tr:hover td { background: var(--sand); }
 /* === Detail split layout === */
 .detail-split { display: flex; gap: 20px; align-items: flex-start; }
 .detail-sidebar { width: 250px; flex-shrink: 0; padding: 0 16px; }
+.detail-sidebar-wrap { display: flex; flex-direction: column; gap: 16px; width: 250px; flex-shrink: 0; position: sticky; top: 20px; align-self: flex-start; }
 .detail-main { flex: 1; min-width: 0; }
 .detail-cards-scroll { max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 4px; }
 .side-fields { border-top: 1px solid var(--line); padding: 12px 4px; display: flex; flex-direction: column; gap: 0; }
@@ -499,10 +500,37 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
 .w-3 { grid-column: span 3; }
 .h-2 { grid-row: span 2; }
 .vstack { display: flex; flex-direction: column; gap: 10px; }
+.events-card { grid-row: span 2; }
+.leaves-stack { grid-column: 4; }
 
 @media (max-width: 820px) {
   .dash-grid { grid-template-columns: repeat(2, 1fr); }
   .w-2, .w-3 { grid-column: span 2; }
   .h-2 { grid-row: span 1; }
   .vstack { grid-column: span 2; grid-row: span 1 !important; }
+  .events-card { grid-column: span 2; grid-row: span 1; }
+  .leaves-stack { grid-column: span 2; grid-row: span 1; }
+}
+
+@media (max-width: 480px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .w-2, .w-3, .vstack, .events-card, .leaves-stack { grid-column: 1 / -1; grid-row: span 1; }
+  .mc { padding: 10px; }
+}
+
+/* Mobile responsive overrides for other pages */
+@media (max-width: 480px) {
+  .att-chart { flex-direction: column; align-items: stretch; gap: 16px; }
+  .lb-cards { flex-direction: column; }
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters .filter-group { min-width: 0; }
+  .salary-visual { flex-direction: column; }
+  .salary-breakdown-legend { font-size: 10px; gap: 8px; }
+  .salary-metrics { grid-template-columns: repeat(2, 1fr); }
+  .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 10px 12px; }
+  .stat-value { font-size: 18px; }
+  .offboarding-pad { padding: 32px 20px !important; }
+  .detail-split .detail-sidebar { position: static; }
+  .detail-sidebar-wrap { position: static !important; width: 100% !important; }
 }

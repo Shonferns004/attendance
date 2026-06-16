@@ -123,11 +123,11 @@ export default function Recruiters() {
               <option value="">All statuses</option>
               {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
-            <select className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: 130 }}>
+            <select className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: '100%', maxWidth: 130 }}>
               <option value="">All sources</option>
               {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <input className="filter-select" placeholder="Search name, email, phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
+            <input className="filter-select" placeholder="Search name, email, phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', maxWidth: 200 }} />
             <button className="btn btn-primary" onClick={() => openForm(null)}><Plus width={16} /> Add Lead</button>
           </div>
         </div>

@@ -100,7 +100,7 @@ export default function Workers({ onSelect, onOffboard }) {
             <span className="sub">{filtered.length} total</span>
             <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name, email, or team…"
-              style={{ marginTop:0, width:220 }} />
+              style={{ marginTop:0, width:'100%', maxWidth:220 }} />
           </div>
         </div>
         <table>

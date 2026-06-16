@@ -24,7 +24,7 @@ export default function Offboarding({ worker, onBack }) {
 
   if (done) {
     return (
-      <div className="card" style={{ textAlign:'center', padding:60 }}>
+      <div className="card offboarding-pad" style={{ textAlign:'center' }}>
         <div style={{ fontSize:48, marginBottom:12 }}>&#10003;</div>
         <h3 style={{ marginBottom:4 }}>{worker.name} offboarded</h3>
         <p style={{ color:'var(--ink-soft)', fontSize:13, marginBottom:20 }}>

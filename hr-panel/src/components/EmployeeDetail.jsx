@@ -320,7 +320,7 @@ export default function EmployeeDetail({ worker, onBack }) {
       {err && <div className="err-banner">{err}</div>}
 
       <div className="detail-split">
-        <div style={{ display:'flex', flexDirection:'column', gap:16, width:250, flexShrink:0, position:'sticky', top:20, alignSelf:'flex-start' }}>
+        <div className="detail-sidebar-wrap">
         <div className="card detail-sidebar">
           <div style={{ textAlign:'center', padding:'24px 0 12px' }}>
             {data.photo_url && !imgErr ? (

@@ -270,7 +270,7 @@ export default function Visualizations() {
       </div>
 
       {/* Upcoming events — fills col 4 rows 2-3 */}
-      <div className="mc" style={{ gridRow: 'span 2', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="mc events-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: 10, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Events</div>
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {upcomingEvents.length ? upcomingEvents.map((ev, i) => (
@@ -327,7 +327,7 @@ export default function Visualizations() {
       </div>
 
       {/* Leaves + Radial stacked */}
-      <div className="vstack" style={{ gridColumn: '4' }}>
+      <div className="vstack leaves-stack">
         <div className="mc" style={{ flex: 1 }}>
           <div style={{ fontSize: 10, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Leaves</div>
           <MiniStacked data={leaveStatus} h={10} />

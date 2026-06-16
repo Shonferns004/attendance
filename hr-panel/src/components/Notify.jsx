@@ -25,7 +25,7 @@ export default function Notify() {
         <div className="card-head"><h3>Send a notification</h3></div>
         <div className="card-pad">
           <div className="form-row" style={{ alignItems:'end' }}>
-            <label className="field" style={{ flex:'0 0 180px' }}>To
+            <label className="field" style={{ flex:'1 1 auto', minWidth:140 }}>To
               <select value={to} onChange={e=>setTo(e.target.value)}>
                 <option>Everyone</option>
                 {DEPTS.map(d => <option key={d}>{d}</option>)}
