@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { useRec, LEAD_STATUSES } from '../store';
 import { ArrowLeft } from '../icons';
 
+const calcAge = (dob) => {
+  if (!dob) return null;
+  const diff = Date.now() - new Date(dob).getTime();
+  return Math.floor(diff / 31557600000);
+};
+
 const statusPill = (s) => {
-  const m = { rejected:'pill-danger', selected:'pill-green', hold:'pill-gold' };
+  const m = { rejected:'pill-danger', selected:'pill-green', hold:'pill-gold', scheduled:'pill-clay', joined:'pill-gray' };
   return <span className={`pill ${m[s] || 'pill-gray'}`}>{s}</span>;
 };
 
@@ -12,6 +18,7 @@ export default function LeadDetail({ lead, onBack }) {
   const myId = user?.id;
   const isOwner = myId && lead.created_by === myId;
   const [noteText, setNoteText] = useState('');
+  const [editScheduledDate, setEditScheduledDate] = useState(lead.scheduled_date || '');
 
   let notes = [];
   try { notes = JSON.parse(lead.notes || '[]'); } catch { notes = lead.notes ? [{ text: lead.notes }] : []; }
@@ -24,7 +31,20 @@ export default function LeadDetail({ lead, onBack }) {
   };
 
   const updateStatus = async (newStatus) => {
-    await updateLead(lead.id, { status: newStatus });
+    const payload = { status: newStatus };
+    if (newStatus === 'scheduled') payload.scheduled_date = editScheduledDate || null;
+    await updateLead(lead.id, payload);
+  };
+
+  const updateScheduledDate = async () => {
+    await updateLead(lead.id, { scheduled_date: editScheduledDate || null });
+  };
+
+  const age = lead.dob ? calcAge(lead.dob) : lead.age;
+  const formatDT = (ts) => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
   };
 
   return (
@@ -37,7 +57,7 @@ export default function LeadDetail({ lead, onBack }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
           <div><strong>Name</strong><p>{lead.name}</p></div>
           <div><strong>Phone</strong><p>{lead.phone || '—'}</p></div>
-          <div><strong>Age</strong><p>{lead.age || '—'}</p></div>
+          <div><strong>DOB</strong><p>{lead.dob ? new Date(lead.dob).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'}{age ? ` (Age: ${age})` : ''}</p></div>
           <div><strong>Source</strong><p>{lead.source}</p></div>
           <div><strong>Status</strong>
             <p style={{marginTop:4}}>
@@ -50,6 +70,26 @@ export default function LeadDetail({ lead, onBack }) {
             </p>
           </div>
           <div><strong>Created by</strong><p>{lead.created_by_name || '—'}</p></div>
+
+          {lead.status === 'scheduled' && (
+            <>
+              <div><strong>Interview date</strong>
+                <p style={{marginTop:4}}>
+                  {isOwner ? (
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      <input type="date" value={editScheduledDate} onChange={e=>setEditScheduledDate(e.target.value)}
+                        style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 8px',fontSize:13,background:'#fff',flex:1}} />
+                      <button className="btn btn-sm" onClick={updateScheduledDate}>Save</button>
+                    </div>
+                  ) : (
+                    lead.scheduled_date ? new Date(lead.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'
+                  )}
+                </p>
+              </div>
+              <div><strong>Scheduled by</strong><p>{lead.scheduled_by_name || '—'}</p></div>
+              <div><strong>Scheduled at</strong><p style={{color:'var(--ink-soft)'}}>{formatDT(lead.scheduled_at)}</p></div>
+            </>
+          )}
         </div>
       </div>
 

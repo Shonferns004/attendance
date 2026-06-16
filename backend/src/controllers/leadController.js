@@ -10,11 +10,11 @@ import {
 
 export const addLead = async (req, res) => {
   try {
-    const { name, phone, age, source, status, notes, recruiter_id, created_by_name } = req.body;
+    const { name, phone, age, source, status, notes, recruiter_id, created_by_name, dob, scheduled_date } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Lead name is required' });
     }
-    const lead = await createLead({
+    const data = {
       name,
       phone: phone || null,
       age: age || null,
@@ -24,7 +24,15 @@ export const addLead = async (req, res) => {
       recruiter_id: recruiter_id || null,
       created_by: req.user.id,
       created_by_name: created_by_name || req.user.name || null,
-    });
+      dob: dob || null,
+      scheduled_date: scheduled_date || null,
+    };
+    if (status === 'scheduled') {
+      data.scheduled_by = req.user.id;
+      data.scheduled_at = new Date().toISOString();
+      data.scheduled_by_name = req.user.name || null;
+    }
+    const lead = await createLead(data);
     return res.status(201).json({ message: 'Lead created successfully', lead });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -62,7 +70,7 @@ export const editLead = async (req, res) => {
       return res.status(403).json({ message: 'You can only edit your own leads' });
     }
 
-    const { name, phone, age, source, status, notes, recruiter_id } = req.body;
+    const { name, phone, age, source, status, notes, recruiter_id, dob, scheduled_date } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (phone !== undefined) updates.phone = phone;
@@ -71,6 +79,13 @@ export const editLead = async (req, res) => {
     if (status) updates.status = status;
     if (notes !== undefined) updates.notes = notes;
     if (recruiter_id !== undefined) updates.recruiter_id = recruiter_id;
+    if (dob !== undefined) updates.dob = dob;
+    if (scheduled_date !== undefined) updates.scheduled_date = scheduled_date;
+    if (status === 'scheduled' && existing.status !== 'scheduled') {
+      updates.scheduled_by = req.user.id;
+      updates.scheduled_at = new Date().toISOString();
+      updates.scheduled_by_name = req.user.name || null;
+    }
     const lead = await updateLead(req.params.id, updates);
     return res.json({ message: 'Lead updated successfully', lead });
   } catch (error) {

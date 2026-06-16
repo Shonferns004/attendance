@@ -12,7 +12,7 @@ const now = () => new Date().toLocaleString('en-GB',{day:'numeric',month:'short'
 export const STAGES = ['New','Screening','Interview','Offer','Hired'];
 
 export const LEAD_SOURCES = ['Walk-in','LinkedIn','Referral','Job Portal','Campus','Social Media','Other'];
-export const LEAD_STATUSES = ['rejected','selected','hold'];
+export const LEAD_STATUSES = ['rejected','selected','hold','scheduled','joined'];
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 

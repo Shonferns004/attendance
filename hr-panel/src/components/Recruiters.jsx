@@ -3,15 +3,26 @@ import { useHR } from '../store';
 import { Pill, Dropdown } from './ui';
 import { Plus, X } from '../icons';
 
+const calcAge = (dob) => {
+  if (!dob) return null;
+  const diff = Date.now() - new Date(dob).getTime();
+  return Math.floor(diff / 31557600000);
+};
+
 const STATUSES = [
-  { key: 'new', label: 'New', color: '#6b7280' },
-  { key: 'contacted', label: 'Contacted', color: '#3b82f6' },
-  { key: 'interviewed', label: 'Interviewed', color: '#f59e0b' },
-  { key: 'offered', label: 'Offered', color: '#8b5cf6' },
-  { key: 'placed', label: 'Placed', color: '#22c55e' },
+  { key: 'hold', label: 'Hold', color: '#f59e0b' },
+  { key: 'selected', label: 'Selected', color: '#22c55e' },
   { key: 'rejected', label: 'Rejected', color: '#ef4444' },
+  { key: 'scheduled', label: 'Scheduled', color: '#3b82f6' },
+  { key: 'joined', label: 'Joined', color: '#8b5cf6' },
 ];
 const SOURCES = ['Walk-in', 'LinkedIn', 'Referral', 'Job Portal', 'Campus', 'Social Media', 'Other'];
+
+const formatDT = (ts) => {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+};
 
 export default function Recruiters() {
   const { leads, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
@@ -21,8 +32,9 @@ export default function Recruiters() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', age: '', source: 'Walk-in', status: 'new', notes: [], recruiter_id: '' });
+  const [form, setForm] = useState({ name: '', phone: '', dob: '', source: 'Walk-in', status: 'hold', notes: [], recruiter_id: '' });
   const [newNote, setNewNote] = useState('');
+  const [tab, setTab] = useState('all');
 
   useEffect(() => {
     fetchLeads();
@@ -40,14 +52,16 @@ export default function Recruiters() {
     return true;
   });
 
+  const scheduledLeads = leads.filter(l => l.status === 'scheduled');
+
   const stats = {
     total: leads.length,
     filtered: filteredLeads.length,
     newToday: leads.filter(l => l.created_at?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length,
-    placed: leads.filter(l => l.status === 'placed').length,
+    joined: leads.filter(l => l.status === 'joined').length,
     rejected: leads.filter(l => l.status === 'rejected').length,
-    active: leads.filter(l => !['placed', 'rejected'].includes(l.status)).length,
-    conversion: leads.length > 0 ? ((leads.filter(l => l.status === 'placed').length / Math.max(1, leads.filter(l => l.status === 'placed' || l.status === 'rejected').length)) * 100).toFixed(1) : 0,
+    active: leads.filter(l => !['rejected', 'joined'].includes(l.status)).length,
+    conversion: leads.length > 0 ? ((leads.filter(l => l.status === 'joined').length / Math.max(1, leads.filter(l => l.status === 'joined' || l.status === 'rejected').length)) * 100).toFixed(1) : 0,
   };
 
   const openForm = (lead) => {
@@ -57,7 +71,7 @@ export default function Recruiters() {
       setForm({
         name: lead.name,
         phone: lead.phone || '',
-        age: lead.age || '',
+        dob: lead.dob || '',
         source: lead.source || 'Walk-in',
         status: lead.status,
         notes,
@@ -65,7 +79,7 @@ export default function Recruiters() {
       });
       setEditingLead(lead);
     } else {
-      setForm({ name: '', phone: '', age: '', source: 'Walk-in', status: 'new', notes: [], recruiter_id: '' });
+      setForm({ name: '', phone: '', dob: '', source: 'Walk-in', status: 'hold', notes: [], recruiter_id: '' });
       setEditingLead(null);
     }
     setNewNote('');
@@ -93,7 +107,7 @@ export default function Recruiters() {
       const payload = {
         name: form.name.trim(),
         phone: form.phone || null,
-        age: form.age ? parseInt(form.age, 10) : null,
+        dob: form.dob || null,
         source: form.source,
         status: form.status,
         notes: JSON.stringify(form.notes),
@@ -109,13 +123,15 @@ export default function Recruiters() {
     } catch {}
   };
 
+  const formAge = form.dob ? calcAge(form.dob) : null;
+
   return (
     <>
       <div className="stats">
         <div className="stat"><div className="stat-label">Total Leads</div><div className="stat-value info">{stats.total}</div></div>
         <div className="stat"><div className="stat-label">New Today</div><div className="stat-value success">{stats.newToday}</div></div>
         <div className="stat"><div className="stat-label">Active</div><div className="stat-value warning">{stats.active}</div></div>
-        <div className="stat"><div className="stat-label">Placed</div><div className="stat-value leave">{stats.placed}</div></div>
+        <div className="stat"><div className="stat-label">Joined</div><div className="stat-value leave">{stats.joined}</div></div>
         <div className="stat"><div className="stat-label">Conversion</div><div className="stat-value info">{stats.conversion}%</div></div>
       </div>
 
@@ -133,7 +149,7 @@ export default function Recruiters() {
                   <div className="recruiter-card-name">{r.name}</div>
                   <div className="recruiter-card-stats">
                     <span><strong>{r.leadsCount || 0}</strong> leads</span>
-                    <span className="recruiter-card-placed"><strong>{r.placed || 0}</strong> placed</span>
+                    <span className="recruiter-card-joined"><strong>{r.placed || 0}</strong> joined</span>
                     <span className="recruiter-card-conv">{r.conversionRate || 0}% conv</span>
                   </div>
                 </div>
@@ -148,61 +164,112 @@ export default function Recruiters() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h3>Leads {filteredLeads.length !== leads.length && <span className="sub">({filteredLeads.length} of {leads.length})</span>}</h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Dropdown className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}
-              options={[{value:'',label:'All statuses'}, ...STATUSES.map(s => ({value:s.key, label:s.label}))]} />
-            <Dropdown className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: '100%', maxWidth: 130 }}
-              options={[{value:'',label:'All sources'}, ...SOURCES.map(s => ({value:s, label:s}))]} />
-            <input className="filter-select" placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', maxWidth: 200 }} />
-            <button className="btn btn-primary" onClick={() => openForm(null)}><Plus width={16} /> Add Lead</button>
+      <div className="tabs" style={{marginBottom:0}}>
+        <button className={`tab ${tab === 'all' ? 'active' : ''}`} onClick={() => setTab('all')}>All</button>
+        <button className={`tab ${tab === 'scheduled' ? 'active' : ''}`} onClick={() => setTab('scheduled')}>
+          Scheduled{scheduledLeads.length > 0 && ` (${scheduledLeads.length})`}
+        </button>
+      </div>
+
+      {tab === 'all' && (
+        <div className="card" style={{marginTop:20}}>
+          <div className="card-head">
+            <h3>Leads {filteredLeads.length !== leads.length && <span className="sub">({filteredLeads.length} of {leads.length})</span>}</h3>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Dropdown className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}
+                options={[{value:'',label:'All statuses'}, ...STATUSES.map(s => ({value:s.key, label:s.label}))]} />
+              <Dropdown className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: '100%', maxWidth: 130 }}
+                options={[{value:'',label:'All sources'}, ...SOURCES.map(s => ({value:s, label:s}))]} />
+              <input className="filter-select" placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', maxWidth: 200 }} />
+              <button className="btn btn-primary" onClick={() => openForm(null)}><Plus width={16} /> Add Lead</button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Age</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Created by</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLeads.map(lead => {
+                  const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
+                  const displayAge = lead.dob ? calcAge(lead.dob) : lead.age;
+                  return (
+                    <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
+                      <td><strong>{lead.name}</strong></td>
+                      <td>{lead.phone || '\u2014'}</td>
+                      <td>{displayAge || '\u2014'}</td>
+                      <td><Pill status={lead.source} /></td>
+                      <td>
+                        <span className="status-dot" style={{ background: st.color }} />
+                        {st.label}
+                      </td>
+                      <td className="ink-soft">{lead.created_by_name || '\u2014'}</td>
+                      <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
+                      <td>
+                        <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredLeads.length === 0 && (
+                  <tr><td colSpan={8}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Age</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Created by</th>
-                <th>Date</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeads.map(lead => {
-                const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
-                const creatorName = lead.creator?.name || '\u2014';
-                return (
+      )}
+
+      {tab === 'scheduled' && (
+        <div className="card" style={{marginTop:20}}>
+          <div className="card-head">
+            <h3>Scheduled interviews</h3>
+            <span className="sub">{scheduledLeads.length} lead{scheduledLeads.length!==1?'s':''}</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Interview date</th>
+                  <th>Scheduled by</th>
+                  <th>Scheduled at</th>
+                  <th>Source</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduledLeads.map(lead => (
                   <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
                     <td><strong>{lead.name}</strong></td>
                     <td>{lead.phone || '\u2014'}</td>
-                    <td>{lead.age || '\u2014'}</td>
+                    <td>{lead.scheduled_date ? new Date(lead.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '\u2014'}</td>
+                    <td>{lead.scheduled_by_name || lead.created_by_name || '\u2014'}</td>
+                    <td className="ink-soft">{formatDT(lead.scheduled_at)}</td>
                     <td><Pill status={lead.source} /></td>
-                    <td>
-                      <span className="status-dot" style={{ background: st.color }} />
-                      {st.label}
-                    </td>
-                    <td className="ink-soft">{creatorName}</td>
-                    <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
                     <td>
                       <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
                     </td>
                   </tr>
-                );
-              })}
-              {filteredLeads.length === 0 && (
-                <tr><td colSpan={8}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+                {scheduledLeads.length === 0 && (
+                  <tr><td colSpan={7}><div className="empty">No scheduled interviews.</div></td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
@@ -221,8 +288,9 @@ export default function Recruiters() {
                 <label className="field">Phone number
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
                 </label>
-                <label className="field">Age
-                  <input type="number" min={0} max={120} value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} placeholder="Age" />
+                <label className="field">DOB
+                  <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
+                  {formAge !== null && <span style={{fontSize:11,color:'var(--ink-soft)',marginTop:2}}>Age: {formAge}</span>}
                 </label>
               </div>
 
