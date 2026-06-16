@@ -108,6 +108,7 @@ function Dashboard() {
   const setActiveAndPersist = useCallback((id) => {
     setActive(id);
     localStorage.setItem('hr_panel', id);
+    requestAnimationFrame(() => { const el = document.querySelector('.content-body'); if (el) el.scrollIntoView(true); });
   }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -121,7 +122,10 @@ function Dashboard() {
   const userRole = user?.role || 'HR';
   const userInitials = userName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
 
-  const handleBack = useCallback(() => setSelectedEmployee(null), []);
+  const handleBack = useCallback(() => {
+    setSelectedEmployee(null);
+    requestAnimationFrame(() => { const el = document.querySelector('.content-body'); if (el) el.scrollIntoView(true); });
+  }, []);
   const handleSelectEmployee = useCallback((worker) => setSelectedEmployee(worker), []);
   const handleOffboard = useCallback((worker) => setOffboardingEmployee(worker), []);
   const handleOffboardBack = useCallback(() => setOffboardingEmployee(null), []);
