@@ -33,9 +33,9 @@ export const addLead = async (req, res) => {
 
 export const listLeads = async (req, res) => {
   try {
-    const { recruiter_id, status, search } = req.query;
-    const filters = { recruiter_id, status, search };
-    if (req.user.role === 'recruiter') filters.created_by = req.user.id;
+    const { recruiter_id, status, search, source } = req.query;
+    const filters = { recruiter_id, status, search, source };
+    if (req.user.role === 'recruiter' && req.query.created_by) filters.created_by = req.query.created_by;
     const leads = await getAllLeads(filters);
     return res.json(leads);
   } catch (error) {

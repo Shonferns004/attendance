@@ -18,9 +18,10 @@ export const getAllLeads = async (filters = {}) => {
 
   if (filters.recruiter_id) query = query.eq('recruiter_id', filters.recruiter_id);
   if (filters.status) query = query.eq('status', filters.status);
+  if (filters.source) query = query.eq('source', filters.source);
   if (filters.created_by) query = query.eq('created_by', filters.created_by);
   if (filters.search) {
-    query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
+    query = query.or(`name.ilike.*${filters.search}*,email.ilike.*${filters.search}*,phone.ilike.*${filters.search}*`);
   }
 
   const { data, error } = await query;

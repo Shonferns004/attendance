@@ -77,17 +77,23 @@ export function RecProvider({ children }) {
   // ── Leads API ──
   const [leads, setLeads] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadFilters, setLeadFilters] = useState({ search: '', status: '', source: '' });
 
   const fetchLeads = useCallback(async (silent) => {
     if (!token) return;
     if (!silent) setLeadsLoading(true);
     try {
-      const res = await fetch(API_BASE + '/leads', { headers:authHeaders });
+      const params = new URLSearchParams();
+      if (leadFilters.search) params.set('search', leadFilters.search);
+      if (leadFilters.status) params.set('status', leadFilters.status);
+      if (leadFilters.source) params.set('source', leadFilters.source);
+      const qs = params.toString();
+      const res = await fetch(API_BASE + '/leads' + (qs ? '?' + qs : ''), { headers:authHeaders });
       if (!res.ok) throw new Error('Failed to fetch leads');
       setLeads(await res.json());
     } catch (e) { log('Error: ' + e.message); }
     if (!silent) setLeadsLoading(false);
-  }, [token, authHeaders, log]);
+  }, [token, authHeaders, log, leadFilters]);
 
   useEffect(() => { if (token) fetchLeads(); }, [token, fetchLeads]);
 
@@ -122,6 +128,8 @@ export function RecProvider({ children }) {
     return result.lead;
   }, [authHeaders, fetchLeads, log]);
 
+  const refreshLeads = useCallback(() => fetchLeads(false), [fetchLeads]);
+
   const transferLead = useCallback(async (id, newOwnerId, newOwnerName) => {
     const res = await fetch(API_BASE + '/leads/' + id + '/transfer', {
       method:'PUT', headers:authHeaders,
@@ -146,7 +154,7 @@ export function RecProvider({ children }) {
   useEffect(() => { if (token) fetchLeadStats(); }, [token, fetchLeadStats]);
 
   return (
-    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, addLead, updateLead, transferLead, leadStats, fetchLeadStats }}>
+    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, refreshLeads, addLead, updateLead, transferLead, leadStats, fetchLeadStats, leadFilters, setLeadFilters }}>
       {children}
     </RecContext.Provider>
   );

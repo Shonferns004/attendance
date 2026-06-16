@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRec, LEAD_SOURCES, LEAD_STATUSES } from '../store';
-import { Plus, Users } from '../icons';
+import { Plus, Users, Search, Funnel, RefreshCw } from '../icons';
 
 const statusPill = (s) => {
   const m = { rejected:'pill-danger', selected:'pill-green', hold:'pill-gold' };
@@ -8,7 +8,7 @@ const statusPill = (s) => {
 };
 
 export default function Leads() {
-  const { leads, leadsLoading, addLead, updateLead, transferLead, currentUser, user } = useRec();
+  const { leads, leadsLoading, addLead, updateLead, transferLead, currentUser, user, refreshLeads, leadFilters, setLeadFilters } = useRec();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -17,6 +17,7 @@ export default function Leads() {
   const [formNotes, setFormNotes] = useState([]);
   const [noteText, setNoteText] = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [searchInput, setSearchInput] = useState(leadFilters.search || '');
 
   const addNoteToForm = () => {
     if (!noteText.trim()) return;
@@ -57,6 +58,14 @@ export default function Leads() {
     try {
       await transferLead(id, id_.trim(), name_.trim());
     } catch (err) { alert(err.message); }
+  };
+
+  const handleSearch = () => {
+    setLeadFilters(p => ({ ...p, search: searchInput }));
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
   };
 
   const openLeads = leads.filter(l => l.status === 'hold' || l.status === 'selected');
@@ -109,6 +118,34 @@ export default function Leads() {
             <button className="btn btn-primary"><Plus width={15}/> Create lead</button>
           </div>
         </form>
+      </div>
+
+      <div className="card" style={{marginBottom:20}}>
+        <div className="card-head">
+          <h3><Funnel width={16}/> Filters</h3>
+        </div>
+        <div className="card-pad" style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'center'}}>
+          <div style={{display:'flex',gap:4,flex:1,minWidth:200}}>
+            <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={handleSearchKeyDown}
+              placeholder="Search by name, email or phone…" style={{flex:1}} />
+            <button className="btn btn-sm" onClick={handleSearch}><Search width={14}/></button>
+          </div>
+          <label className="field" style={{minWidth:130,marginBottom:0}}>
+            <select value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}>
+              <option value="">All statuses</option>
+              {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="field" style={{minWidth:130,marginBottom:0}}>
+            <select value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}>
+              <option value="">All sources</option>
+              {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <button className="btn btn-sm" onClick={refreshLeads} title="Refresh leads">
+            <RefreshCw width={14}/> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{marginBottom:20}}>
