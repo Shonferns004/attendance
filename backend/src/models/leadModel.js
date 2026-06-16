@@ -13,7 +13,7 @@ export const createLead = async (data) => {
 export const getAllLeads = async (filters = {}) => {
   let query = supabase
     .from('leads')
-    .select('*, users!leads_recruiter_id_fkey(name, email), creator:users!leads_created_by_fkey(name)')
+    .select('*, users!leads_recruiter_id_fkey(name, email)')
     .order('created_at', { ascending: false });
 
   if (filters.recruiter_id) query = query.eq('recruiter_id', filters.recruiter_id);
@@ -30,7 +30,7 @@ export const getAllLeads = async (filters = {}) => {
 export const getLeadById = async (id) => {
   const { data, error } = await supabase
     .from('leads')
-    .select('*, users!leads_recruiter_id_fkey(name, email), creator:users!leads_created_by_fkey(name)')
+    .select('*, users!leads_recruiter_id_fkey(name, email)')
     .eq('id', id)
     .single();
   if (error) throw error;
@@ -42,7 +42,7 @@ export const updateLead = async (id, updates) => {
     .from('leads')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .select('*, users!leads_recruiter_id_fkey(name, email), creator:users!leads_created_by_fkey(name)')
+    .select('*, users!leads_recruiter_id_fkey(name, email)')
     .single();
   if (error) throw error;
   return data;

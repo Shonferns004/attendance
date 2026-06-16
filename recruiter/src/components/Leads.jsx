@@ -33,7 +33,7 @@ export default function Leads() {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
     try {
-      await addLead({ name: name.trim(), phone, age: age || null, source, status, notes: formNotes.length ? JSON.stringify(formNotes) : null });
+      await addLead({ name: name.trim(), phone, age: age || null, source, status, notes: formNotes.length ? JSON.stringify(formNotes) : null, created_by_name: currentUser.name });
       setName(''); setPhone(''); setAge(''); setSource('Walk-in'); setStatus('new'); setFormNotes([]);
     } catch (err) { alert(err.message); }
   };
@@ -138,7 +138,7 @@ export default function Leads() {
                         {parsed.length} <span style={{fontSize:10}}>▾</span>
                       </button>
                     </td>
-                    <td style={{color:'var(--ink-soft)'}}>{l.creator?.name || l.created_by || '—'}</td>
+<td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>
                     <td>
                       <button className="btn btn-sm" onClick={() => addNoteToLead(l.id)}>+ Note</button>
                     </td>
@@ -191,7 +191,7 @@ export default function Leads() {
                   <td>{l.age || '—'}</td>
                   <td>{l.source}</td>
                   <td>{statusPill(l.status)}</td>
-                  <td style={{color:'var(--ink-soft)'}}>{l.creator?.name || l.created_by || '—'}</td>
+                  <td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>
                 </tr>
               ))}
             </tbody>

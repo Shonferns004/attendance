@@ -9,7 +9,7 @@ import {
 
 export const addLead = async (req, res) => {
   try {
-    const { name, phone, age, source, status, notes, recruiter_id } = req.body;
+    const { name, phone, age, source, status, notes, recruiter_id, created_by_name } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Lead name is required' });
     }
@@ -22,6 +22,7 @@ export const addLead = async (req, res) => {
       notes: notes || null,
       recruiter_id: recruiter_id || null,
       created_by: req.user.id,
+      created_by_name: created_by_name || req.user.name || null,
     });
     return res.status(201).json({ message: 'Lead created successfully', lead });
   } catch (error) {
