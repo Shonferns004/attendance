@@ -98,7 +98,7 @@ export const unifiedLogin = async (req, res) => {
     return res.json({
       token,
       role: 'worker',
-      user: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, ngo_id: worker.ngo_id, gender: worker.gender, dob: worker.dob },
+      user: { id: worker.id, name: worker.name, email: worker.email, login_id: worker.login_id, ngo_id: worker.ngo_id, gender: worker.gender, dob: worker.dob, department: worker.department },
       message: 'Login successful',
     });
   } catch (error) {

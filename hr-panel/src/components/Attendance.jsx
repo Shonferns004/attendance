@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useHR } from '../store';
+import { Dropdown } from './ui';
 
 const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
@@ -60,7 +61,7 @@ export default function Attendance() {
   const { attendance, fetchAttendance, workers, fetchWorkers } = useHR();
   const [tab, setTab] = useState('today');
   const [punchStatus, setPunchStatus] = useState('');
-  const [deptFilter, setDeptFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [deptFilterH, setDeptFilterH] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -70,6 +71,7 @@ export default function Attendance() {
   const [refreshing, setRefreshing] = useState(false);
 
   const depts = [...new Set((workers || []).map(w => w.department).filter(Boolean))].sort();
+  const roles = [...new Set((workers || []).map(w => (w.department || 'Team Member')).filter(Boolean))].sort();
 
   const todayIST = getIstDateStr(new Date());
   const allToday = attendance.filter(a => a.date === todayIST);
@@ -77,7 +79,11 @@ export default function Attendance() {
   allToday.forEach(r => { todayMap[r.worker_id] = r; });
 
   /* Build a synthetic combined list: every worker gets a row */
-  const todayCombined = (workers || []).filter(w => !deptFilter || w.department === deptFilter).map(w => {
+  const todayCombined = (workers || []).filter(w => {
+    const role = w.department || 'Team Member';
+    if (roleFilter && role !== roleFilter) return false;
+    return true;
+  }).map(w => {
     const record = todayMap[w.id];
     return record || {
       id: 'absent-' + w.id,
@@ -177,16 +183,10 @@ export default function Attendance() {
             <div className="card-title" style={{ justifyContent: 'space-between' }}>
               <span>Workers Present Today &mdash; <span className="today-date">{todayIST}</span></span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select className="filter-select" value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{ maxWidth: 120 }}>
-                  <option value="">All teams</option>
-                  {depts.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <select className="filter-select" value={punchStatus} onChange={e => setPunchStatus(e.target.value)}>
-                  <option value="">All</option>
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                </select>
+                <Dropdown className="role-filter" value={punchStatus} onChange={e => setPunchStatus(e.target.value)}
+                  options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
+                <Dropdown className="role-filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+                  options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />
                 <input className="search-input" type="text" placeholder="Search worker&hellip;" value={searchToday} onChange={e => setSearchToday(e.target.value)} style={{ marginTop: 0, width: 140, padding: '4px 8px', fontSize: 12 }} />
                 <button className="btn btn-sm" onClick={handleRefresh} title="Refresh" disabled={refreshing}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin .6s linear infinite' : 'none' }}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.4-3.4L23 10M1 14l5.1 4.4A9 9 0 0 0 20.5 15"/></svg>
@@ -244,19 +244,13 @@ export default function Attendance() {
               </div>
               <div className="filter-group">
                 <label>Department</label>
-                <select value={deptFilterH} onChange={e => setDeptFilterH(e.target.value)}>
-                  <option value="">All</option>
-                  {depts.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <Dropdown value={deptFilterH} onChange={e => setDeptFilterH(e.target.value)}
+                  options={[{value:'',label:'All'}, ...depts.map(d => ({value:d,label:d}))]} />
               </div>
               <div className="filter-group">
                 <label>Status</label>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                  <option value="">All</option>
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                </select>
+                <Dropdown value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                  options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
               </div>
               <div className="filter-group">
                 <label>Search Worker</label>

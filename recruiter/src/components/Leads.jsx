@@ -1,119 +1,184 @@
 import { useState } from 'react';
-import { useRec } from '../store';
-import { askClaude, mdToHtml } from '../ai';
-import { Spark, Search, Plus } from '../icons';
+import { useRec, LEAD_SOURCES, LEAD_STATUSES } from '../store';
+import { Plus, Users } from '../icons';
 
 export default function Leads() {
-  const { jobs, addCandidate, log } = useRec();
-  const [tab, setTab] = useState('match');
+  const { leads, addLead, updateLead, currentUser } = useRec();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [age, setAge] = useState('');
+  const [source, setSource] = useState(LEAD_SOURCES[0]);
+  const [status, setStatus] = useState(LEAD_STATUSES[0]);
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState('');
+  const [expanded, setExpanded] = useState(null);
 
-  // --- résumé matcher ---
-  const [role, setRole] = useState(jobs[0]?.title || '');
-  const [resume, setResume] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
-  const [err, setErr] = useState('');
-
-  const runMatch = async () => {
-    if (!resume.trim()) return;
-    setBusy(true); setErr(''); setResult(null);
-    try {
-      const job = jobs.find(j => j.title === role);
-      const prompt = `Evaluate this candidate for the role of "${role}" (department: ${job?.dept || 'N/A'}).\n\nCANDIDATE RÉSUMÉ / NOTES:\n${resume}\n\nRespond in this exact format:\nSCORE: <number 0-100>\nNAME: <candidate name or "Unknown">\nThen a short markdown breakdown with these sections: **Strengths** (2-4 bullets), **Gaps** (1-3 bullets), **Verdict** (one sentence recommendation).`;
-      const text = await askClaude(prompt);
-      const score = parseInt((text.match(/SCORE:\s*(\d+)/i)||[])[1] || '75', 10);
-      const name = ((text.match(/NAME:\s*(.+)/i)||[])[1] || 'Unknown candidate').trim();
-      const body = text.replace(/SCORE:.*\n?/i,'').replace(/NAME:.*\n?/i,'').trim();
-      setResult({ score, name, body });
-    } catch (e) { setErr(e.message); }
-    setBusy(false);
+  const addNoteToForm = () => {
+    if (!noteText.trim()) return;
+    const n = { text: noteText.trim(), date: new Date().toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}), by: currentUser.name };
+    setNotes(p => [...p, n]);
+    setNoteText('');
   };
 
-  const addToPipeline = () => {
-    if (!result) return;
-    addCandidate({ name: result.name, role, score: result.score, source:'AI screen', exp:'—', skills:[] });
-    setResult(null); setResume('');
+  const removeFormNote = (i) => setNotes(p => p.filter((_,idx) => idx !== i));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) return;
+    addLead({ name: name.trim(), phone, age: age || null, source, status, notes: JSON.stringify(notes) });
+    setName(''); setPhone(''); setAge(''); setSource(LEAD_SOURCES[0]); setStatus(LEAD_STATUSES[0]); setNotes([]);
   };
 
-  // --- sourcing strategy ---
-  const [srole, setSrole] = useState(jobs[0]?.title || '');
-  const [sbusy, setSbusy] = useState(false);
-  const [strategy, setStrategy] = useState('');
-
-  const runStrategy = async () => {
-    setSbusy(true); setStrategy('');
-    try {
-      const text = await askClaude(`Create a concise candidate sourcing strategy for hiring a "${srole}". Use markdown with sections: **Where to look** (channels & communities), **Search keywords** (boolean-style), **Outreach hook** (one short message template). Keep it practical and under 250 words.`);
-      setStrategy(text);
-    } catch (e) { setStrategy('Could not reach the AI service: ' + e.message); }
-    setSbusy(false);
+  const addNoteToLead = (id) => {
+    const t = prompt('Add a note:');
+    if (!t || !t.trim()) return;
+    const n = { text: t.trim(), date: new Date().toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}), by: currentUser.name };
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+    const existing = JSON.parse(lead.notes || '[]');
+    updateLead(id, { notes: JSON.stringify([...existing, n]) });
   };
+
+  const statusPill = (s) => {
+    const cls = s==='New'?'pill-gray':s==='Contacted'?'pill-gold':s==='Qualified'?'pill-clay':s==='Proposed'?'pill-gold':s==='In Negotiation'?'pill-clay':s==='Converted'?'pill-green':'pill-danger';
+    return <span className={`pill ${cls}`}>{s}</span>;
+  };
+
+  const openLeads = leads.filter(l => l.status !== 'Converted' && l.status !== 'Lost');
+  const converted = leads.filter(l => l.status === 'Converted' || l.status === 'Lost');
 
   return (
     <>
-      <div className="ai-banner">
-        <div className="spark"><Spark width={20} /></div>
-        <div><h4>AI Leads Assistant</h4><p>Score résumés against a role and generate sourcing strategies — powered by Claude.</p></div>
-      </div>
-
-      <div className="tabs">
-        <button className={`tab ${tab==='match'?'active':''}`} onClick={()=>setTab('match')}>Résumé matcher</button>
-        <button className={`tab ${tab==='source'?'active':''}`} onClick={()=>setTab('source')}>Sourcing strategy</button>
-      </div>
-
-      {tab==='match' && (
-        <div className="card">
-          <div className="card-head"><h3><Search width={18}/> Match a candidate</h3></div>
-          <div className="card-pad">
-            <div className="form-row" style={{marginBottom:14}}>
-              <label className="field" style={{flex:'0 0 280px'}}>Role
-                <select value={role} onChange={e=>setRole(e.target.value)}>
-                  {jobs.map(j => <option key={j.id}>{j.title}</option>)}
-                </select>
-              </label>
-            </div>
-            <label className="field">Paste résumé or candidate notes
-              <textarea className="textarea" value={resume} onChange={e=>setResume(e.target.value)}
-                placeholder="Paste a résumé, LinkedIn summary, or your notes about the candidate..." />
+      <div className="card" style={{marginBottom:20}}>
+        <div className="card-head"><h3><Users width={18}/> Add new lead</h3></div>
+        <form className="card-pad" onSubmit={handleSubmit}>
+          <div className="form-row">
+            <label className="field">Name
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Arun Sharma" required />
             </label>
-            <div style={{marginTop:14,display:'flex',gap:10,alignItems:'center'}}>
-              <button className="btn btn-primary" onClick={runMatch} disabled={busy}>
-                {busy ? <><span className="spinner"/> Analysing…</> : <><Spark width={16}/> Score candidate</>}
-              </button>
-              {err && <span style={{color:'var(--danger)',fontSize:12}}>{err}</span>}
-            </div>
-
-            {result && (
-              <div className="ai-out">
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                  <strong style={{fontSize:15}}>{result.name}</strong>
-                  <span style={{fontFamily:'Fraunces,serif',fontSize:24,color:'var(--sage)'}}>{result.score}<span style={{fontSize:13,color:'var(--ink-soft)'}}>/100</span></span>
-                </div>
-                <div className="match-bar"><i style={{width:result.score+'%'}} /></div>
-                <div dangerouslySetInnerHTML={{__html: mdToHtml(result.body)}} style={{marginTop:12}} />
-                <button className="btn btn-sm" style={{marginTop:6}} onClick={addToPipeline}><Plus width={14}/> Add to pipeline</button>
+            <label className="field">Phone
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="e.g. 9876543210" required />
+            </label>
+            <label className="field">Age
+              <input type="number" value={age} onChange={e=>setAge(e.target.value)} placeholder="e.g. 28" min={0} max={120} />
+            </label>
+            <label className="field">Source
+              <select value={source} onChange={e=>setSource(e.target.value)}>
+                {LEAD_SOURCES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="field">Status
+              <select value={status} onChange={e=>setStatus(e.target.value)}>
+                {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </label>
+          </div>
+          <div style={{marginTop:12}}>
+            <label className="field">Notes
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:4}}>
+                {notes.map((n,i) => (
+                  <span key={i} style={{background:'var(--sage-soft)',padding:'3px 8px',borderRadius:6,fontSize:12,display:'inline-flex',alignItems:'center',gap:6}}>
+                    {n.text}
+                    <button type="button" onClick={()=>removeFormNote(i)} style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>×</button>
+                  </span>
+                ))}
               </div>
-            )}
+              <div style={{display:'flex',gap:8,marginTop:6}}>
+                <input value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="Type a note and add..." style={{flex:1}} />
+                <button type="button" className="btn btn-sm" onClick={addNoteToForm}>+ Add</button>
+              </div>
+            </label>
           </div>
-        </div>
-      )}
+          <div style={{marginTop:14}}>
+            <button className="btn btn-primary"><Plus width={15}/> Create lead</button>
+          </div>
+        </form>
+      </div>
 
-      {tab==='source' && (
-        <div className="card">
-          <div className="card-head"><h3><Spark width={18}/> Sourcing strategy</h3></div>
-          <div className="card-pad">
-            <div className="form-row">
-              <label className="field" style={{flex:'0 0 280px'}}>Role
-                <select value={srole} onChange={e=>setSrole(e.target.value)}>
-                  {jobs.map(j => <option key={j.id}>{j.title}</option>)}
-                </select>
-              </label>
-              <button className="btn btn-primary" onClick={runStrategy} disabled={sbusy}>
-                {sbusy ? <><span className="spinner"/> Thinking…</> : <><Spark width={16}/> Generate strategy</>}
-              </button>
+      <div className="card" style={{marginBottom:20}}>
+        <div className="card-head"><h3>Open leads</h3><span className="sub">{openLeads.length} leads</span></div>
+        {openLeads.length === 0 ? (
+          <div className="empty">No open leads yet.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th><th>Phone</th><th>Age</th><th>Source</th><th>Status</th><th>Notes</th><th>Created by</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {openLeads.map(l => {
+                const leadNotes = JSON.parse(l.notes || '[]');
+                const isExpanded = expanded === l.id;
+                return (
+                  <tr key={l.id}>
+                    <td style={{fontWeight:500}}>{l.name}</td>
+                    <td style={{color:'var(--ink-soft)'}}>{l.phone}</td>
+                    <td>{l.age || '—'}</td>
+                    <td>{l.source}</td>
+                    <td>{statusPill(l.status)}</td>
+                    <td>
+                      <button className="btn btn-icon" onClick={() => setExpanded(isExpanded ? null : l.id)} title="View notes">
+                        {leadNotes.length} <span style={{fontSize:10}}>▾</span>
+                      </button>
+                    </td>
+                    <td style={{color:'var(--ink-soft)'}}>{l.created_by}</td>
+                    <td>
+                      <button className="btn btn-sm" onClick={() => addNoteToLead(l.id)}>+ Note</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {openLeads.some(l => expanded === l.id) && expanded && (() => {
+        const lead = leads.find(l => l.id === expanded);
+        if (!lead) return null;
+        const notes = JSON.parse(lead.notes || '[]');
+        return (
+          <div className="card" style={{marginBottom:20}}>
+            <div className="card-head"><h3>Notes — {lead.name}</h3><button className="btn btn-sm" onClick={() => setExpanded(null)}>Close</button></div>
+            <div className="card-pad">
+              {notes.length === 0 ? (
+                <div className="empty">No notes for this lead.</div>
+              ) : (
+                notes.map((n,i) => (
+                  <div key={i} style={{padding:'10px 0',borderBottom:i<notes.length-1?'1px solid var(--line)':'none',fontSize:13}}>
+                    <div>{n.text}</div>
+                    <div style={{fontSize:11,color:'var(--ink-soft)',marginTop:3}}>{n.by} · {n.date}</div>
+                  </div>
+                ))
+              )}
             </div>
-            {strategy && <div className="ai-out" dangerouslySetInnerHTML={{__html: mdToHtml(strategy)}} />}
           </div>
+        );
+      })()}
+
+      {converted.length > 0 && (
+        <div className="card">
+          <div className="card-head"><h3>Converted / Lost</h3><span className="sub">{converted.length} leads</span></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th><th>Phone</th><th>Age</th><th>Source</th><th>Status</th><th>Created by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {converted.map(l => (
+                <tr key={l.id}>
+                  <td style={{fontWeight:500}}>{l.name}</td>
+                  <td style={{color:'var(--ink-soft)'}}>{l.phone}</td>
+                  <td>{l.age || '—'}</td>
+                  <td>{l.source}</td>
+                  <td>{statusPill(l.status)}</td>
+                  <td style={{color:'var(--ink-soft)'}}>{l.created_by}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>

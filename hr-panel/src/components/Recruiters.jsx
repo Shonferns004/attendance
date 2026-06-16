@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../store';
-import { Pill } from './ui';
+import { Pill, Dropdown } from './ui';
 import { Plus, X } from '../icons';
 
 const STATUSES = [
@@ -13,18 +13,16 @@ const STATUSES = [
 ];
 const SOURCES = ['Walk-in', 'LinkedIn', 'Referral', 'Job Portal', 'Campus', 'Social Media', 'Other'];
 
-const STATUS_LABELS = {};
-STATUSES.forEach(s => { STATUS_LABELS[s.key] = s.label; });
-
 export default function Recruiters() {
-  const { leads, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters } = useHR();
+  const { leads, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
   const [recruiterFilter, setRecruiterFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', source: 'Walk-in', status: 'new', notes: '', recruiter_id: '' });
+  const [form, setForm] = useState({ name: '', phone: '', age: '', source: 'Walk-in', status: 'new', notes: [], recruiter_id: '' });
+  const [newNote, setNewNote] = useState('');
 
   useEffect(() => {
     fetchLeads();
@@ -37,7 +35,7 @@ export default function Recruiters() {
     if (sourceFilter && l.source !== sourceFilter) return false;
     if (search) {
       const s = search.toLowerCase();
-      if (!l.name.toLowerCase().includes(s) && !(l.email || '').toLowerCase().includes(s) && !(l.phone || '').includes(s)) return false;
+      if (!l.name.toLowerCase().includes(s) && !(l.phone || '').includes(s)) return false;
     }
     return true;
   });
@@ -54,22 +52,57 @@ export default function Recruiters() {
 
   const openForm = (lead) => {
     if (lead) {
-      setForm({ name: lead.name, phone: lead.phone || '', email: lead.email || '', source: lead.source || 'Walk-in', status: lead.status, notes: lead.notes || '', recruiter_id: lead.recruiter_id || '' });
+      let notes = [];
+      try { notes = typeof lead.notes === 'string' ? JSON.parse(lead.notes) : (lead.notes || []); } catch { notes = []; }
+      setForm({
+        name: lead.name,
+        phone: lead.phone || '',
+        age: lead.age || '',
+        source: lead.source || 'Walk-in',
+        status: lead.status,
+        notes,
+        recruiter_id: lead.recruiter_id || '',
+      });
       setEditingLead(lead);
     } else {
-      setForm({ name: '', phone: '', email: '', source: 'Walk-in', status: 'new', notes: '', recruiter_id: '' });
+      setForm({ name: '', phone: '', age: '', source: 'Walk-in', status: 'new', notes: [], recruiter_id: '' });
       setEditingLead(null);
     }
+    setNewNote('');
     setShowForm(true);
+  };
+
+  const addNote = () => {
+    if (!newNote.trim()) return;
+    const note = {
+      text: newNote.trim(),
+      date: new Date().toISOString(),
+      added_by: user?.name || 'HR User',
+    };
+    setForm(f => ({ ...f, notes: [...f.notes, note] }));
+    setNewNote('');
+  };
+
+  const removeNote = (idx) => {
+    setForm(f => ({ ...f, notes: f.notes.filter((_, i) => i !== idx) }));
   };
 
   const submitForm = async () => {
     if (!form.name.trim()) return;
     try {
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone || null,
+        age: form.age ? parseInt(form.age, 10) : null,
+        source: form.source,
+        status: form.status,
+        notes: JSON.stringify(form.notes),
+        recruiter_id: form.recruiter_id || null,
+      };
       if (editingLead) {
-        await updateLead(editingLead.id, form);
+        await updateLead(editingLead.id, payload);
       } else {
-        await addLead(form);
+        await addLead(payload);
       }
       setShowForm(false);
       setEditingLead(null);
@@ -119,15 +152,11 @@ export default function Recruiters() {
         <div className="card-head">
           <h3>Leads {filteredLeads.length !== leads.length && <span className="sub">({filteredLeads.length} of {leads.length})</span>}</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}>
-              <option value="">All statuses</option>
-              {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
-            <select className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: '100%', maxWidth: 130 }}>
-              <option value="">All sources</option>
-              {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <input className="filter-select" placeholder="Search name, email, phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', maxWidth: 200 }} />
+            <Dropdown className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}
+              options={[{value:'',label:'All statuses'}, ...STATUSES.map(s => ({value:s.key, label:s.label}))]} />
+            <Dropdown className="filter-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ width: '100%', maxWidth: 130 }}
+              options={[{value:'',label:'All sources'}, ...SOURCES.map(s => ({value:s, label:s}))]} />
+            <input className="filter-select" placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', maxWidth: 200 }} />
             <button className="btn btn-primary" onClick={() => openForm(null)}><Plus width={16} /> Add Lead</button>
           </div>
         </div>
@@ -136,10 +165,11 @@ export default function Recruiters() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Contact</th>
+                <th>Phone</th>
+                <th>Age</th>
                 <th>Source</th>
                 <th>Status</th>
-                <th>Recruiter</th>
+                <th>Created by</th>
                 <th>Date</th>
                 <th></th>
               </tr>
@@ -147,19 +177,18 @@ export default function Recruiters() {
             <tbody>
               {filteredLeads.map(lead => {
                 const st = STATUSES.find(s => s.key === lead.status) || STATUSES[0];
+                const creatorName = lead.creator?.name || '\u2014';
                 return (
                   <tr key={lead.id} className="rec-lead-row" onClick={() => openForm(lead)} style={{ cursor: 'pointer' }}>
                     <td><strong>{lead.name}</strong></td>
-                    <td>
-                      {lead.email && <div>{lead.email}</div>}
-                      {lead.phone && <div className="ink-soft">{lead.phone}</div>}
-                    </td>
+                    <td>{lead.phone || '\u2014'}</td>
+                    <td>{lead.age || '\u2014'}</td>
                     <td><Pill status={lead.source} /></td>
                     <td>
                       <span className="status-dot" style={{ background: st.color }} />
                       {st.label}
                     </td>
-                    <td>{lead.users?.name || '\u2014'}</td>
+                    <td className="ink-soft">{creatorName}</td>
                     <td className="ink-soft">{lead.created_at?.slice(0, 10)}</td>
                     <td>
                       <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openForm(lead); }}>Edit</button>
@@ -168,7 +197,7 @@ export default function Recruiters() {
                 );
               })}
               {filteredLeads.length === 0 && (
-                <tr><td colSpan={7}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
+                <tr><td colSpan={8}><div className="empty">No leads found. <button className="btn btn-sm" onClick={() => openForm(null)}>Add one</button></div></td></tr>
               )}
             </tbody>
           </table>
@@ -183,38 +212,62 @@ export default function Recruiters() {
               <button className="btn btn-icon" onClick={() => setShowForm(false)}><X width={18} /></button>
             </div>
             <div className="modal-body">
+
               <label className="field">Name *
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" autoFocus />
               </label>
+
               <div className="form-row">
-                <label className="field">Phone
+                <label className="field">Phone number
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
                 </label>
-                <label className="field">Email
-                  <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email address" />
+                <label className="field">Age
+                  <input type="number" min={0} max={120} value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} placeholder="Age" />
                 </label>
               </div>
+
               <div className="form-row">
                 <label className="field">Source
-                  <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}>
-                    {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <Dropdown value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+                    options={SOURCES.map(s => ({value:s, label:s}))} />
                 </label>
                 <label className="field">Status
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                  </select>
+                  <Dropdown value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                    options={STATUSES.map(s => ({value:s.key, label:s.label}))} />
                 </label>
               </div>
+
               <label className="field">Assigned to
-                <select value={form.recruiter_id} onChange={e => setForm(f => ({ ...f, recruiter_id: e.target.value }))}>
-                  <option value="">\u2014 Unassigned \u2014</option>
-                  {recruiters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
+                <Dropdown value={form.recruiter_id} onChange={e => setForm(f => ({ ...f, recruiter_id: e.target.value }))}
+                  options={[{value:'',label:'\u2014 Unassigned \u2014'}, ...recruiters.map(r => ({value:r.id, label:r.name}))]} />
               </label>
-              <label className="field">Notes
-                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Any notes\u2026" />
-              </label>
+
+              <label className="field" style={{ marginTop: 4 }}>Notes</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <input value={newNote} onChange={e => setNewNote(e.target.value)}
+                  placeholder="Add a note…" style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontSize: 13, outline: 'none', background: 'var(--paper)', color: 'var(--ink)', fontFamily: 'inherit' }}
+                  onKeyDown={e => { if (e.key === 'Enter') addNote(); }} />
+                <button className="btn btn-sm" onClick={addNote} disabled={!newNote.trim()}>Add</button>
+              </div>
+              {form.notes.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>No notes yet.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {form.notes.map((n, i) => (
+                    <div key={i} style={{ padding: '8px 10px', background: 'var(--sand)', borderRadius: 'var(--radius-sm)', fontSize: 13, position: 'relative' }}>
+                      <div style={{ paddingRight: 20 }}>{n.text}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>
+                        {n.added_by} · {new Date(n.date).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                      </div>
+                      <button className="btn btn-icon" onClick={() => removeNote(i)}
+                        style={{ position: 'absolute', top: 4, right: 4, padding: 2, fontSize: 14, lineHeight: 1, color: 'var(--danger)' }} title="Remove note">
+                        <X width={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>

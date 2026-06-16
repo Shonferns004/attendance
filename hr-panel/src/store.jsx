@@ -15,7 +15,7 @@ export const avatarTint = tint;
 
 const now = () => new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 
-export const DEPTS = ['FRO','Admin','HR','Housekeeping','CSR','Digital','Manager','Event Manager','Telecalling','NA'];
+export const DEPTS = ['FRO','Admin','HR-Recruiter','Housekeeping','CSR','Digital','Manager','Event Manager','NA'];
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 

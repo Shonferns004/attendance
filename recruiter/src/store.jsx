@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const RecContext = createContext(null);
 export const useRec = () => useContext(RecContext);
@@ -11,10 +11,44 @@ export const avatarTint = (hex) => hex + '22';
 const now = () => new Date().toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 export const STAGES = ['New','Screening','Interview','Offer','Hired'];
 
+export const LEAD_SOURCES = ['Walk-in','LinkedIn','Referral','Job Portal','Campus','Social Media','Other'];
+export const LEAD_STATUSES = ['New','Contacted','Qualified','Proposed','In Negotiation','Converted','Lost'];
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+
 let _id = 100;
 const nid = () => ++_id;
 
 export function RecProvider({ children }) {
+  const [token, setToken] = useState(() => localStorage.getItem('rec_token') || '');
+  const [user, setUser] = useState(() => {
+    try { const u = localStorage.getItem('rec_user'); return u ? JSON.parse(u) : null; }
+    catch { return null; }
+  });
+  const currentUser = useMemo(() => user ? { name:user.name, role:'Recruiter' } : { name:'Unknown', role:'' }, [user]);
+
+  const login = useCallback(async (identifier, password) => {
+    const res = await fetch(API_BASE + '/auth/login', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ identifier, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Login failed');
+    if (data.role === 'worker' && data.user?.department !== 'HR-Recruiter') {
+      throw new Error('Access denied. Your department is "' + (data.user?.department || 'not set') + '". Only HR-Recruitment staff can access this panel.');
+    }
+    setToken(data.token);
+    setUser(data.user);
+    localStorage.setItem('rec_token', data.token);
+    localStorage.setItem('rec_user', JSON.stringify(data.user));
+    return data;
+  }, []);
+
+  const logout = useCallback(() => {
+    setToken(''); setUser(null);
+    localStorage.removeItem('rec_token');
+    localStorage.removeItem('rec_user');
+  }, []);
   const [candidates, setCandidates] = useState([
     { id:1, name:'Meera Krishnan', role:'Senior Frontend Engineer', stage:'Interview', score:91, source:'Referral', exp:'7 yrs', skills:['React','TypeScript','Design systems'], applied:'2026-06-02' },
     { id:2, name:'Daniel Osei',     role:'Senior Frontend Engineer', stage:'Screening', score:78, source:'LinkedIn', exp:'5 yrs', skills:['Vue','JavaScript','CSS'], applied:'2026-06-05' },
@@ -37,8 +71,15 @@ export function RecProvider({ children }) {
   const addCandidate = (c) => { setCandidates(p => [{ ...c, id:nid(), stage:'New', score:c.score||75, applied:new Date().toISOString().slice(0,10) }, ...p]); log(`Added candidate ${c.name}`); };
   const addJob = (j) => { setJobs(p => [...p, { ...j, id:nid(), applicants:0, status:'Open' }]); log(`Opened role · ${j.title}`); };
 
+  const [leads, setLeads] = useState([
+    { id:1, name:'Arun Sharma', phone:'9876543210', age:28, source:'LinkedIn', status:'New', notes:'[]', created_by:'Riya Kapoor', created_at:now() },
+    { id:2, name:'Priya Patel',  phone:'9988776655', age:32, source:'Referral', status:'Contacted', notes: JSON.stringify([{text:'Spoke on phone, interested in Senior role', date:now(), by:'Riya Kapoor'}]), created_by:'Riya Kapoor', created_at:now() },
+  ]);
+  const addLead = useCallback((l) => { setLeads(p => [{ ...l, id:nid(), notes:'[]', created_by:currentUser.name, created_at:now() }, ...p]); log(`Lead added · ${l.name}`); }, [log, currentUser.name]);
+  const updateLead = useCallback((id, upd) => { setLeads(p => p.map(l => { if(l.id===id) { log(`Lead updated · ${l.name}`); return {...l,...upd}; } return l; })); }, [log]);
+
   return (
-    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, moveCandidate, addCandidate, addJob, log }}>
+    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, addLead, updateLead }}>
       {children}
     </RecContext.Provider>
   );

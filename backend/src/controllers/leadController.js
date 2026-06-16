@@ -9,18 +9,19 @@ import {
 
 export const addLead = async (req, res) => {
   try {
-    const { name, phone, email, source, status, notes, recruiter_id } = req.body;
+    const { name, phone, age, source, status, notes, recruiter_id } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Lead name is required' });
     }
     const lead = await createLead({
       name,
       phone: phone || null,
-      email: email || null,
+      age: age || null,
       source: source || 'Walk-in',
       status: status || 'new',
       notes: notes || null,
       recruiter_id: recruiter_id || null,
+      created_by: req.user.id,
     });
     return res.status(201).json({ message: 'Lead created successfully', lead });
   } catch (error) {
@@ -50,11 +51,11 @@ export const getLead = async (req, res) => {
 
 export const editLead = async (req, res) => {
   try {
-    const { name, phone, email, source, status, notes, recruiter_id } = req.body;
+    const { name, phone, age, source, status, notes, recruiter_id } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (phone !== undefined) updates.phone = phone;
-    if (email !== undefined) updates.email = email;
+    if (age !== undefined) updates.age = age;
     if (source) updates.source = source;
     if (status) updates.status = status;
     if (notes !== undefined) updates.notes = notes;

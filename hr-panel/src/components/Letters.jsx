@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../store';
+import { Dropdown } from './ui';
 import { FileTxt } from '../icons';
 
 const TYPES = ['Offer letter','Experience letter','Promotion letter','Warning letter','Relieving letter'];
@@ -44,14 +45,11 @@ export default function Letters() {
       <div className="card-pad">
         <div className="form-row">
           <label className="field">Worker
-            <select value={name} onChange={e=>setName(e.target.value)}>
-              {workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
-            </select>
+            <Dropdown value={name} onChange={e=>setName(e.target.value)}
+              options={workers.map(w => ({value: w.name, label: w.name}))} />
           </label>
           <label className="field">Letter type
-            <select value={type} onChange={e=>setType(e.target.value)}>
-              {TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
+            <Dropdown value={type} onChange={e=>setType(e.target.value)} options={TYPES} />
           </label>
           <button className="btn btn-primary" onClick={generate}><FileTxt width={16}/> Generate</button>
         </div>

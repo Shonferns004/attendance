@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useHR } from '../store';
+import { Dropdown } from './ui';
 import { Send, Bell } from '../icons';
 
 export default function Notify() {
@@ -26,10 +27,7 @@ export default function Notify() {
         <div className="card-pad">
           <div className="form-row" style={{ alignItems:'end' }}>
             <label className="field" style={{ flex:'1 1 auto', minWidth:140 }}>To
-              <select value={to} onChange={e=>setTo(e.target.value)}>
-                <option>Everyone</option>
-                {DEPTS.map(d => <option key={d}>{d}</option>)}
-              </select>
+              <Dropdown value={to} onChange={e=>setTo(e.target.value)} options={['Everyone', ...DEPTS]} />
             </label>
             <label className="field" style={{ flex:3 }}>Message
               <input value={msg} onChange={e=>setMsg(e.target.value)} placeholder="All-hands at 3 PM in the lounge"

@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useHR } from '../store';
-import { Who } from './ui';
+import { Who, Dropdown } from './ui';
 import { Plus, Trash } from '../icons';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+
+function load() {
+  try { return JSON.parse(sessionStorage.getItem('wrk') || '{}'); } catch { return {}; }
+}
+function save(v) {
+  try { const d = load(); sessionStorage.setItem('wrk', JSON.stringify({ ...d, ...v })); } catch {}
+}
 
 export default function Workers({ onSelect, onOffboard }) {
   const { workers, addWorker, DEPTS, ngos, fetchWorkers, fetchNGOs } = useHR();
@@ -11,8 +18,9 @@ export default function Workers({ onSelect, onOffboard }) {
   const [dept, setDept] = useState(DEPTS[0]);
   const [ngoId, setNgoId] = useState('');
   const [err, setErr] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(load().search || '');
+  const [roleFilter, setRoleFilter] = useState(load().roleFilter || '');
+  const [page, setPage] = useState(load().page || 1);
   const [salaryMap, setSalaryMap] = useState({});
   const PAGE_SIZE = 20;
   const tableRef = useRef(null);
@@ -33,19 +41,26 @@ export default function Workers({ onSelect, onOffboard }) {
       .catch(() => {});
   }, []);
 
-  const filtered = search.trim()
-    ? workers.filter(w =>
-        w.name.toLowerCase().includes(search.toLowerCase()) ||
-        (w.email || '').toLowerCase().includes(search.toLowerCase()) ||
-        (w.department || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : workers;
+  const roles = [...new Set(workers.map(w => (w.department || 'Team Member')).filter(Boolean))].sort();
+  const filtered = workers.filter(w => {
+    const role = w.department || 'Team Member';
+    if (roleFilter && role !== roleFilter) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return w.name.toLowerCase().includes(q) ||
+      (w.email || '').toLowerCase().includes(q) ||
+      role.toLowerCase().includes(q);
+  });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [search]);
+  const mountedSearch = useRef(false);
+  useEffect(() => { if (!mountedSearch.current) { mountedSearch.current = true; return; } save({ search, page: 1 }); setPage(1); }, [search]);
+  const mountedRole = useRef(false);
+  useEffect(() => { if (!mountedRole.current) { mountedRole.current = true; return; } save({ roleFilter, page: 1 }); setPage(1); }, [roleFilter]);
+  useEffect(() => { save({ page }); }, [page]);
   useEffect(() => {
     if (tableRef.current) tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [safePage]);
@@ -78,15 +93,11 @@ export default function Workers({ onSelect, onOffboard }) {
                 onKeyDown={e=>e.key==='Enter'&&submit()} />
             </label>
             <label className="field">Team
-              <select value={dept} onChange={e=>setDept(e.target.value)}>
-                {DEPTS.map(d => <option key={d}>{d}</option>)}
-              </select>
+              <Dropdown value={dept} onChange={e=>setDept(e.target.value)} options={DEPTS} />
             </label>
             <label className="field">NGO
-              <select value={ngoId} onChange={e=>setNgoId(e.target.value)}>
-                <option value="">NA</option>
-                {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
-              </select>
+              <Dropdown value={ngoId} onChange={e=>setNgoId(e.target.value)}
+                options={[{value:'',label:'NA'}, ...ngos.map(n => ({value:n.id, label:n.name}))]} />
             </label>
             <button className="btn btn-primary" onClick={submit}><Plus width={16}/> Add employee</button>
           </div>
@@ -96,11 +107,13 @@ export default function Workers({ onSelect, onOffboard }) {
 
       <div className="card" ref={tableRef}>
         <div className="card-head"><h3>Employees</h3>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div className="search-input-wrap">
             <span className="sub">{filtered.length} total</span>
+            <Dropdown className="role-filter" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}
+              options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />
             <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name, email, or team…"
-              style={{ marginTop:0, width:'100%', maxWidth:220 }} />
+              style={{ marginTop:0, maxWidth:200 }} />
           </div>
         </div>
         <table>

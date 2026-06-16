@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useHR } from '../store';
+import { Dropdown } from './ui';
 import { Plus, Trash } from '../icons';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -172,10 +173,8 @@ export default function Holidays() {
               </label>
               <div className="form-row" style={{ gap: 8 }}>
                 <label className="field" style={{ flex: 1 }}>Type
-                  <select value={type} onChange={e => setType(e.target.value)}>
-                    <option value="holiday">Holiday</option>
-                    <option value="event">Event</option>
-                  </select>
+                  <Dropdown value={type} onChange={e => setType(e.target.value)}
+                    options={[{value:'holiday',label:'Holiday'},{value:'event',label:'Event'}]} />
                 </label>
                 <label className="toggle-wrap">
                   <span className="toggle-lbl">Recurring</span>

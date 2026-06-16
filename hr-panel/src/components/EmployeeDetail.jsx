@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR, avatarColor, avatarTint, initials, DEPTS } from '../store';
 import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
+import { Dropdown } from './ui';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -380,20 +381,16 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                   {editing ? (
                     <div className="detail-field">
                       <span className="detail-label">Department</span>
-                      <select value={form.department} onChange={setField('department')}
-                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
-                        {DEPTS.map(d => <option key={d}>{d}</option>)}
-                      </select>
+                      <Dropdown value={form.department} onChange={setField('department')}
+                        style={{ width:'100%' }} options={DEPTS} />
                     </div>
                   ) : <Field label="Department" value={data.department} />}
                   {editing ? (
                     <div className="detail-field">
                       <span className="detail-label">NGO</span>
-                      <select value={form.ngo_id} onChange={setField('ngo_id')}
-                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:'100%' }}>
-                        <option value="">NA</option>
-                        {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
-                      </select>
+                      <Dropdown value={form.ngo_id} onChange={setField('ngo_id')}
+                        style={{ width:'100%' }}
+                        options={[{value:'',label:'NA'}, ...ngos.map(n => ({value:n.id, label:n.name}))]} />
                     </div>
                   ) : <Field label="NGO" value={ngoName} />}
                   {editing ? <EditField label="Shift" value={form.shift} onChange={setField('shift')} /> : <Field label="Shift" value={data.shift} />}
@@ -503,13 +500,8 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                       <ArrowRight width={14} />
                     </button>
                   </div>
-                  <select className="filter-select" value={attStatus} onChange={e => setAttStatus(e.target.value)}>
-                    <option value="">All</option>
-                    <option value="present">Present</option>
-                    <option value="late">Late</option>
-                    <option value="absent">Absent</option>
-                    <option value="leave">Leave</option>
-                  </select>
+                  <Dropdown className="filter-select" value={attStatus} onChange={e => setAttStatus(e.target.value)}
+                    options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'},{value:'leave',label:'Leave'}]} />
                 </div>
 
                 {(() => {
@@ -657,19 +649,22 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head">
                   <h3>Salary</h3>
-                  <select value={effectiveMonthKey} onChange={e => setViewingMonthKey(e.target.value)}
-                    style={{ fontSize:13, border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'4px 8px', background:'var(--paper)', color:'var(--ink)' }}>
-                    <option value={defaultMonthKey}>Current Month ({fmtMonthYear(now)})</option>
-                    {[...new Set(sortedSalaries.map(s => s.from_month.slice(0, 7)))].filter(mk => mk !== defaultMonthKey).map(mk => {
-                      const d = new Date(mk + '-01');
-                      const s = sortedSalaries.find(x => x.from_month.slice(0, 7) <= mk && (!x.to_month || x.to_month.slice(0, 7) >= mk));
-                      return (
-                        <option key={mk} value={mk}>
-                          {d.toLocaleDateString('en-GB', { month:'long', year:'numeric' })} {s?.paid_at ? '(Paid)' : '(Unpaid)'}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  <Dropdown value={effectiveMonthKey} onChange={e => setViewingMonthKey(e.target.value)}
+                    style={{ fontSize:13, padding:'4px 8px' }}
+                    renderValue={opt => opt?.label || ''}
+                    options={[
+                      {value: defaultMonthKey, label: `Current Month (${fmtMonthYear(now)})`},
+                      ...[...new Set(sortedSalaries.map(s => s.from_month.slice(0, 7)))]
+                        .filter(mk => mk !== defaultMonthKey)
+                        .map(mk => {
+                          const d = new Date(mk + '-01');
+                          const s = sortedSalaries.find(x => x.from_month.slice(0, 7) <= mk && (!x.to_month || x.to_month.slice(0, 7) >= mk));
+                          return {
+                            value: mk,
+                            label: `${d.toLocaleDateString('en-GB', { month:'long', year:'numeric' })} ${s?.paid_at ? '(Paid)' : '(Unpaid)'}`
+                          };
+                        })
+                    ]} />
                 </div>
                 <div className="card-pad">
                   {!activeSalary ? (
