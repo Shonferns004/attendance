@@ -4,7 +4,7 @@ import { authenticateRole } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-const hrOrAbove = authenticateRole('super_admin', 'hoadmin', 'hr', 'recruiter', 'leads');
+const hrOrAbove = authenticateRole('hr', 'recruiter');
 
 router.get('/dashboard', hrOrAbove, dashboard);
 router.post('/', hrOrAbove, addLead);
