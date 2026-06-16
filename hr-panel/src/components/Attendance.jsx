@@ -90,7 +90,18 @@ export default function Attendance() {
       workers: w,
     };
   });
-  const todayRecords = punchStatus ? todayCombined.filter(r => r.status === punchStatus) : todayCombined;
+  const todaySorted = [...todayCombined].sort((a, b) => {
+    const aAbsent = a.status === 'absent';
+    const bAbsent = b.status === 'absent';
+    if (aAbsent !== bAbsent) return aAbsent ? 1 : -1;
+    if (!aAbsent && !bAbsent) {
+      const aIn = a.punch_in_time || 'Z';
+      const bIn = b.punch_in_time || 'Z';
+      return aIn < bIn ? -1 : aIn > bIn ? 1 : 0;
+    }
+    return 0;
+  });
+  const todayRecords = punchStatus ? todayCombined.filter(r => r.status === punchStatus) : todaySorted;
 
   useEffect(() => {
     const d = new Date();
