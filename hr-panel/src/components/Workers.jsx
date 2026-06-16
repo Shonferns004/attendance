@@ -113,7 +113,7 @@ export default function Workers({ onSelect, onOffboard }) {
               const salaryFromMonth = sw?.current_salary_from?.slice(0, 7);
               const isCurrent = salaryFromMonth && salaryFromMonth <= currentMonth;
               return (
-                <tr key={w.id} className="clickable-row" onClick={() => { if (onSelect) onSelect(w); requestAnimationFrame(() => { const el = document.querySelector('.content-body'); if (el) el.scrollIntoView(true); }); }}
+                <tr key={w.id} className="clickable-row" onClick={() => { if (onSelect) onSelect(w); }}
                   style={{ cursor:'pointer' }}>
                   <td><Who name={w.name} role={w.department || 'Team Member'} /></td>
                   <td style={{ color:'var(--ink-soft)' }}>{new Date(w.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</td>

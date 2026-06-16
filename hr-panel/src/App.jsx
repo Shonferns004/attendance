@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { HRProvider, useHR } from './store';
 import { Grid, Users, Plane, Clock, FileTxt, Bell, Cal } from './icons';
 import Overview from './components/Overview';
@@ -108,7 +108,6 @@ function Dashboard() {
   const setActiveAndPersist = useCallback((id) => {
     setActive(id);
     localStorage.setItem('hr_panel', id);
-    requestAnimationFrame(() => { const el = document.querySelector('.content-body'); if (el) el.scrollIntoView(true); });
   }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -124,7 +123,6 @@ function Dashboard() {
 
   const handleBack = useCallback(() => {
     setSelectedEmployee(null);
-    requestAnimationFrame(() => { const el = document.querySelector('.content-body'); if (el) el.scrollIntoView(true); });
   }, []);
   const handleSelectEmployee = useCallback((worker) => setSelectedEmployee(worker), []);
   const handleOffboard = useCallback((worker) => setOffboardingEmployee(worker), []);
@@ -133,7 +131,7 @@ function Dashboard() {
 
   useEffect(() => { setSelectedEmployee(null); setOffboardingEmployee(null); setShowSettings(false); }, [active]);
 
-  useEffect(() => { window.scrollTo(0,0); document.querySelector('.content-body')?.scrollIntoView(true); }, [active, showSettings, selectedEmployee, offboardingEmployee]);
+  useLayoutEffect(() => { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }, [active, showSettings, selectedEmployee, offboardingEmployee]);
 
   useEffect(() => {
     const handler = (e) => {
