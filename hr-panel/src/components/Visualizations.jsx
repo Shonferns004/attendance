@@ -98,7 +98,7 @@ function MiniStacked({ data, h = 8 }) {
   const t = data.reduce((s, d) => s + d.val, 0) || 1;
   return (
     <div style={{ display: 'flex', height: h, borderRadius: 4, overflow: 'hidden', width: '100%' }}>
-      {data.map((d, i) => d.val > 0 && <div key={i} style={{ width: `${d.val / t * 100}%`, background: d.color, minWidth: 2 }} title={d.lbl} />)}
+      {data.filter(d => d.val > 0).map((d, i) => <div key={i} style={{ width: `${d.val / t * 100}%`, background: d.color, minWidth: 2 }} title={d.lbl} />)}
     </div>
   );
 }
