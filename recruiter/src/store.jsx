@@ -76,25 +76,25 @@ export function RecProvider({ children }) {
 
   // ── Leads API ──
   const [leads, setLeads] = useState([]);
-  const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsLoading, setLeadsLoading] = useState(true);
 
-  const fetchLeads = useCallback(async () => {
+  const fetchLeads = useCallback(async (silent) => {
     if (!token) return;
-    setLeadsLoading(true);
+    if (!silent) setLeadsLoading(true);
     try {
       const res = await fetch(API_BASE + '/leads', { headers:authHeaders });
       if (!res.ok) throw new Error('Failed to fetch leads');
       setLeads(await res.json());
     } catch (e) { log('Error: ' + e.message); }
-    setLeadsLoading(false);
+    if (!silent) setLeadsLoading(false);
   }, [token, authHeaders, log]);
 
   useEffect(() => { if (token) fetchLeads(); }, [token, fetchLeads]);
 
-  // Real-time polling every 15s
+  // Silent refresh every 15s
   useEffect(() => {
     if (!token) return;
-    const interval = setInterval(fetchLeads, 15000);
+    const interval = setInterval(() => fetchLeads(true), 15000);
     return () => clearInterval(interval);
   }, [token, fetchLeads]);
 
@@ -105,7 +105,7 @@ export function RecProvider({ children }) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message);
-    await fetchLeads();
+    await fetchLeads(true);
     log(`Lead added · ${data.name}`);
     return result.lead;
   }, [authHeaders, fetchLeads, log]);
@@ -117,7 +117,7 @@ export function RecProvider({ children }) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message);
-    await fetchLeads();
+    await fetchLeads(true);
     log(`Lead updated`);
     return result.lead;
   }, [authHeaders, fetchLeads, log]);
@@ -129,7 +129,7 @@ export function RecProvider({ children }) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message);
-    await fetchLeads();
+    await fetchLeads(true);
     log('Lead transferred');
     return result.lead;
   }, [authHeaders, fetchLeads, log]);
