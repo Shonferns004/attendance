@@ -421,6 +421,7 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
 .load-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .spinner { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--sage); border-radius: 50%; animation: att-spin .6s linear infinite; }
 @keyframes att-spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media print {
   body { background: #fff; }
