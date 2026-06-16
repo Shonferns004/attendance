@@ -227,6 +227,20 @@ export default function Visualizations() {
             })}
           </div>
         </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {[
+            { bg: 'var(--sage)', label: '\u226590%' },
+            { bg: '#7a9a5a', label: '70\u201389%' },
+            { bg: '#a8c08a', label: '50\u201369%' },
+            { bg: 'var(--danger)', label: '<50%' },
+            { bg: 'repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,.05)2px,rgba(0,0,0,.05)4px)', label: 'Holiday' },
+          ].map(c => (
+            <span key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, color: 'var(--ink-soft)' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: c.bg, display: 'inline-block', border: '1px solid var(--line)' }} />
+              {c.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Right column stacked: Gender + Late */}
