@@ -29,7 +29,7 @@ const SkeletonRow = ({ cols }) => (
 );
 
 const TABS = [
-  { key:'active', label:'Active' },
+  { key:'leads', label:'Leads' },
   { key:'scheduled', label:'Scheduled' },
   { key:'rejected', label:'Rejected' },
 ];
@@ -213,20 +213,24 @@ export default function Leads() {
       </div>
 
       <div className="tabs" style={{marginBottom:0}}>
-        {TABS.map(t => (
-          <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-            {t.label}
-            {t.key === 'scheduled' && scheduledLeads.length > 0 && ` (${scheduledLeads.length})`}
-          </button>
-        ))}
+        {TABS.map(t => {
+          const counts = { leads: leads.length, scheduled: scheduledLeads.length, rejected: leads.filter(l => l.status === 'rejected').length };
+          const dots = { leads: '#5B6B4E', scheduled: '#3b82f6', rejected: '#ef4444' };
+          return (
+            <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
+              {counts[t.key] > 0 && <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:dots[t.key],marginLeft:6,verticalAlign:'middle'}}/>}
+            </button>
+          );
+        })}
       </div>
 
-      {tab === 'active' && (
+      {tab === 'leads' && (
         <div className="card" style={{marginTop:20}}>
           <div className="card-head">
-            <h3>Active leads</h3>
+            <h3>Leads</h3>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
-              <span className="sub">{leadsLoading ? '…' : activeLeads.length + ' leads'}</span>
+              <span className="sub">{leadsLoading ? '…' : filteredLeads.length + ' leads'}</span>
               <button className="btn btn-sm" onClick={refreshLeads} title="Refresh"><RefreshCw width={13}/></button>
             </div>
           </div>
@@ -240,7 +244,7 @@ export default function Leads() {
               <select value={leadFilters.status} onChange={e=>setLeadFilters(p=>({...p,status:e.target.value}))}
                 style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
                 <option value="">All statuses</option>
-                {LEAD_STATUSES.filter(s => s !== 'rejected' && s !== 'scheduled').map(s => <option key={s} value={s}>{s}</option>)}
+                {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <select value={leadFilters.source} onChange={e=>setLeadFilters(p=>({...p,source:e.target.value}))}
                 style={{minWidth:120,border:'1px solid var(--line)',borderRadius:6,padding:'5px 8px',fontSize:12,background:'#fff'}}>
@@ -251,8 +255,8 @@ export default function Leads() {
           </div>
           {leadsLoading ? (
             <table><tbody>{[1,2,3,4,5].map(i => <SkeletonRow key={i} cols={8}/>)}</tbody></table>
-          ) : activeLeads.length === 0 ? (
-            <div className="empty">No active leads.</div>
+          ) : filteredLeads.length === 0 ? (
+            <div className="empty">No leads found.</div>
           ) : (
             <table>
               <thead>
@@ -261,7 +265,7 @@ export default function Leads() {
                 </tr>
               </thead>
               <tbody>
-                {activeLeads.map(l => {
+                {filteredLeads.map(l => {
                   const isOwner = myId && l.created_by === myId;
                   let parsed = [];
                   try { parsed = JSON.parse(l.notes || '[]'); } catch {}
