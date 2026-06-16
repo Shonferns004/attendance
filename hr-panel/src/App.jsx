@@ -189,7 +189,7 @@ function Dashboard() {
           ) : offboardingEmployee ? (
             <Offboarding worker={offboardingEmployee} onBack={handleOffboardBack} />
           ) : selectedEmployee ? (
-            <EmployeeDetail worker={selectedEmployee} onBack={handleBack} />
+            <EmployeeDetail worker={selectedEmployee} onBack={handleBack} onOffboard={handleOffboard} />
           ) : active === 'employees' ? (
             <Workers onSelect={handleSelectEmployee} onOffboard={handleOffboard} />
           ) : (

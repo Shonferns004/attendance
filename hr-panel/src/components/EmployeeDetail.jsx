@@ -4,8 +4,8 @@ import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
-export default function EmployeeDetail({ worker, onBack }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, removeWorker, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+export default function EmployeeDetail({ worker, onBack, onOffboard }) {
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,12 +91,9 @@ export default function EmployeeDetail({ worker, onBack }) {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete ${data.name} permanently? This cannot be undone.`)) return;
-    try {
-      await removeWorker(worker.id);
-      onBack();
-    } catch (e) { setErr(e.message); }
+  const handleDelete = () => {
+    onBack();
+    if (onOffboard) onOffboard(worker);
   };
 
   const setField = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
