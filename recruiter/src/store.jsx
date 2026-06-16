@@ -91,6 +91,13 @@ export function RecProvider({ children }) {
 
   useEffect(() => { if (token) fetchLeads(); }, [token, fetchLeads]);
 
+  // Real-time polling every 15s
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(fetchLeads, 15000);
+    return () => clearInterval(interval);
+  }, [token, fetchLeads]);
+
   const addLead = useCallback(async (data) => {
     const res = await fetch(API_BASE + '/leads', {
       method:'POST', headers:authHeaders,
@@ -115,6 +122,18 @@ export function RecProvider({ children }) {
     return result.lead;
   }, [authHeaders, fetchLeads, log]);
 
+  const transferLead = useCallback(async (id, newOwnerId, newOwnerName) => {
+    const res = await fetch(API_BASE + '/leads/' + id + '/transfer', {
+      method:'PUT', headers:authHeaders,
+      body: JSON.stringify({ new_owner_id: newOwnerId, new_owner_name: newOwnerName }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message);
+    await fetchLeads();
+    log('Lead transferred');
+    return result.lead;
+  }, [authHeaders, fetchLeads, log]);
+
   // ── Dashboard stats ──
   const [leadStats, setLeadStats] = useState(null);
   const fetchLeadStats = useCallback(async () => {
@@ -127,7 +146,7 @@ export function RecProvider({ children }) {
   useEffect(() => { if (token) fetchLeadStats(); }, [token, fetchLeadStats]);
 
   return (
-    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, addLead, updateLead, leadStats, fetchLeadStats }}>
+    <RecContext.Provider value={{ candidates, jobs, feed, STAGES, LEAD_SOURCES, LEAD_STATUSES, currentUser, token, user, login, logout, moveCandidate, addCandidate, addJob, log, leads, leadsLoading, fetchLeads, addLead, updateLead, transferLead, leadStats, fetchLeadStats }}>
       {children}
     </RecContext.Provider>
   );

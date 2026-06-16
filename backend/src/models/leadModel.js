@@ -18,6 +18,7 @@ export const getAllLeads = async (filters = {}) => {
 
   if (filters.recruiter_id) query = query.eq('recruiter_id', filters.recruiter_id);
   if (filters.status) query = query.eq('status', filters.status);
+  if (filters.created_by) query = query.eq('created_by', filters.created_by);
   if (filters.search) {
     query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
   }
@@ -63,6 +64,17 @@ export const getLeadsByRecruiter = async (recruiterId) => {
     .select('*')
     .eq('recruiter_id', recruiterId)
     .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const transferLead = async (id, newCreatedBy, newCreatedByName) => {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ created_by: newCreatedBy, created_by_name: newCreatedByName, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*, users!leads_recruiter_id_fkey(name, email)')
+    .single();
   if (error) throw error;
   return data;
 };

@@ -4,6 +4,7 @@ import {
   getLeadById,
   updateLead,
   deleteLead,
+  transferLead,
   getLeadsDashboard,
 } from '../models/leadModel.js';
 
@@ -33,7 +34,9 @@ export const addLead = async (req, res) => {
 export const listLeads = async (req, res) => {
   try {
     const { recruiter_id, status, search } = req.query;
-    const leads = await getAllLeads({ recruiter_id, status, search });
+    const filters = { recruiter_id, status, search };
+    if (req.user.role === 'recruiter') filters.created_by = req.user.id;
+    const leads = await getAllLeads(filters);
     return res.json(leads);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -52,6 +55,13 @@ export const getLead = async (req, res) => {
 
 export const editLead = async (req, res) => {
   try {
+    const existing = await getLeadById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Lead not found' });
+
+    if (req.user.role === 'recruiter' && existing.created_by !== req.user.id) {
+      return res.status(403).json({ message: 'You can only edit your own leads' });
+    }
+
     const { name, phone, age, source, status, notes, recruiter_id } = req.body;
     const updates = {};
     if (name) updates.name = name;
@@ -72,6 +82,25 @@ export const removeLead = async (req, res) => {
   try {
     const result = await deleteLead(req.params.id);
     return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const transferLeadOwner = async (req, res) => {
+  try {
+    const existing = await getLeadById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Lead not found' });
+
+    if (existing.created_by !== req.user.id) {
+      return res.status(403).json({ message: 'You can only transfer leads you own' });
+    }
+
+    const { new_owner_id, new_owner_name } = req.body;
+    if (!new_owner_id) return res.status(400).json({ message: 'new_owner_id is required' });
+
+    const lead = await transferLead(req.params.id, new_owner_id, new_owner_name || null);
+    return res.json({ message: 'Lead transferred successfully', lead });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

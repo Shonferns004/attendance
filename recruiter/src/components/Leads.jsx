@@ -11,7 +11,7 @@ const statusPill = (s) => {
 };
 
 export default function Leads() {
-  const { leads, leadsLoading, addLead, updateLead, fetchLeads, currentUser } = useRec();
+  const { leads, leadsLoading, addLead, updateLead, transferLead, currentUser, user } = useRec();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -52,8 +52,19 @@ export default function Leads() {
     await updateLead(id, { status: newStatus });
   };
 
+  const handleTransfer = async (id) => {
+    const name_ = prompt('Enter the new owner name:');
+    if (!name_ || !name_.trim()) return;
+    const id_ = prompt('Enter the new owner ID (UUID):');
+    if (!id_ || !id_.trim()) return;
+    try {
+      await transferLead(id, id_.trim(), name_.trim());
+    } catch (err) { alert(err.message); }
+  };
+
   const openLeads = leads.filter(l => l.status !== 'placed' && l.status !== 'rejected');
   const closedLeads = leads.filter(l => l.status === 'placed' || l.status === 'rejected');
+  const myId = user?.id;
 
   return (
     <>
@@ -118,6 +129,7 @@ export default function Leads() {
             </thead>
             <tbody>
               {openLeads.map(l => {
+                const isOwner = myId && l.created_by === myId;
                 let parsed = [];
                 try { parsed = JSON.parse(l.notes || '[]'); } catch {}
                 const isExpanded = expanded === l.id;
@@ -128,19 +140,30 @@ export default function Leads() {
                     <td>{l.age || '—'}</td>
                     <td>{l.source}</td>
                     <td>
-                      <select value={l.status} onChange={e=>updateLeadStatus(l.id, e.target.value)}
-                        style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 6px',fontSize:12,background:'#fff'}}>
-                        {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-                      </select>
+                      {isOwner ? (
+                        <select value={l.status} onChange={e=>updateLeadStatus(l.id, e.target.value)}
+                          style={{border:'1px solid var(--line)',borderRadius:6,padding:'4px 6px',fontSize:12,background:'#fff'}}>
+                          {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        statusPill(l.status)
+                      )}
                     </td>
                     <td>
                       <button className="btn btn-icon" onClick={() => setExpanded(isExpanded ? null : l.id)} title="View notes">
                         {parsed.length} <span style={{fontSize:10}}>▾</span>
                       </button>
                     </td>
-<td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>
+                    <td style={{color:'var(--ink-soft)'}}>{l.created_by_name || '—'}</td>
                     <td>
-                      <button className="btn btn-sm" onClick={() => addNoteToLead(l.id)}>+ Note</button>
+                      {isOwner ? (
+                        <div style={{display:'flex',gap:4}}>
+                          <button className="btn btn-sm" onClick={() => addNoteToLead(l.id)}>Note</button>
+                          <button className="btn btn-sm" style={{color:'var(--clay)'}} onClick={() => handleTransfer(l.id)}>Transfer</button>
+                        </div>
+                      ) : (
+                        <span style={{fontSize:11,color:'var(--ink-soft)'}}>Read-only</span>
+                      )}
                     </td>
                   </tr>
                 );
