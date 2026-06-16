@@ -12,8 +12,8 @@ export default function Dashboard() {
   const cards = [
     { label:'Total leads',    icon:<Users width={15}/>,  num:total,    foot:'all time', c:'#5B6B4E' },
     { label:'New today',      icon:<Star width={15}/>,   num:newToday, foot:'added today', c:'#4F6472' },
-    { label:'In interview',   icon:<Funnel width={15}/>, num:byStatus?.interviewed||0, foot:'active conversations', c:'#C08A2E' },
-    { label:'Conversion',     icon:<Brief width={15}/>,  num:conversion+'%', foot:'placed vs rejected', c:'#B5603A' },
+    { label:'On hold',        icon:<Funnel width={15}/>, num:byStatus?.hold||0, foot:'waiting', c:'#C08A2E' },
+    { label:'Conversion',     icon:<Brief width={15}/>,  num:conversion+'%', foot:'selected vs rejected', c:'#B5603A' },
   ];
 
   const topLeads = [...leads].slice(0, 5);

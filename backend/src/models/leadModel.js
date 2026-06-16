@@ -93,9 +93,9 @@ export const getLeadsDashboard = async () => {
   data.forEach((l) => {
     byStatus[l.status] = (byStatus[l.status] || 0) + 1;
   });
-  const placed = byStatus['placed'] || 0;
+  const selected = byStatus['selected'] || 0;
   const rejected = byStatus['rejected'] || 0;
-  const conversionRate = total > 0 ? ((placed / (placed + rejected)) * 100).toFixed(1) : 0;
+  const conversionRate = total > 0 ? ((selected / (selected + rejected)) * 100).toFixed(1) : 0;
 
   const last7 = [];
   for (let i = 6; i >= 0; i--) {

@@ -3,10 +3,7 @@ import { useRec, LEAD_SOURCES, LEAD_STATUSES } from '../store';
 import { Plus, Users } from '../icons';
 
 const statusPill = (s) => {
-  const m = {
-    new:'pill-gray', contacted:'pill-gold', interviewed:'pill-clay',
-    offered:'pill-gold', placed:'pill-green', rejected:'pill-danger'
-  };
+  const m = { rejected:'pill-danger', selected:'pill-green', hold:'pill-gold' };
   return <span className={`pill ${m[s] || 'pill-gray'}`}>{s}</span>;
 };
 
@@ -16,7 +13,7 @@ export default function Leads() {
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
   const [source, setSource] = useState('Walk-in');
-  const [status, setStatus] = useState('new');
+  const [status, setStatus] = useState('hold');
   const [formNotes, setFormNotes] = useState([]);
   const [noteText, setNoteText] = useState('');
   const [expanded, setExpanded] = useState(null);
@@ -34,7 +31,7 @@ export default function Leads() {
     if (!name.trim() || !phone.trim()) return;
     try {
       await addLead({ name: name.trim(), phone, age: age || null, source, status, notes: formNotes.length ? JSON.stringify(formNotes) : null, created_by_name: currentUser.name });
-      setName(''); setPhone(''); setAge(''); setSource('Walk-in'); setStatus('new'); setFormNotes([]);
+      setName(''); setPhone(''); setAge(''); setSource('Walk-in'); setStatus('hold'); setFormNotes([]);
     } catch (err) { alert(err.message); }
   };
 
@@ -62,8 +59,8 @@ export default function Leads() {
     } catch (err) { alert(err.message); }
   };
 
-  const openLeads = leads.filter(l => l.status !== 'placed' && l.status !== 'rejected');
-  const closedLeads = leads.filter(l => l.status === 'placed' || l.status === 'rejected');
+  const openLeads = leads.filter(l => l.status === 'hold' || l.status === 'selected');
+  const closedLeads = leads.filter(l => l.status === 'rejected');
   const myId = user?.id;
 
   return (
@@ -199,7 +196,7 @@ export default function Leads() {
 
       {closedLeads.length > 0 && (
         <div className="card">
-          <div className="card-head"><h3>Placed / Rejected</h3><span className="sub">{closedLeads.length} leads</span></div>
+          <div className="card-head"><h3>Rejected</h3><span className="sub">{closedLeads.length} leads</span></div>
           <table>
             <thead>
               <tr>
