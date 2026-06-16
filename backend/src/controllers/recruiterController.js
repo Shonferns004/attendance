@@ -7,17 +7,12 @@ export const listRecruiters = async (req, res) => {
     const recruiters = await getRecruiterWorkers();
 
     const leads = await getAllLeads();
-    const withStats = recruiters.map((r) => {
-      const recruiterLeads = leads.filter((l) => l.recruiter_id === r.id || l.created_by === r.id);
-      const total = recruiterLeads.length;
-      const joined = recruiterLeads.filter((l) => l.status === 'joined').length;
-      const selected = recruiterLeads.filter((l) => l.status === 'selected').length;
-      const scheduled = recruiterLeads.filter((l) => l.status === 'scheduled').length;
-      const rejected = recruiterLeads.filter((l) => l.status === 'rejected').length;
-      const active = recruiterLeads.filter((l) => !['rejected', 'joined'].includes(l.status)).length;
-      const conversionRate = joined + rejected > 0 ? ((joined / (joined + rejected)) * 100).toFixed(1) : 0;
-      return { ...r, leadsCount: total, activeLeads: active, joined, selected, scheduled, rejected, conversionRate: parseFloat(conversionRate) };
-    });
+      const withStats = recruiters.map((r) => {
+        const recruiterLeads = leads.filter((l) => l.recruiter_id === r.id || l.created_by === r.id);
+        const total = recruiterLeads.length;
+        const scheduled = recruiterLeads.filter((l) => l.status === 'scheduled').length;
+        return { ...r, leadsCount: total, scheduled };
+      });
 
     return res.json(withStats);
   } catch (error) {

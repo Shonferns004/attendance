@@ -133,12 +133,7 @@ export default function Recruiters() {
     <>
       <div className="stats">
         <div className="stat"><Users width={16}/> <div className="stat-label">Total</div><div className="stat-value">{stats.total}</div></div>
-        <div className="stat"><Clock width={16}/> <div className="stat-label">Today</div><div className="stat-value">{stats.newToday}</div></div>
         <div className="stat"><Cal width={16}/> <div className="stat-label">Scheduled</div><div className="stat-value" style={{color:'#3b82f6'}}>{stats.scheduled}</div></div>
-        <div className="stat"><Cal width={16}/> <div className="stat-label">Tomorrow</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.scheduledTomorrow}</div></div>
-        <div className="stat"><X width={16}/> <div className="stat-label">Rejected</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.rejected}</div></div>
-        <div className="stat"><Check width={16}/> <div className="stat-label">Selected</div><div className="stat-value" style={{color:'#10b981'}}>{stats.selected}</div></div>
-        <div className="stat"><Heart width={16}/> <div className="stat-label">Joined</div><div className="stat-value" style={{color:'#8b5cf6'}}>{stats.joined}</div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -155,8 +150,7 @@ export default function Recruiters() {
                   <div className="recruiter-card-name">{r.name}</div>
                   <div className="recruiter-card-stats">
                     <span><strong>{r.leadsCount || 0}</strong> leads</span>
-                    <span className="recruiter-card-joined"><strong>{r.joined || 0}</strong> joined</span>
-                    <span className="recruiter-card-conv">{r.conversionRate || 0}% conv</span>
+                    <span><strong>{r.scheduled || 0}</strong> scheduled</span>
                   </div>
                 </div>
               ))}
