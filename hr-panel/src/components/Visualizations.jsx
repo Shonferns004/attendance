@@ -345,37 +345,51 @@ export default function Visualizations() {
         </div>
       </div>
 
-      {/* Bubble chart — spans 3 cols */}
-      <div className="mc w-3">
-        <div style={{ fontSize: 10, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Department Health (30d)</div>
+      {/* Department scorecard — spans 3 cols */}
+      <div className="mc w-3" style={{ overflow: 'hidden' }}>
+        <div style={{ fontSize: 10, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Department Scorecard</div>
         {bubbleData.length ? (
-          <>
-            <svg viewBox="0 0 360 140" style={{ width: '100%', height: 'auto', maxHeight: 140 }}>
-              {[0, 50, 100].map(v => {
-                const x = 30 + (v / 100) * 300;
-                return <g key={v}><line x1={x} y1={16} x2={x} y2={114} stroke="var(--line)" strokeDasharray="3 3" strokeWidth={1} /><text x={x} y={128} textAnchor="middle" fontSize={8} fill="var(--ink-soft)">{v}%</text></g>;
-              })}
-              <text x={180} y={138} textAnchor="middle" fontSize={8} fill="var(--ink-soft)">Att % →</text>
-              <text x={4} y={65} textAnchor="middle" fontSize={8} fill="var(--ink-soft)" transform="rotate(-90,4,65)">Late →</text>
-              {(() => {
-                const ml = Math.max(...bubbleData.map(d => d.al), 1);
-                return bubbleData.map((d, i) => {
-                  const cx = 30 + (d.ar / 100) * 300, cy = 114 - (d.al / ml) * 98, r = Math.max(Math.sqrt(d.n) * 4, 6);
-                  return <g key={d.dept}><circle cx={cx} cy={cy} r={r} fill={COLORS[i % COLORS.length]} fillOpacity={0.7} stroke="#fff" strokeWidth={0.5} /><text x={cx} y={cy + 1} textAnchor="middle" fontSize={Math.min(r * 0.55, 9)} fill="#fff" fontWeight={700}>{d.n}</text><title>{`${d.dept}\n${d.n}w ${d.ar}% ${d.al}m`}</title></g>;
-                });
-              })()}
-            </svg>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-              {bubbleData.map((d, i) => (
-                <span key={d.dept} style={{ fontSize: 8, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS[i % COLORS.length], display: 'inline-block' }} />{d.dept}
-                </span>
-              ))}
-            </div>
-          </>
-        ) : <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 8 }}>No data</div>}
+          <div style={{ overflowX: 'auto', fontSize: 10 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ color: 'var(--ink-soft)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid var(--line)' }}>Dept</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid var(--line)' }}>Workers</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid var(--line)' }}>Att %</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid var(--line)' }}>Late &#9660;</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid var(--line)' }}>Salary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const salMap = {}; (salSum || []).forEach(x => { const d = x.department || 'NA'; salMap[d] = (salMap[d] || 0) + (parseFloat(x.current_salary) || 0); });
+                  return bubbleData.map((d, i) => {
+                    const tot = salMap[d.dept] || 0;
+                    const bar = d.ar / Math.max(...bubbleData.map(x => x.ar), 1) * 100;
+                    return <tr key={d.dept} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ padding: '5px 6px', fontWeight: 600 }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], marginRight: 4, verticalAlign: 'middle' }} />
+                        {d.dept}
+                      </td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>{d.n}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                          <div style={{ width: 40, height: 5, borderRadius: 3, background: 'var(--line)', overflow: 'hidden' }}>
+                            <div style={{ width: `${bar}%`, height: '100%', borderRadius: 3, background: d.ar >= 90 ? 'var(--sage)' : d.ar >= 70 ? '#7a9a5a' : 'var(--danger)' }} />
+                          </div>
+                          {d.ar}%
+                        </div>
+                      </td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right', color: d.al > 10 ? 'var(--danger)' : 'var(--ink-soft)' }}>{d.al}m</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>₹{(tot / 100000).toFixed(1)}L</td>
+                    </tr>;
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        ) : <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 12 }}>No data</div>}
       </div>
-
     </div>
   );
 }
