@@ -70,18 +70,18 @@ const AKI_RANGES = {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function getDayName(dateStr) {
+export function getDayName(dateStr) {
   return DAY_NAMES[new Date(dateStr + 'T00:00:00+05:30').getDay()];
 }
 
-function calculateAKI(amount, dayName) {
+export function calculateAKI(amount, dayName) {
   const ranges = AKI_RANGES[dayName];
   if (!ranges) return 0;
   const range = ranges.find(r => amount >= r.min && amount <= r.max);
   return range ? range.incentive : 0;
 }
 
-function getMonthsEmployed(createdAt) {
+export function getMonthsEmployed(createdAt) {
   const now = new Date();
   const join = new Date(createdAt);
   const months = (now.getFullYear() - join.getFullYear()) * 12 + (now.getMonth() - join.getMonth());

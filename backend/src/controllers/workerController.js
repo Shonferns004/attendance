@@ -14,7 +14,7 @@ import {
 } from '../models/workerNgoAllocationModel.js';
 import { saveWorkerEducation, getFullWorkerProfile } from '../models/onboardingModel.js';
 
-const MAX_NGO_PORTION = 15000;
+const MAX_NGO_PORTION = 17000;
 const DEFAULT_PASSWORD = '123456';
 
 async function generateLoginId(name) {
@@ -32,8 +32,8 @@ function validateAllocations(allocations, salary) {
   if (!allocations || !Array.isArray(allocations) || allocations.length === 0) {
     return { valid: false, message: 'At least one NGO allocation is required' };
   }
-  if (allocations.length > 2) {
-    return { valid: false, message: 'Maximum 2 NGO allocations allowed' };
+  if (allocations.length > 4) {
+    return { valid: false, message: 'Maximum 4 NGO allocations allowed' };
   }
   const totalPortion = allocations.reduce((sum, a) => sum + (parseFloat(a.salary_portion) || 0), 0);
   if (Math.abs(totalPortion - parseFloat(salary)) > 0.01) {

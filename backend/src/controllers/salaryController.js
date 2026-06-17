@@ -11,6 +11,7 @@ import { getWorkerById } from '../models/workerModel.js';
 import { getAllocationsByWorker } from '../models/workerNgoAllocationModel.js';
 import { getTarget, upsertTarget } from '../models/incentiveModel.js';
 import { getAchievements } from '../models/dailyAchievementModel.js';
+import { calculateAKI, getDayName, getMonthsEmployed } from './incentiveController.js';
 
 export const getWorkerSalaries = async (req, res) => {
   try {
@@ -175,6 +176,19 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
           ? (SUNDAY_AKI_RANGES.find(r => sundayAchievementAmount >= r.min && sundayAchievementAmount <= r.max)?.incentive || 0)
           : 0;
 
+        // Compute incentive totals (AKI + monthly)
+        const totalAKI = achievements.reduce((sum, r) => {
+          const amt = parseFloat(r.amount || 0);
+          return sum + calculateAKI(amt, getDayName(r.date));
+        }, 0);
+        const monthlyTargetMet = monthlyAchievement >= currentTarget;
+        let akiPayout = 0;
+        let monthlyIncentive = 0;
+        if (monthlyTargetMet) {
+          akiPayout = isNewJoiner ? totalAKI : Math.round(totalAKI / 2);
+          monthlyIncentive = Math.round((monthlyAchievement - currentTarget) * 0.1);
+        }
+
         sundayBonus = {
           lastSundayDate: lastSunDate,
           cameOnLastSunday,
@@ -188,6 +202,11 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
           sundayAchievement: sundayAchievementAmount,
           sundayAKI,
         };
+
+        // Attach incentive totals to the same sundayBonus object to avoid a new top-level field
+        sundayBonus.incentiveAKI = akiPayout;
+        sundayBonus.incentiveMonthly = monthlyIncentive;
+        sundayBonus.incentiveTotal = akiPayout + monthlyIncentive;
       } catch {
         // silent fail
       }

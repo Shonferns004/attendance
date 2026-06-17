@@ -12,7 +12,7 @@ function save(v) {
   try { const d = load(); sessionStorage.setItem('wrk', JSON.stringify({ ...d, ...v })); } catch {}
 }
 
-const MAX_NGO_PORTION = 15000;
+const MAX_NGO_PORTION = 17000;
 
 export default function Workers({ onSelect, onOffboard }) {
   const { workers, addWorker, DEPTS, ngos, fetchWorkers, fetchNGOs } = useHR();
@@ -152,9 +152,14 @@ export default function Workers({ onSelect, onOffboard }) {
           </div>
           <div style={{ display:'flex', gap:8, marginTop:8, alignItems:'center' }}>
             <button className="btn btn-primary" onClick={submit}><Plus width={16}/> Add employee</button>
-            {parseFloat(salary) > MAX_NGO_PORTION && allocations.length < 2 && (
-              <button className="btn btn-sm" onClick={() => setAllocations(prev => [...prev, { ngo_id: '', salary_portion: '' }])}>
-                + Add second NGO
+            {allocations.length < 4 && (
+              <button className="btn btn-sm" onClick={() => {
+                const sal = parseFloat(salary) || 0;
+                const totalPortion = allocations.reduce((s, a) => s + (parseFloat(a.salary_portion) || 0), 0);
+                const remaining = sal - totalPortion;
+                setAllocations(prev => [...prev, { ngo_id: '', salary_portion: remaining > 0 ? String(Math.min(remaining, MAX_NGO_PORTION)) : '' }]);
+              }}>
+                + Add NGO ({allocations.length}/4)
               </button>
             )}
           </div>

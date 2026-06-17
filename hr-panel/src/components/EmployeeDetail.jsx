@@ -1136,72 +1136,116 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>NGO Allocations</h3></div>
                 <div className="card-pad">
-                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                  <div style={{ overflowX:'auto' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign:'left', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>NGO</th>
-                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Salary Portion</th>
-                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Per Day</th>
-                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Total Due</th>
+                        <th style={{ textAlign:'left', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>NGO</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Portion</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Per Day</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Salary Due</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>AKI</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>Monthly</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>Sunday</th>
+                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Grand Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allocations.map(a => {
-                        const portion = parseFloat(a.salary_portion);
-                        const allocPerDay = portion / daysInMonth;
-                        const allocDue = allocPerDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
-                        const ngoName = ngos.find(n => n.id === a.ngo_id)?.name || a.ngo_name || 'Unknown';
-                        return (
-                          <tr key={a.id || a.ngo_id}>
-                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', fontWeight:500 }}>{ngoName}</td>
-                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right' }}>₹{portion.toLocaleString('en-IN')}</td>
-                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right' }}>₹{Math.round(allocPerDay).toLocaleString('en-IN')}</td>
-                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, color:'var(--sage)' }}>₹{Math.round(allocDue).toLocaleString('en-IN')}</td>
-                          </tr>
-                        );
-                      })}
+                      {(() => {
+                        const totalSalaryVal = parseFloat(activeSalary?.salary || 0);
+                        const totAKI = sundayBonus?.incentiveAKI || 0;
+                        const totMonthly = sundayBonus?.incentiveMonthly || 0;
+                        const totSunday = sundayBonus?.bonusAmount || 0;
+                        const isIncentive = data.department === 'FRO' && (totAKI > 0 || totMonthly > 0 || totSunday > 0);
+
+                        return allocations.map(a => {
+                          const portion = parseFloat(a.salary_portion);
+                          const ratio = totalSalaryVal > 0 ? portion / totalSalaryVal : 0;
+                          const allocPerDay = portion / daysInMonth;
+                          const allocDue = allocPerDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+                          const allocAKI = isIncentive ? Math.round(totAKI * ratio) : 0;
+                          const allocMonthly = isIncentive ? Math.round(totMonthly * ratio) : 0;
+                          const allocSunday = isIncentive ? Math.round(totSunday * ratio) : 0;
+                          const allocGrand = Math.round(allocDue) + allocAKI + allocMonthly + allocSunday;
+                          const ngoName = ngos.find(n => n.id === a.ngo_id)?.name || a.ngo_name || 'Unknown';
+
+                          return (
+                            <tr key={a.id || a.ngo_id}>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', fontWeight:500, whiteSpace:'nowrap' }}>{ngoName}</td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap' }}>₹{portion.toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap' }}>₹{Math.round(allocPerDay).toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, whiteSpace:'nowrap' }}>₹{Math.round(allocDue).toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocAKI > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
+                                {allocAKI > 0 ? '+₹' + allocAKI.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
+                                {allocMonthly > 0 ? '+₹' + allocMonthly.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocSunday > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
+                                {allocSunday > 0 ? '+₹' + allocSunday.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:700, color: allocGrand > Math.round(allocDue) ? '#16a34a' : 'var(--sage)', whiteSpace:'nowrap' }}>
+                                ₹{allocGrand.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
-                    {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
-                      <tbody>
-                        <tr>
-                          <td colSpan={4} style={{ padding:'0 8px', borderBottom:'1px solid var(--line)', height:8 }} />
-                        </tr>
-                        <tr>
-                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', fontWeight:500, color:'#92400e' }}>
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-                              Sunday Bonus
-                            </span>
-                          </td>
-                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-soft)' }} colSpan={2}>
-                            <em style={{ fontSize:11 }}>Not split across NGOs</em>
-                          </td>
-                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, color:'#f59e0b' }}>
-                            +₹{sundayBonus.bonusAmount.toLocaleString('en-IN')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    )}
                     <tfoot>
-                      <tr>
-                        <td style={{ padding:'8px', fontWeight:700, fontSize:14 }}>Merged Total</td>
-                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14 }}>₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14 }}>₹{Math.round(perDay).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</td>
-                      </tr>
-                      {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
-                      <tr>
-                        <td style={{ padding:'6px 8px 12px', fontWeight:700, fontSize:14, color:'#16a34a' }}>Grand Total</td>
-                        <td style={{ padding:'6px 8px 12px', textAlign:'right', fontWeight:700, fontSize:14 }} colSpan={2}></td>
-                        <td style={{ padding:'6px 8px 12px', textAlign:'right', fontWeight:800, fontSize:18, color:'#16a34a' }}>
-                          ₹{(Math.round(totalDue) + sundayBonus.bonusAmount).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                      )}
+                      {(() => {
+                        const totalSalaryVal = parseFloat(activeSalary?.salary || 0);
+                        const totAKI = sundayBonus?.incentiveAKI || 0;
+                        const totMonthly = sundayBonus?.incentiveMonthly || 0;
+                        const totSunday = sundayBonus?.bonusAmount || 0;
+                        const isIncentive = data.department === 'FRO' && (totAKI > 0 || totMonthly > 0 || totSunday > 0);
+                        const sumDue = Math.round(allocations.reduce((s, a) => {
+                          const portion = parseFloat(a.salary_portion);
+                          const allocPerDay = portion / daysInMonth;
+                          return s + allocPerDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+                        }, 0));
+                        const sumAKI = isIncentive ? Math.round(totAKI) : 0;
+                        const sumMonthly = isIncentive ? Math.round(totMonthly) : 0;
+                        const sumSunday = isIncentive ? Math.round(totSunday) : 0;
+                        const sumGrand = sumDue + sumAKI + sumMonthly + sumSunday;
+
+                        return (
+                          <>
+                            <tr>
+                              <td style={{ padding:'8px 6px', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>Merged Total</td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>
+                                ₹{totalSalaryVal.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>
+                                ₹{Math.round(perDay).toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color:'var(--sage)' }}>
+                                ₹{sumDue.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumAKI > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumAKI > 0 ? '+₹' + sumAKI.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumMonthly > 0 ? '+₹' + sumMonthly.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumSunday > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumSunday > 0 ? '+₹' + sumSunday.toLocaleString('en-IN') : '\u2014'}
+                              </td>
+                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:800, fontSize:15, borderTop:'2px solid var(--line)', color:'#16a34a' }}>
+                                ₹{sumGrand.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          </>
+                        );
+                      })()}
                     </tfoot>
                   </table>
+                  </div>
                   <div style={{ marginTop:8, fontSize:11, color:'var(--ink-soft)' }}>
                     Attendance is shared across all allocations. Deductions affect each portion equally.
+                    {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
+                      <> Incentives (AKI, Monthly, Sunday) are split proportionally by salary portion.</>
+                    )}
                   </div>
                 </div>
               </div>

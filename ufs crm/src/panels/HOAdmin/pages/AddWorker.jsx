@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { addWorker } from '../../../api/workers';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
-const MAX_NGO_PORTION = 15000;
+const MAX_NGO_PORTION = 17000;
 
 const getToken = () => localStorage.getItem('auth_token');
 
@@ -197,12 +197,17 @@ function AddWorker() {
                     </div>
                   </div>
                 ))}
-                {parseFloat(salary) > MAX_NGO_PORTION && allocations.length < 2 && (
+                {allocations.length < 4 && (
                   <button type="button"
-                    onClick={() => setAllocations(prev => [...prev, { ngo_id: '', salary_portion: '' }])}
+                    onClick={() => {
+                      const sal = parseFloat(salary) || 0;
+                      const totalPortion = allocations.reduce((s, a) => s + (parseFloat(a.salary_portion) || 0), 0);
+                      const remaining = sal - totalPortion;
+                      setAllocations(prev => [...prev, { ngo_id: '', salary_portion: remaining > 0 ? String(Math.min(remaining, MAX_NGO_PORTION)) : '' }]);
+                    }}
                     className="px-4 py-2 text-label-md text-primary border border-outline-variant rounded-lg hover:bg-surface-container transition-all"
                   >
-                    + Add second NGO
+                    + Add NGO ({allocations.length}/4)
                   </button>
                 )}
               </div>
