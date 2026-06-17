@@ -76,23 +76,121 @@ export const paySalary = async (req, res) => {
 export const getWorkerSalaryWithAllocations = async (req, res) => {
   try {
     const { workerId } = req.params;
+    const monthQuery = req.query.month;
+
     const worker = await getWorkerById(workerId);
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
 
+    // Determine month bounds
+    let year, month, startDate, endDate, daysInMonth;
+    if (monthQuery) {
+      const p = monthQuery.split('-');
+      year = parseInt(p[0]);
+      month = parseInt(p[1]) - 1;
+      startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+    } else {
+      const bounds = getISTMonthBounds();
+      year = bounds.year;
+      month = bounds.month;
+      startDate = bounds.startDate;
+      endDate = bounds.endDate;
+      daysInMonth = bounds.daysInMonth;
+    }
+
     const allocations = await getAllocationsByWorker(workerId);
     const activeSalary = await getActiveSalaryByWorker(workerId);
+    const totalSalary = activeSalary ? parseFloat(activeSalary.salary) : 0;
+    const perDay = totalSalary > 0 ? totalSalary / daysInMonth : 0;
+
+    // Attendance for the month
+    const records = await getMonthlyAttendance(workerId, startDate, endDate);
+
+    // Sunday bonus (FRO only)
+    let sundayBonus = null;
+
+    if (worker.department === 'FRO' && totalSalary > 0) {
+      try {
+        // Find last Sunday date
+        const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0));
+        let lastSunDate = null;
+        for (let d = lastDayOfMonth.getUTCDate(); d >= 1; d--) {
+          const dt = new Date(Date.UTC(year, month, d));
+          if (dt.getUTCDay() === 0) {
+            lastSunDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            break;
+          }
+        }
+
+        const sundayRecord = records.find(r => r.date === lastSunDate);
+        const cameOnLastSunday = sundayRecord?.status === 'present';
+
+        // Target + achievement
+        const monthStr = startDate;
+        let tgt = await getTarget(workerId, monthStr);
+        if (!tgt) {
+          const monthsEmployed = (() => {
+            const join = new Date(worker.created_at);
+            const now2 = new Date();
+            const m = (now2.getFullYear() - join.getFullYear()) * 12 + (now2.getMonth() - join.getMonth());
+            return now2.getDate() >= join.getDate() ? m + 1 : m;
+          })();
+          const multipliers = [1, 2.5, 3];
+          const idx = Math.min(Math.max(monthsEmployed - 1, 0), multipliers.length - 1);
+          tgt = await upsertTarget({
+            worker_id: workerId,
+            month: monthStr,
+            target_amount: Math.round(totalSalary * multipliers[idx]),
+            is_auto_generated: true,
+          });
+        }
+        const currentTarget = parseFloat(tgt.target_amount);
+
+        const achievements = await getAchievements(workerId, startDate, endDate);
+        const monthlyAchievement = achievements.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+        const join = new Date(worker.created_at);
+        const now2 = new Date();
+        const m = (now2.getFullYear() - join.getFullYear()) * 12 + (now2.getMonth() - join.getMonth());
+        const monthsEmp = now2.getDate() >= join.getDate() ? m + 1 : m;
+        const isNewJoiner = monthsEmp <= 3;
+
+        const threshold = isNewJoiner ? 40 : 60;
+        const targetPercentage = currentTarget > 0 ? (monthlyAchievement / currentTarget) * 100 : 0;
+        const thresholdMet = targetPercentage >= threshold;
+        const bonusAmount = (cameOnLastSunday && thresholdMet) ? Math.round(perDay) : 0;
+
+        sundayBonus = {
+          lastSundayDate: lastSunDate,
+          cameOnLastSunday,
+          monthlyAchievement: Math.round(monthlyAchievement),
+          currentTarget,
+          targetPercentage: Math.round(targetPercentage * 10) / 10,
+          threshold,
+          thresholdMet,
+          isNewJoiner,
+          bonusAmount,
+        };
+      } catch {
+        // silent fail
+      }
+    }
 
     return res.json({
       workerId: worker.id,
       name: worker.name,
       department: worker.department,
-      totalSalary: activeSalary ? parseFloat(activeSalary.salary) : 0,
+      totalSalary,
+      perDay: Math.round(perDay),
+      daysInMonth,
       allocations: allocations.map(a => ({
         id: a.id,
         ngo_id: a.ngo_id,
         ngo_name: a.ngos?.name || null,
         salary_portion: parseFloat(a.salary_portion),
       })),
+      sundayBonus,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

@@ -339,8 +339,10 @@ export function HRProvider({ children }) {
     });
   }, [api]);
 
-  const fetchWorkerSalaryAllocations = useCallback(async (workerId) => {
-    return await api('/salary/worker/' + workerId + '/allocations');
+  const fetchWorkerSalaryAllocations = useCallback(async (workerId, month) => {
+    let url = '/salary/worker/' + workerId + '/allocations';
+    if (month) url += '?month=' + month;
+    return await api(url);
   }, [api]);
 
   const generateAllTargets = useCallback(async () => {

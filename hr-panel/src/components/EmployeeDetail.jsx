@@ -6,7 +6,7 @@ import { Dropdown } from './ui';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function EmployeeDetail({ worker, onBack, onOffboard }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +30,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const [achForm, setAchForm] = useState({});
   const [achSaving, setAchSaving] = useState({});
   const [allocations, setAllocations] = useState([]);
+  const [sundayBonus, setSundayBonus] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -58,6 +59,9 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
           .catch(() => {});
         fetchIncentiveSummary(worker.id, month)
           .then(s => setIncSummary(s?.hasIncentive ? s : null))
+          .catch(() => {});
+        fetchWorkerSalaryAllocations(worker.id, month)
+          .then(r => setSundayBonus(r?.sundayBonus || null))
           .catch(() => {});
       }
     });
@@ -1312,6 +1316,53 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                       <span><span style={{ display:'inline-block', width:8, height:8, background:'#fff', border:'1px solid #f3f4f6', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />No entry</span>
                       <span style={{ color:'var(--ink-soft)' }}>Type amount + Enter to save</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {data.department === 'FRO' && sundayBonus && (
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>Sunday Bonus</h3></div>
+                <div className="card-pad">
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-soft)' }}>Last Sunday</span>
+                      <span style={{ fontWeight:600 }}>
+                        {sundayBonus.lastSundayDate
+                          ? new Date(sundayBonus.lastSundayDate + 'T00:00:00+05:30').toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
+                          : '\u2014'}
+                      </span>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-soft)' }}>Came to work</span>
+                      <span style={{ fontWeight:600, color: sundayBonus.cameOnLastSunday ? 'var(--sage)' : 'var(--danger)' }}>
+                        {sundayBonus.cameOnLastSunday ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-soft)' }}>Target achieved</span>
+                      <span style={{ fontWeight:600 }}>
+                        {sundayBonus.targetPercentage.toFixed(1)}% (needs {sundayBonus.threshold}%)
+                        {' '}
+                        <span style={{ color: sundayBonus.thresholdMet ? 'var(--sage)' : 'var(--danger)' }}>
+                          {sundayBonus.thresholdMet ? 'Met' : 'Not met'}
+                        </span>
+                      </span>
+                    </div>
+                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:8, display:'flex', justifyContent:'space-between', fontSize:14 }}>
+                      <span style={{ fontWeight:600 }}>Bonus Amount</span>
+                      <span style={{ fontWeight:800, fontSize:18, color: sundayBonus.bonusAmount > 0 ? 'var(--sage)' : 'var(--ink-soft)' }}>
+                        {sundayBonus.bonusAmount > 0
+                          ? '₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')
+                          : 'Not eligible'}
+                      </span>
+                    </div>
+                    {sundayBonus.isNewJoiner && (
+                      <div style={{ marginTop:4, padding:'6px 10px', background:'#fffbeb', borderRadius:6, fontSize:11, color:'#92400e' }}>
+                        New joiner (≤3 months) — 40% threshold applies
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
