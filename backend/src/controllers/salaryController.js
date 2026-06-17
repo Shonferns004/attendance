@@ -161,6 +161,20 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
         const thresholdMet = targetPercentage >= threshold;
         const bonusAmount = (cameOnLastSunday && thresholdMet) ? Math.round(perDay) : 0;
 
+        // Sunday AKI
+        const sundayAchievement = achievements.find(r => r.date === lastSunDate);
+        const sundayAchievementAmount = sundayAchievement ? parseFloat(sundayAchievement.amount || 0) : 0;
+        const SUNDAY_AKI_RANGES = [
+          { min: 3750, max: 6999, incentive: 200 },
+          { min: 7000, max: 11999, incentive: 400 },
+          { min: 12000, max: 13749, incentive: 800 },
+          { min: 13750, max: 18999, incentive: 1100 },
+          { min: 19000, max: Infinity, incentive: 1500 },
+        ];
+        const sundayAKI = cameOnLastSunday && sundayAchievementAmount > 0
+          ? (SUNDAY_AKI_RANGES.find(r => sundayAchievementAmount >= r.min && sundayAchievementAmount <= r.max)?.incentive || 0)
+          : 0;
+
         sundayBonus = {
           lastSundayDate: lastSunDate,
           cameOnLastSunday,
@@ -171,6 +185,8 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
           thresholdMet,
           isNewJoiner,
           bonusAmount,
+          sundayAchievement: sundayAchievementAmount,
+          sundayAKI,
         };
       } catch {
         // silent fail

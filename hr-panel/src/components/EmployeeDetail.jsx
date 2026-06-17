@@ -837,7 +837,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                           </>
                         )}
                         <span style={{ marginLeft:'auto', fontWeight:600, fontSize:15 }}>
-                          Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0)).toLocaleString('en-IN')}</span>
+                          Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0) + (sundayBonus?.bonusAmount || 0)).toLocaleString('en-IN')}</span>
                         </span>
                       </div>
 
@@ -856,6 +856,9 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
                         <Equals />
                         <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
+                        {sundayBonus?.bonusAmount > 0 && (
+                          <><Arrow /><Box num={'+₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" /><Equals /><Box num={'₹' + (Math.round(totalDue) + (sundayBonus?.bonusAmount || 0)).toLocaleString('en-IN')} label={'Grand\nTotal'} color="#16a34a" big /></>
+                        )}
                       </div>
 
                       {/* Late minutes badge */}
@@ -1350,6 +1353,18 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         </span>
                       </span>
                     </div>
+                    {sundayBonus.sundayAchievement > 0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-soft)' }}>Sunday Achievement</span>
+                      <span style={{ fontWeight:600 }}>₹{sundayBonus.sundayAchievement.toLocaleString('en-IN')}</span>
+                    </div>
+                    )}
+                    {sundayBonus.sundayAKI > 0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                      <span style={{ color:'var(--ink-soft)' }}>Sunday AKI</span>
+                      <span style={{ fontWeight:600, color:'var(--sage)' }}>+₹{sundayBonus.sundayAKI.toLocaleString('en-IN')}</span>
+                    </div>
+                    )}
                     <div style={{ borderTop:'1px solid var(--line)', paddingTop:8, display:'flex', justifyContent:'space-between', fontSize:14 }}>
                       <span style={{ fontWeight:600 }}>Bonus Amount</span>
                       <span style={{ fontWeight:800, fontSize:18, color: sundayBonus.bonusAmount > 0 ? 'var(--sage)' : 'var(--ink-soft)' }}>

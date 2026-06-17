@@ -259,6 +259,15 @@ async function main() {
   }
   console.log(`  Grand total: ₹${grandTotalAchievement.toLocaleString('en-IN')}`);
 
+  // Add last Sunday achievement for June (so Sunday AKI is earned)
+  const juneLastSun = '2026-06-28';
+  await supabase.from('daily_achievements').upsert(
+    { worker_id: wid, date: juneLastSun, amount: 8000 },
+    { onConflict: 'worker_id, date' }
+  );
+  grandTotalAchievement += 8000;
+  console.log(`  Sunday Jun 28: ₹8,000 (Sunday AKI)`);
+
   // 8. Summary
   console.log(`\n=== DEMO COMPLETE ===`);
   console.log(`\nWorker ID: ${wid}`);
