@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS scheduled_notifications (
 );
 
 ALTER TABLE notification_log DROP CONSTRAINT IF EXISTS notification_log_type_check;
-ALTER TABLE notification_log ADD CONSTRAINT notification_log_type_check CHECK (type IN ('birthday','event','notice','achievement','admin'));
+ALTER TABLE notification_log ADD CONSTRAINT notification_log_type_check CHECK (type IN ('birthday','event','notice','achievement','admin','punch_reminder','punch_out_reminder'));

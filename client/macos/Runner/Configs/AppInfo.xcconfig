@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = attendance_app
+PRODUCT_NAME = UFS Attendance
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.attendx.attendanceApp
+PRODUCT_BUNDLE_IDENTIFIER = com.ufs.attendapp
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.attendx. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 UFS Attendance. All rights reserved.
