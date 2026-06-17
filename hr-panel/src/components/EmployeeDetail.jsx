@@ -92,6 +92,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
       marital_status: data.marital_status || '',
       pan_number: data.pan_number || '',
       aadhar_number: data.aadhar_number || '',
+      created_at: data.created_at ? data.created_at.slice(0, 10) : '',
       is_active: data.is_active !== false,
       emergency_contact_name: data.emergency_contact_name || '',
       emergency_contact_relation: data.emergency_contact_relation || '',
@@ -111,6 +112,8 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
     try {
       const payload = { ...form };
       if (!payload.dob) payload.dob = null;
+      if (!payload.created_at) delete payload.created_at;
+      else payload.created_at = payload.created_at + 'T00:00:00.000Z';
       await updateWorker(worker.id, payload);
       const fresh = await fetchWorkerById(worker.id);
       setData(fresh); setEditing(false);
@@ -176,6 +179,11 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const joinDayNum = joinDate.getDate();
   const joinCutoff = data.created_at.slice(0, 10);
   const absentDatesAfterJoin = absentDates.filter(d => !joinedThisMonth || d >= joinCutoff);
+
+  // New-joiner check: ≤ 3 months employed
+  const nowDate = new Date();
+  const monthsEmp = (nowDate.getFullYear() - joinDate.getFullYear()) * 12 + (nowDate.getMonth() - joinDate.getMonth());
+  const monthsEmployed = (nowDate.getDate() >= joinDate.getDate()) ? monthsEmp + 1 : monthsEmp;
 
   const deducted = new Set();
   const deductionNotes = [];
@@ -244,7 +252,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   ).length;
   const sundayDeductions = [...deducted].filter(d => new Date(d).getDay() === 0).length;
   const JOINING_DEDUCTION = 1.5;
-  const joiningDeduction = joinedThisMonth ? JOINING_DEDUCTION : 0;
+  const joiningDeduction = (joinedThisMonth && monthsEmployed <= 3) ? JOINING_DEDUCTION : 0;
   const perDay = activeSalary ? parseFloat(activeSalary.salary) / daysInMonth : 0;
 
   // Late-minutes-based deductions
@@ -329,7 +337,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
     else if (pLateMins > 270) pLateDays = 1;
     else if (pLateMins > 180) pLateDays = 0.5;
     const pPaid = Math.max(0, pAvailable - pDeducted.size);
-    const pJoining = pJoined ? 1.5 : 0;
+    const pJoining = (pJoined && monthsEmployed <= 3) ? 1.5 : 0;
     prevTotalDue = pPerDay * Math.max(0, pPaid - pLateDays - pJoining);
   }
 
@@ -420,6 +428,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                     </div>
                   ) : <Field label="NGO" value={ngoName} />}
                   {editing ? <EditField label="Shift" value={form.shift} onChange={setField('shift')} /> : <Field label="Shift" value={data.shift} />}
+                  {editing ? <EditField label="Joining Date" value={form.created_at} onChange={setField('created_at')} type="date" /> : <Field label="Joining Date" value={data.created_at ? new Date(data.created_at).toLocaleDateString() : '—'} />}
                   {editing ? <EditField label="Gender" value={form.gender} onChange={setField('gender')} /> : <Field label="Gender" value={data.gender} />}
                   {editing ? <EditField label="Date of Birth" value={form.dob} onChange={setField('dob')} type="date" /> : <Field label="Date of Birth" value={data.dob} />}
                   {editing ? <EditField label="Phone" value={form.phone} onChange={setField('phone')} /> : <Field label="Phone" value={data.phone} />}

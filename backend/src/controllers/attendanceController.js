@@ -187,6 +187,24 @@ function expandLeaveDates(leave) {
   return dates;
 }
 
+export const updateAttendanceRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { punch_in_time, punch_out_time, status, late_minutes, date } = req.body;
+    const updates = {};
+    if (punch_in_time !== undefined) updates.punch_in_time = punch_in_time;
+    if (punch_out_time !== undefined) updates.punch_out_time = punch_out_time;
+    if (status !== undefined) updates.status = status;
+    if (late_minutes !== undefined) updates.late_minutes = late_minutes;
+    if (date !== undefined) updates.date = date;
+
+    const result = await updateAttendance(id, updates);
+    return res.json({ message: 'Attendance updated', attendance: result });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const listAll = async (req, res) => {
   try {
     let records = await getAllAttendance();

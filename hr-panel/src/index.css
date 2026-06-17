@@ -510,6 +510,9 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--line); }
 
+.worker-link { color: var(--ink); text-decoration: none; cursor: pointer; }
+.worker-link:hover { text-decoration: underline; color: var(--sage); }
+
 @media (max-width: 480px) {
   .metrics { grid-template-columns: 1fr; }
   th, td { padding: 10px 12px; }

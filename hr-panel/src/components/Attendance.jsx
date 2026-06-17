@@ -3,6 +3,7 @@ import { useHR } from '../store';
 import { Dropdown } from './ui';
 
 const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 function fmtTime(iso) {
   if (!iso) return <span className="time-cell dim">&mdash;</span>;
@@ -46,6 +47,20 @@ function getIstDateStr(date) {
   return `${y}-${m}-${d}`;
 }
 
+function extractTime(iso) {
+  if (!iso) return '';
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function reconstructIso(originalIso, newTime) {
+  if (!originalIso || !newTime) return originalIso;
+  const datePart = originalIso.substring(0, 10);
+  return `${datePart}T${newTime}:00.000Z`;
+}
+
 function Badge({ status }) {
   const map = {
     present: { cls: 'badge-present', lbl: 'Present' },
@@ -69,6 +84,13 @@ export default function Attendance() {
   const [searchToday, setSearchToday] = useState('');
   const [searchWorker, setSearchWorker] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [workerAttendance, setWorkerAttendance] = useState([]);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editPunchIn, setEditPunchIn] = useState('');
+  const [editPunchOut, setEditPunchOut] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   const depts = [...new Set((workers || []).map(w => w.department).filter(Boolean))].sort();
   const roles = [...new Set((workers || []).map(w => (w.department || 'Team Member')).filter(Boolean))].sort();
@@ -78,7 +100,6 @@ export default function Attendance() {
   const todayMap = {};
   allToday.forEach(r => { todayMap[r.worker_id] = r; });
 
-  /* Build a synthetic combined list: every worker gets a row */
   const todayCombined = (workers || []).filter(w => {
     const role = w.department || 'Team Member';
     if (roleFilter && role !== roleFilter) return false;
@@ -124,6 +145,13 @@ export default function Attendance() {
     fetchWorkers();
   }, []);
 
+  useEffect(() => {
+    if (selectedWorker) {
+      const records = attendance.filter(a => a.worker_id === selectedWorker.id && a.id && !a.id.startsWith('absent-'));
+      setWorkerAttendance(records);
+    }
+  }, [attendance, selectedWorker]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([fetchAttendance(), fetchWorkers()]);
@@ -153,6 +181,58 @@ export default function Attendance() {
     return true;
   });
 
+  const viewWorker = (workerId) => {
+    const worker = workers.find(w => w.id === workerId);
+    if (!worker) return;
+    setSelectedWorker(worker);
+  };
+
+  const backToOverview = () => {
+    setSelectedWorker(null);
+    setEditingRecord(null);
+  };
+
+  const openEdit = (record) => {
+    setEditingRecord(record);
+    setEditPunchIn(extractTime(record.punch_in_time));
+    setEditPunchOut(extractTime(record.punch_out_time));
+    setEditStatus(record.status);
+  };
+
+  const closeEdit = () => {
+    setEditingRecord(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingRecord) return;
+    setEditLoading(true);
+    try {
+      const body = {
+        punch_in_time: reconstructIso(editingRecord.punch_in_time, editPunchIn),
+        punch_out_time: reconstructIso(editingRecord.punch_out_time, editPunchOut),
+        status: editStatus,
+      };
+      const res = await fetch(API_BASE + '/attendance/' + editingRecord.id, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('hr_token'),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to update' }));
+        throw new Error(err.message || 'Update failed');
+      }
+      await fetchAttendance();
+      closeEdit();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const onTime = todayCombined.filter(r => r.status === 'present').length;
   const lateCount = todayCombined.filter(r => r.status === 'late').length;
   const absentCount = todayCombined.filter(r => r.status === 'absent').length;
@@ -165,149 +245,238 @@ export default function Attendance() {
 
   return (
     <>
-      <div className="tabs">
-        <button className={'tab' + (tab === 'today' ? ' active' : '')} onClick={() => setTab('today')}>Today&#8217;s Attendance</button>
-        <button className={'tab' + (tab === 'history' ? ' active' : '')} onClick={() => setTab('history')}>Attendance History</button>
-      </div>
-
-      {tab === 'today' && (
+      {selectedWorker ? (
         <div>
-          <div className="stats">
-            <div className="stat"><div className="stat-label">Total Workers</div><div className="stat-value info">{total}</div></div>
-            <div className="stat"><div className="stat-label">Present</div><div className="stat-value success">{onTime + lateCount}</div></div>
-            <div className="stat"><div className="stat-label">Late</div><div className="stat-value warning">{lateCount}</div></div>
-            <div className="stat"><div className="stat-label">Absent</div><div className="stat-value error">{absentCount}</div></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <button className="btn btn-sm" onClick={backToOverview}>&larr; Back</button>
+            <h2 style={{ margin: 0 }}>{selectedWorker.name}'s Attendance</h2>
           </div>
 
           <div className="card" style={{ padding: '20px 22px' }}>
-            <div className="card-title" style={{ justifyContent: 'space-between' }}>
-              <span>Workers Present Today &mdash; <span className="today-date">{todayIST}</span></span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Dropdown className="role-filter" value={punchStatus} onChange={e => setPunchStatus(e.target.value)}
-                  options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
-                <Dropdown className="role-filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-                  options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />
-                <input className="search-input" type="text" placeholder="Search worker&hellip;" value={searchToday} onChange={e => setSearchToday(e.target.value)} style={{ marginTop: 0, width: 140, padding: '4px 8px', fontSize: 12 }} />
-                <button className="btn btn-sm" onClick={handleRefresh} title="Refresh" disabled={refreshing}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin .6s linear infinite' : 'none' }}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.4-3.4L23 10M1 14l5.1 4.4A9 9 0 0 0 20.5 15"/></svg>
-                </button>
-              </div>
-            </div>
-
-            {todayRecords.length === 0 ? (
+            {workerAttendance.length === 0 ? (
               <div className="empty-state">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <p>No attendance records for today yet.</p>
+                <p>No attendance records found for this worker.</p>
               </div>
             ) : (
               <div className="table-wrap">
                 <table>
                   <thead>
-                    <tr><th>#</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
+                    <tr><th>#</th><th>Date</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th><th>Action</th></tr>
                   </thead>
                   <tbody>
-                    {todayRecords.map((r, i) => {
-                      const w = r.workers || {};
-                      const cls = r.status === 'absent' ? 'row-absent' : r.status === 'late' ? 'row-late' : '';
-                      return (
-                        <tr key={r.id} className={cls}>
-                          <td>{i + 1}</td>
-                          <td><strong>{w.name || 'Unknown'}</strong></td>
-                          <td><Badge status={r.status} /></td>
-                          <td>{fmtTime(r.punch_in_time)}</td>
-                          <td>{fmtTime(r.punch_out_time)}</td>
-                          <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
-                          <td>{r.punch_in_time ? <LiveHours punchIn={r.punch_in_time} punchOut={r.punch_out_time} /> : '\u2014'}</td>
-                        </tr>
-                      );
-                    })}
+                    {workerAttendance.map((r, i) => (
+                      <tr key={r.id} className={r.status === 'late' ? 'row-late' : ''}>
+                        <td>{i + 1}</td>
+                        <td>{r.date}</td>
+                        <td><Badge status={r.status} /></td>
+                        <td>{fmtTime(r.punch_in_time)}</td>
+                        <td>{fmtTime(r.punch_out_time)}</td>
+                        <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
+                        <td>{r.hours_worked || '\u2014'}</td>
+                        <td>
+                          <button className="btn btn-sm" onClick={() => openEdit(r)} title="Edit Attendance">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
-
           </div>
         </div>
+      ) : (
+        <>
+          <div className="tabs">
+            <button className={'tab' + (tab === 'today' ? ' active' : '')} onClick={() => setTab('today')}>Today&#8217;s Attendance</button>
+            <button className={'tab' + (tab === 'history' ? ' active' : '')} onClick={() => setTab('history')}>Attendance History</button>
+          </div>
+
+          {tab === 'today' && (
+            <div>
+              <div className="stats">
+                <div className="stat"><div className="stat-label">Total Workers</div><div className="stat-value info">{total}</div></div>
+                <div className="stat"><div className="stat-label">Present</div><div className="stat-value success">{onTime + lateCount}</div></div>
+                <div className="stat"><div className="stat-label">Late</div><div className="stat-value warning">{lateCount}</div></div>
+                <div className="stat"><div className="stat-label">Absent</div><div className="stat-value error">{absentCount}</div></div>
+              </div>
+
+              <div className="card" style={{ padding: '20px 22px' }}>
+                <div className="card-title" style={{ justifyContent: 'space-between' }}>
+                  <span>Workers Present Today &mdash; <span className="today-date">{todayIST}</span></span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Dropdown className="role-filter" value={punchStatus} onChange={e => setPunchStatus(e.target.value)}
+                      options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
+                    <Dropdown className="role-filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+                      options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />
+                    <input className="search-input" type="text" placeholder="Search worker&hellip;" value={searchToday} onChange={e => setSearchToday(e.target.value)} style={{ marginTop: 0, width: 140, padding: '4px 8px', fontSize: 12 }} />
+                    <button className="btn btn-sm" onClick={handleRefresh} title="Refresh" disabled={refreshing}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin .6s linear infinite' : 'none' }}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.4-3.4L23 10M1 14l5.1 4.4A9 9 0 0 0 20.5 15"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {todayRecords.length === 0 ? (
+                  <div className="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <p>No attendance records for today yet.</p>
+                  </div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>#</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
+                      </thead>
+                      <tbody>
+                        {todayRecords.map((r, i) => {
+                          const w = r.workers || {};
+                          const cls = r.status === 'absent' ? 'row-absent' : r.status === 'late' ? 'row-late' : '';
+                          return (
+                            <tr key={r.id} className={cls}>
+                              <td>{i + 1}</td>
+                              <td><a href="#" className="worker-link" onClick={e => { e.preventDefault(); viewWorker(w.id); }}><strong>{w.name || 'Unknown'}</strong></a></td>
+                              <td><Badge status={r.status} /></td>
+                              <td>{fmtTime(r.punch_in_time)}</td>
+                              <td>{fmtTime(r.punch_out_time)}</td>
+                              <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
+                              <td>{r.punch_in_time ? <LiveHours punchIn={r.punch_in_time} punchOut={r.punch_out_time} /> : '\u2014'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {tab === 'history' && (
+            <div>
+              <div className="card" style={{ padding: '20px 22px' }}>
+                <div className="filters">
+                  <div className="filter-group">
+                    <label>Date From</label>
+                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Date To</label>
+                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Department</label>
+                    <Dropdown value={deptFilterH} onChange={e => setDeptFilterH(e.target.value)}
+                      options={[{value:'',label:'All'}, ...depts.map(d => ({value:d,label:d}))]} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Status</label>
+                    <Dropdown value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                      options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Search Worker</label>
+                    <input type="text" placeholder="Name or ID&hellip;" value={searchWorker} onChange={e => setSearchWorker(e.target.value)} />
+                  </div>
+                  <div className="filter-group" style={{ flex: 0 }}>
+                    <label>&nbsp;</label>
+                    <button className="btn btn-primary" onClick={handleLoadHistory} style={{ whiteSpace: 'nowrap' }}>Load History</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="stats">
+                <div className="stat"><div className="stat-label">Total Records</div><div className="stat-value info">{historyRecords.length}</div></div>
+                <div className="stat"><div className="stat-label">Present</div><div className="stat-value success">{hPresent}</div></div>
+                <div className="stat"><div className="stat-label">Late</div><div className="stat-value warning">{hLate}</div></div>
+                <div className="stat"><div className="stat-label">Absent</div><div className="stat-value error">{hAbsent}</div></div>
+                <div className="stat"><div className="stat-label">Leave</div><div className="stat-value leave">{hLeave}</div></div>
+              </div>
+
+              <div className="card" style={{ padding: '20px 22px' }}>
+                <div className="card-title" style={{ justifyContent: 'space-between' }}>
+                  <span>Attendance History</span>
+                  <button className="btn btn-sm" onClick={() => window.print()}>Print</button>
+                </div>
+                {historyRecords.length === 0 ? (
+                  <div className="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <p>No records found. Select a date range and click Load History.</p>
+                  </div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>#</th><th>Date</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
+                      </thead>
+                      <tbody>
+                        {historyRecords.map((r, i) => {
+                          const w = r.workers || {};
+                          const cls = r.status === 'absent' ? 'row-absent' : r.status === 'late' ? 'row-late' : '';
+                          return (
+                            <tr key={r.id} className={cls}>
+                              <td>{i + 1}</td>
+                              <td>{r.date}</td>
+                              <td><a href="#" className="worker-link" onClick={e => { e.preventDefault(); viewWorker(w.id); }}><strong>{w.name || 'Unknown'}</strong></a></td>
+                              <td><Badge status={r.status} /></td>
+                              <td>{fmtTime(r.punch_in_time)}</td>
+                              <td>{fmtTime(r.punch_out_time)}</td>
+                              <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
+                              <td>{r.hours_worked || '\u2014'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {tab === 'history' && (
-        <div>
-          <div className="card" style={{ padding: '20px 22px' }}>
-            <div className="filters">
-              <div className="filter-group">
-                <label>Date From</label>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              </div>
-              <div className="filter-group">
-                <label>Date To</label>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              </div>
-              <div className="filter-group">
-                <label>Department</label>
-                <Dropdown value={deptFilterH} onChange={e => setDeptFilterH(e.target.value)}
-                  options={[{value:'',label:'All'}, ...depts.map(d => ({value:d,label:d}))]} />
-              </div>
-              <div className="filter-group">
-                <label>Status</label>
-                <Dropdown value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                  options={[{value:'',label:'All'},{value:'present',label:'Present'},{value:'late',label:'Late'},{value:'absent',label:'Absent'}]} />
-              </div>
-              <div className="filter-group">
-                <label>Search Worker</label>
-                <input type="text" placeholder="Name or ID&hellip;" value={searchWorker} onChange={e => setSearchWorker(e.target.value)} />
-              </div>
-              <div className="filter-group" style={{ flex: 0 }}>
-                <label>&nbsp;</label>
-                <button className="btn btn-primary" onClick={handleLoadHistory} style={{ whiteSpace: 'nowrap' }}>Load History</button>
-              </div>
+      {editingRecord && (
+        <div className="modal-overlay" onClick={closeEdit}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Edit Attendance</h3>
+              <button className="btn btn-sm" onClick={closeEdit}>&times;</button>
             </div>
-          </div>
-
-          <div className="stats">
-            <div className="stat"><div className="stat-label">Total Records</div><div className="stat-value info">{historyRecords.length}</div></div>
-            <div className="stat"><div className="stat-label">Present</div><div className="stat-value success">{hPresent}</div></div>
-            <div className="stat"><div className="stat-label">Late</div><div className="stat-value warning">{hLate}</div></div>
-            <div className="stat"><div className="stat-label">Absent</div><div className="stat-value error">{hAbsent}</div></div>
-            <div className="stat"><div className="stat-label">Leave</div><div className="stat-value leave">{hLeave}</div></div>
-          </div>
-
-          <div className="card" style={{ padding: '20px 22px' }}>
-            <div className="card-title" style={{ justifyContent: 'space-between' }}>
-              <span>Attendance History</span>
-              <button className="btn btn-sm" onClick={() => window.print()}>Print</button>
+            <div className="modal-body">
+              <label className="field">
+                <span>Worker</span>
+                <input type="text" value={editingRecord.workers?.name || ''} disabled />
+              </label>
+              <label className="field">
+                <span>Date</span>
+                <input type="text" value={editingRecord.date} disabled />
+              </label>
+              <label className="field">
+                <span>Punch In Time</span>
+                <input type="time" value={editPunchIn} onChange={e => setEditPunchIn(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Punch Out Time</span>
+                <input type="time" value={editPunchOut} onChange={e => setEditPunchOut(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Status</span>
+                <select value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+                  <option value="present">Present</option>
+                  <option value="late">Late</option>
+                  <option value="absent">Absent</option>
+                  <option value="leave">Leave</option>
+                </select>
+              </label>
             </div>
-            {historyRecords.length === 0 ? (
-              <div className="empty-state">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <p>No records found. Select a date range and click Load History.</p>
-              </div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>#</th><th>Date</th><th>Name</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Late (min)</th><th>Hours Worked</th></tr>
-                  </thead>
-                  <tbody>
-                    {historyRecords.map((r, i) => {
-                      const w = r.workers || {};
-                      const cls = r.status === 'absent' ? 'row-absent' : r.status === 'late' ? 'row-late' : '';
-                      return (
-                        <tr key={r.id} className={cls}>
-                          <td>{i + 1}</td>
-                          <td>{r.date}</td>
-                          <td><strong>{w.name || 'Unknown'}</strong></td>
-                          <td><Badge status={r.status} /></td>
-                          <td>{fmtTime(r.punch_in_time)}</td>
-                          <td>{fmtTime(r.punch_out_time)}</td>
-                          <td>{r.late_minutes > 0 ? <span className="late-mins">{r.late_minutes}</span> : '\u2014'}</td>
-                          <td>{r.hours_worked || '\u2014'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="modal-foot">
+              <button className="btn" onClick={closeEdit}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveEdit} disabled={editLoading}>
+                {editLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}

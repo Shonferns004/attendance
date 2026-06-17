@@ -353,7 +353,7 @@ export const getMySalaryBreakdown = async (req, res) => {
       lateDeductionDays = 0.5;
     }
 
-    const joiningDeduction = joinedThisMonth ? 1.5 : 0;
+    const joiningDeduction = (joinedThisMonth && getMonthsEmployed(worker.created_at) <= 3) ? 1.5 : 0;
 
     const totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
     const normalTotalDue = perDay * paidDays;
