@@ -861,6 +861,76 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         )}
                       </div>
 
+                      {/* Sunday bonus explanation */}
+                      {data.department === 'FRO' && sundayBonus && (
+                        <div style={{ marginBottom:14, padding:'10px 14px', border:'1px solid #f59e0b', borderRadius:8, background:'#fffbeb', fontSize:12 }}>
+                          <div style={{ fontWeight:600, color:'#92400e', marginBottom:6, fontSize:11, textTransform:'uppercase', letterSpacing:0.5 }}>
+                            Why Sunday Bonus {sundayBonus.bonusAmount > 0 ? 'applied' : 'was not applied'}
+                          </div>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <tbody>
+                              <tr>
+                                <td style={{ padding:'2px 6px 2px 0', width:80, verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                  <span style={{ display:'inline-block', width:8, height:8, background: sundayBonus.cameOnLastSunday ? '#bbf7d0' : '#fecaca', borderRadius:2, marginRight:4 }} />
+                                  <strong>Last Sunday</strong>
+                                </td>
+                                <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                  {sundayBonus.lastSundayDate
+                                    ? new Date(sundayBonus.lastSundayDate + 'T00:00:00+05:30').toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
+                                    : '\u2014'}
+                                  {' — '}
+                                  <span style={{ color: sundayBonus.cameOnLastSunday ? '#16a34a' : '#dc2626', fontWeight:600 }}>
+                                    {sundayBonus.cameOnLastSunday ? 'Came to work' : 'Did not come'}
+                                  </span>
+                                </td>
+                              </tr>
+                              {sundayBonus.cameOnLastSunday && sundayBonus.sundayAchievement > 0 && (
+                                <tr>
+                                  <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                    <span style={{ display:'inline-block', width:8, height:8, background:'#bbf7d0', borderRadius:2, marginRight:4 }} />
+                                    <strong>Achievement</strong>
+                                  </td>
+                                  <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                    ₹{sundayBonus.sundayAchievement.toLocaleString('en-IN')} → AKI +₹{sundayBonus.sundayAKI.toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              )}
+                              <tr>
+                                <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                  <span style={{ display:'inline-block', width:8, height:8, background: sundayBonus.thresholdMet ? '#bbf7d0' : '#fecaca', borderRadius:2, marginRight:4 }} />
+                                  <strong>Target</strong>
+                                </td>
+                                <td style={{ padding:'2px 0', color:'var(--ink-soft)' }}>
+                                  {sundayBonus.targetPercentage.toFixed(1)}% achieved — needs {sundayBonus.threshold}%
+                                  {' — '}
+                                  <span style={{ color: sundayBonus.thresholdMet ? '#16a34a' : '#dc2626', fontWeight:600 }}>
+                                    {sundayBonus.thresholdMet ? 'Threshold met' : 'Threshold not met'}
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style={{ padding:'2px 6px 2px 0', verticalAlign:'top', whiteSpace:'nowrap' }}>
+                                  <span style={{ display:'inline-block', width:8, height:8, background: sundayBonus.bonusAmount > 0 ? '#bbf7d0' : '#f0f0f0', borderRadius:2, marginRight:4 }} />
+                                  <strong>Bonus</strong>
+                                </td>
+                                <td style={{ padding:'2px 0', fontWeight:700, color: sundayBonus.bonusAmount > 0 ? '#16a34a' : 'var(--ink-soft)' }}>
+                                  {sundayBonus.bonusAmount > 0
+                                    ? '₹' + sundayBonus.bonusAmount.toLocaleString('en-IN') + ' extra (1 day pay)'
+                                    : 'Not eligible'}
+                                </td>
+                              </tr>
+                              {sundayBonus.isNewJoiner && (
+                                <tr>
+                                  <td colSpan={2} style={{ padding:'4px 0 0', fontSize:11, color:'#92400e' }}>
+                                    New joiner (≤3 months) — 40% threshold applies instead of 60%
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
                       {/* Late minutes badge */}
                       <div style={{ marginBottom:14 }}>
                         {totalLateMinutes > 540 ? (
