@@ -1394,65 +1394,6 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               </div>
               )}
 
-              {data.department === 'FRO' && sundayBonus && (
-              <div className="card" style={{ marginBottom:16 }}>
-                <div className="card-head"><h3>Sunday Bonus</h3></div>
-                <div className="card-pad">
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                      <span style={{ color:'var(--ink-soft)' }}>Last Sunday</span>
-                      <span style={{ fontWeight:600 }}>
-                        {sundayBonus.lastSundayDate
-                          ? new Date(sundayBonus.lastSundayDate + 'T00:00:00+05:30').toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
-                          : '\u2014'}
-                      </span>
-                    </div>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                      <span style={{ color:'var(--ink-soft)' }}>Came to work</span>
-                      <span style={{ fontWeight:600, color: sundayBonus.cameOnLastSunday ? 'var(--sage)' : 'var(--danger)' }}>
-                        {sundayBonus.cameOnLastSunday ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                      <span style={{ color:'var(--ink-soft)' }}>Target achieved</span>
-                      <span style={{ fontWeight:600 }}>
-                        {sundayBonus.targetPercentage.toFixed(1)}% (needs {sundayBonus.threshold}%)
-                        {' '}
-                        <span style={{ color: sundayBonus.thresholdMet ? 'var(--sage)' : 'var(--danger)' }}>
-                          {sundayBonus.thresholdMet ? 'Met' : 'Not met'}
-                        </span>
-                      </span>
-                    </div>
-                    {sundayBonus.sundayAchievement > 0 && (
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                      <span style={{ color:'var(--ink-soft)' }}>Sunday Achievement</span>
-                      <span style={{ fontWeight:600 }}>₹{sundayBonus.sundayAchievement.toLocaleString('en-IN')}</span>
-                    </div>
-                    )}
-                    {sundayBonus.sundayAKI > 0 && (
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                      <span style={{ color:'var(--ink-soft)' }}>Sunday AKI</span>
-                      <span style={{ fontWeight:600, color:'var(--sage)' }}>+₹{sundayBonus.sundayAKI.toLocaleString('en-IN')}</span>
-                    </div>
-                    )}
-                    <div style={{ borderTop:'1px solid var(--line)', paddingTop:8, display:'flex', justifyContent:'space-between', fontSize:14 }}>
-                      <span style={{ fontWeight:600 }}>Bonus Amount</span>
-                      <span style={{ fontWeight:800, fontSize:18, color: sundayBonus.bonusAmount > 0 ? 'var(--sage)' : 'var(--ink-soft)' }}>
-                        {sundayBonus.bonusAmount > 0
-                          ? '₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')
-                          : 'Not eligible'}
-                      </span>
-                    </div>
-                    {sundayBonus.isNewJoiner && (
-                      <div style={{ marginTop:4, padding:'6px 10px', background:'#fffbeb', borderRadius:6, fontSize:11, color:'#92400e' }}>
-                        New joiner (≤3 months) — 40% threshold applies
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              )}
-
             </div>
           )}
 
