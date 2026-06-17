@@ -515,7 +515,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
             <div>
               {/* Attendance Records */}
               <div className="card" style={{ padding:'20px 22px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <button className="btn btn-icon"
                       onClick={() => {

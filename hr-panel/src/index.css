@@ -479,6 +479,18 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
   .cal-cell { min-height: 64px; padding: 5px; }
   .cal-day-num { font-size: 13px; }
   .cal-dot { width: 6px; height: 6px; }
+
+  .tabs { overflow-x: auto; white-space: nowrap; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { height: 0; }
+  .detail-cards-scroll { max-height: none; overflow-y: visible; }
+  .detail-sidebar-wrap { position: static !important; width: 100% !important; }
+  .detail-sidebar { position: static !important; width: 100% !important; }
+  .side-fields { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; }
+  .side-fields .side-field { flex: 1; min-width: 130px; border-bottom: none; padding: 6px 0; }
+
+  .salary-metrics { grid-template-columns: repeat(3, 1fr); }
+  .salary-visual { flex-direction: column; }
+  .salary-breakdown-legend { font-size: 10px; gap: 6px; }
 }
 
 /* === Holidays === */
@@ -518,6 +530,37 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
   th, td { padding: 10px 12px; }
   .card-head { padding: 14px 16px; }
   .card-pad { padding: 16px; }
+  .detail-grid { grid-template-columns: 1fr; gap: 0; }
+  .detail-grid .detail-field { border-bottom: 1px solid var(--line); padding: 12px 14px; }
+  .detail-grid .detail-field:last-child { border-bottom: none; }
+  .detail-value { font-size: 14px; }
+  .detail-label { font-size: 11px; }
+  .detail-sidebar { padding: 0; }
+  .side-field { min-width: 100px; }
+  .side-fields { gap: 2px 10px; }
+  .salary-metrics { grid-template-columns: repeat(2, 1fr); }
+  .salary-metric { padding: 8px 10px; }
+  .salary-metric-num { font-size: 14px; }
+  .salary-metric-lbl { font-size: 9px; }
+  .salary-breakdown-bar { height: 20px; }
+  .salary-visual-total { font-size: 28px; }
+  .salary-stats { grid-template-columns: 1fr 1fr; }
+  .card { border-radius: var(--radius-sm); }
+  .stat { min-width: 0; padding: 10px 10px; }
+  .stat-value { font-size: 18px; }
+  .lb-cards { flex-direction: column; }
+  .tabs .tab { padding: 8px 12px; font-size: 12px; }
+  .filter-group input, .filter-group select { min-width: 0; width: 100%; }
+  .table-wrap { margin: 0 -8px; border-radius: 0; border-left: none; border-right: none; }
+  .modal-body { padding: 14px; }
+  .modal-head { padding: 12px 14px; }
+  .modal-foot { padding: 12px 14px; }
+  .detail-grid .detail-field .dropdown .dropdown-trigger { font-size: 13px; padding: 8px 10px; }
+  .detail-grid .detail-field input { font-size: 13px; padding: 8px 10px; }
+  .detail-grid .detail-field select { font-size: 13px; padding: 8px 10px; }
+  .detail-grid .detail-field .dropdown { width: 100%; }
+  .detail-grid .detail-field .EditField input { font-size: 13px; padding: 8px 10px; }
+  .detail-cards-scroll .card { margin-bottom: 10px !important; }
 }
 
 @media (min-width: 821px) {
@@ -562,9 +605,6 @@ tr.row-absent:hover td, tr.row-late:hover td { filter: brightness(.97); }
   .lb-cards { flex-direction: column; }
   .filters { flex-direction: column; align-items: stretch; }
   .filters .filter-group { min-width: 0; }
-  .salary-visual { flex-direction: column; }
-  .salary-breakdown-legend { font-size: 10px; gap: 8px; }
-  .salary-metrics { grid-template-columns: repeat(2, 1fr); }
   .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { padding: 10px 12px; }
   .stat-value { font-size: 18px; }
