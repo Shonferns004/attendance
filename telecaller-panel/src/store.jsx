@@ -10,23 +10,28 @@ export function TelecallerProvider({ children }) {
   useEffect(() => {
     const t = getToken();
     const u = getUser();
-    if (t && u && u.role === 'telecaller') {
+    if (t && u && (u.role === 'telecaller' || (u.role === 'worker' && u.department === 'FRO'))) {
       setToken(t);
       setUser(u);
     } else {
+      clearSession();
       setToken(null);
       setUser(null);
     }
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const data = await apiLogin(email, password);
-    if (data.role !== 'telecaller') {
-      throw new Error('Access denied. Telecaller account required.');
+  const login = useCallback(async (identifier, password) => {
+    const data = await apiLogin(identifier, password);
+    const isTelecaller = data.role === 'telecaller';
+    const isFroWorker = data.role === 'worker' && data.user?.department === 'FRO';
+    if (!isTelecaller && !isFroWorker) {
+      throw new Error('Access denied. Use a Telecaller account or FRO worker login.');
     }
-    setSession(data.token, data.user);
+    // Save the actual role so the panel knows which type
+    const userData = { ...data.user, _authRole: data.role };
+    setSession(data.token, userData);
     setToken(data.token);
-    setUser(data.user);
+    setUser(userData);
   }, []);
 
   const logout = useCallback(() => {

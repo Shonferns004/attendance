@@ -94,7 +94,7 @@ export const unifiedLogin = async (req, res) => {
     const isRecruiter = dept.includes('recruit') || dept.startsWith('hr');
     const role = isRecruiter ? 'recruiter' : 'worker';
     const token = jwt.sign(
-      { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role },
+      { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role, department: worker.department },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );

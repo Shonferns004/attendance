@@ -54,8 +54,8 @@ function DashboardPage() {
     setSelectedLead(null);
   }, []);
 
-  const userName = user?.name || 'Telecaller';
-  const userRole = 'Telecaller';
+  const userName = user?.name || 'User';
+  const userRole = user?._authRole === 'worker' ? 'FRO Worker' : 'Telecaller';
   const initials = userName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const meta = NAV.find(n => n.id === active);
