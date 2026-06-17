@@ -237,6 +237,20 @@ label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; 
 .dp-day.today { font-weight: 700; color: var(--primary); }
 .dp-day.selected { background: var(--primary); color: white; }
 .dp-day.selected:hover { background: var(--primary); }
+.dp-title-btn {
+  background: none; border: none; cursor: pointer; font-size: 14px; font-weight: 600;
+  color: var(--ink); font-family: inherit; padding: 2px 8px; border-radius: var(--radius-sm);
+}
+.dp-title-btn:hover { background: var(--hover); }
+.dp-year-grid { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; gap: 4px; margin-top: 4px; }
+.dp-year {
+  padding: 8px 2px; font-size: 13px; cursor: pointer; border-radius: var(--radius-sm);
+  transition: background .1s;
+}
+.dp-year:hover { background: var(--hover); }
+.dp-year.today { font-weight: 700; color: var(--primary); }
+.dp-year.selected { background: var(--primary); color: white; }
+.dp-year.selected:hover { background: var(--primary); }
 .search-input-wrap { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
 
 .btn {

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 export function DatePicker({ value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState('month');
   const ref = useRef(null);
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export function DatePicker({ value, onChange, placeholder }) {
       const p = value.split('-');
       setViewDate(new Date(+p[0], +p[1] - 1, 1));
     }
+    setViewMode('month');
     setOpen(true);
   };
 
@@ -31,6 +33,19 @@ export function DatePicker({ value, onChange, placeholder }) {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const yearStart = year - 6;
+  const yearEnd = year + 7;
+  const yearCells = [];
+  for (let y = yearStart; y <= yearEnd; y++) {
+    const yCls = (y === year ? ' selected' : '') + (y === today.getFullYear() ? ' today' : '');
+    yearCells.push(
+      <div key={y} className={`dp-year${yCls}`}
+        onClick={() => { setViewDate(new Date(y, month, 1)); setViewMode('month'); }}>
+        {y}
+      </div>
+    );
+  }
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
@@ -58,16 +73,30 @@ export function DatePicker({ value, onChange, placeholder }) {
       {open && (
         <div className="dp-popup">
           <div className="dp-header">
-            <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}>&lsaquo;</button>
-            <span className="dp-title">{monthNames[month]} {year}</span>
-            <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}>&rsaquo;</button>
+            {viewMode === 'month' ? (
+              <>
+                <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}>&lsaquo;</button>
+                <button className="dp-title-btn" type="button" onClick={() => setViewMode('year')}>{monthNames[month]} {year}</button>
+                <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}>&rsaquo;</button>
+              </>
+            ) : (
+              <>
+                <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year - 14, month, 1))}>&laquo;</button>
+                <span className="dp-title">{yearStart} &ndash; {yearEnd}</span>
+                <button className="dp-nav" type="button" onClick={() => setViewDate(new Date(year + 14, month, 1))}>&raquo;</button>
+              </>
+            )}
           </div>
-          <div className="dp-weekdays">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d} className="dp-wd">{d}</div>)}
-          </div>
-          <div className="dp-grid">
-            {cells}
-          </div>
+          {viewMode === 'month' ? (
+            <>
+              <div className="dp-weekdays">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d} className="dp-wd">{d}</div>)}
+              </div>
+              <div className="dp-grid">{cells}</div>
+            </>
+          ) : (
+            <div className="dp-year-grid">{yearCells}</div>
+          )}
         </div>
       )}
     </div>
