@@ -1,0 +1,18 @@
+import { api } from './auth'
+
+export const getDashboard = () => api('/dashboard/super-admin')
+export const getNGOs = () => api('/ngos')
+export const getUsers = () => api('/users')
+export const getHRs = () => api('/hrs')
+export const getWorkers = (params = '') => api(`/workers${params}`)
+export const getWorker = (id) => api(`/workers/${id}`)
+export const getWorkerAllocations = (id) => api(`/workers/${id}/allocations`)
+export const getAttendance = (params = '') => api(`/attendance/all${params}`)
+export const getLeaves = () => api('/leaves')
+export const getHolidays = () => api('/holidays')
+export const getSalarySummary = () => api('/salary/workers-summary')
+export const getWorkerSalary = (id) => api(`/salary/worker/${id}/allocations`)
+export const getIncentiveMonthlySummary = () => api('/incentive/monthly-summary')
+export const getEvents = () => api('/events')
+export const getNotices = () => api('/notices')
+export const getAchievements = () => api('/achievements')
