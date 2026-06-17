@@ -176,7 +176,44 @@ export const getLeadsDashboard = async (req, res) => {
 
 export const getTelecallerDashboard = async (req, res) => {
   try {
-    return res.json({ stats: { assignedLeads: 0, callsMade: 0 } });
+    const userId = req.user.id;
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + '-01';
+
+    const { count: assignedLeads } = await supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .or(`recruiter_id.eq.${userId},created_by.eq.${userId}`);
+
+    const { count: callsToday } = await supabase
+      .from('call_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('telecaller_id', userId)
+      .gte('call_time', today);
+
+    const { count: callsThisMonth } = await supabase
+      .from('call_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('telecaller_id', userId)
+      .gte('call_time', monthStart);
+
+    const { data: followUps } = await supabase
+      .from('call_logs')
+      .select('id')
+      .eq('telecaller_id', userId)
+      .lte('follow_up_date', today)
+      .not('follow_up_date', 'is', null);
+
+    const followUpsDue = followUps ? new Set(followUps.map(f => f.id)).size : 0;
+
+    return res.json({
+      stats: {
+        assignedLeads: assignedLeads || 0,
+        callsToday: callsToday || 0,
+        callsThisMonth: callsThisMonth || 0,
+        followUpsDue,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

@@ -43,6 +43,7 @@ export const listLeads = async (req, res) => {
   try {
     const { recruiter_id, status, search, source } = req.query;
     const filters = { recruiter_id, status, search, source };
+    if (req.user.role === 'telecaller') filters.created_by = req.user.id;
     if (req.user.role === 'recruiter' && req.query.created_by) filters.created_by = req.query.created_by;
     const leads = await getAllLeads(filters);
     return res.json(leads);
@@ -66,7 +67,7 @@ export const editLead = async (req, res) => {
     const existing = await getLeadById(req.params.id);
     if (!existing) return res.status(404).json({ message: 'Lead not found' });
 
-    if (req.user.role === 'recruiter' && existing.created_by !== req.user.id) {
+    if ((req.user.role === 'recruiter' || req.user.role === 'telecaller') && existing.created_by !== req.user.id) {
       return res.status(403).json({ message: 'You can only edit your own leads' });
     }
 

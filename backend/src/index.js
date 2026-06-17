@@ -26,6 +26,7 @@ import holidayRoutes from './routes/holidayRoutes.js';
 import calendarRoutes from './routes/calendarRoutes.js';
 import salaryRoutes from './routes/salaryRoutes.js';
 import incentiveRoutes from './routes/incentiveRoutes.js';
+import callLogRoutes from './routes/callLogRoutes.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/notifications', notificationAdminRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/call-logs', callLogRoutes);
 app.use('/api/recruiters', recruiterRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/calendar', calendarRoutes);
