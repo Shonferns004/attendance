@@ -119,10 +119,16 @@ export function HRProvider({ children }) {
     return data;
   }, [api]);
 
-  const addWorker = useCallback(async ({ name, email, dept, ngo_id }) => {
+  const addWorker = useCallback(async ({ name, email, dept, ngo_id, allocations }) => {
+    const body = { name, email: email || null, department: dept || null };
+    if (allocations) {
+      body.allocations = allocations;
+    } else {
+      body.ngo_id = ngo_id || null;
+    }
     const data = await api('/workers', {
       method: 'POST',
-      body: JSON.stringify({ name, email: email || null, department: dept || null, ngo_id: ngo_id || null }),
+      body: JSON.stringify(body),
     });
     const w = data.worker;
     setWorkers(p => [{ id: w.id, name: w.name, email: w.email, login_id: w.login_id, created_at: new Date().toISOString(), department: dept }, ...p]);
@@ -307,6 +313,63 @@ export function HRProvider({ children }) {
     return await api('/leads/dashboard');
   }, [api]);
 
+  const fetchWorkerTargets = useCallback(async (workerId) => {
+    return await api('/incentive/worker/' + workerId + '/targets');
+  }, [api]);
+
+  const fetchWorkerTargetForMonth = useCallback(async (workerId, month) => {
+    return await api('/incentive/worker/' + workerId + '/month/' + month);
+  }, [api]);
+
+  const updateWorkerTarget = useCallback(async (workerId, month, target_amount) => {
+    return await api('/incentive/worker/' + workerId + '/month/' + month, {
+      method: 'PUT',
+      body: JSON.stringify({ target_amount }),
+    });
+  }, [api]);
+
+  const fetchWorkerAllocations = useCallback(async (workerId) => {
+    return await api('/workers/' + workerId + '/allocations');
+  }, [api]);
+
+  const setWorkerAllocations = useCallback(async (workerId, allocations, salary) => {
+    return await api('/workers/' + workerId + '/allocations', {
+      method: 'PUT',
+      body: JSON.stringify({ allocations, salary }),
+    });
+  }, [api]);
+
+  const fetchWorkerSalaryAllocations = useCallback(async (workerId) => {
+    return await api('/salary/worker/' + workerId + '/allocations');
+  }, [api]);
+
+  const generateAllTargets = useCallback(async () => {
+    return await api('/incentive/generate-all', { method: 'POST' });
+  }, [api]);
+
+  const fetchCurrentMonthTargets = useCallback(async () => {
+    return await api('/incentive/current-month-targets');
+  }, [api]);
+
+  const setAchievement = useCallback(async (workerId, date, amount) => {
+    return await api('/incentive/worker/' + workerId + '/achievement/' + date, {
+      method: 'PUT',
+      body: JSON.stringify({ amount }),
+    });
+  }, [api]);
+
+  const fetchWorkerAchievements = useCallback(async (workerId, month) => {
+    return await api('/incentive/worker/' + workerId + '/achievements/' + month);
+  }, [api]);
+
+  const fetchIncentiveSummary = useCallback(async (workerId, month) => {
+    return await api('/incentive/worker/' + workerId + '/incentive-summary/' + month);
+  }, [api]);
+
+  const fetchMonthlyIncentiveSummary = useCallback(async () => {
+    return await api('/incentive/monthly-summary');
+  }, [api]);
+
   return (
     <HRContext.Provider value={{
       DEPTS, ngos, workers, attendance, leaves, templates, notifs, holidays, feed,
@@ -320,6 +383,10 @@ export function HRProvider({ children }) {
       fetchLeads, addLead, updateLead,
       fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
       fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary,
+      fetchWorkerTargets, fetchWorkerTargetForMonth, updateWorkerTarget,
+      generateAllTargets, fetchCurrentMonthTargets,
+      setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchMonthlyIncentiveSummary,
+      fetchWorkerAllocations, setWorkerAllocations, fetchWorkerSalaryAllocations,
     }}>
       {children}
     </HRContext.Provider>

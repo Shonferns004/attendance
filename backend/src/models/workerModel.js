@@ -25,7 +25,19 @@ export const getAllWorkers = async (ngo_id) => {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (ngo_id) query = query.eq('ngo_id', ngo_id);
+  if (ngo_id) {
+    const { data: ids, error: idsErr } = await supabase
+      .from('worker_ngo_allocations')
+      .select('worker_id')
+      .eq('ngo_id', ngo_id);
+    if (idsErr) throw idsErr;
+    const workerIds = (ids || []).map(r => r.worker_id);
+    if (workerIds.length > 0) {
+      query = query.in('id', workerIds);
+    } else {
+      query = query.eq('id', null);
+    }
+  }
 
   const { data, error } = await query;
   if (error) throw error;

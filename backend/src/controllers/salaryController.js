@@ -8,6 +8,9 @@ import {
 } from '../models/salaryModel.js';
 import { getMonthlyAttendance } from '../models/attendanceModel.js';
 import { getWorkerById } from '../models/workerModel.js';
+import { getAllocationsByWorker } from '../models/workerNgoAllocationModel.js';
+import { getTarget, upsertTarget } from '../models/incentiveModel.js';
+import { getAchievements } from '../models/dailyAchievementModel.js';
 
 export const getWorkerSalaries = async (req, res) => {
   try {
@@ -70,6 +73,32 @@ export const paySalary = async (req, res) => {
   }
 };
 
+export const getWorkerSalaryWithAllocations = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const worker = await getWorkerById(workerId);
+    if (!worker) return res.status(404).json({ message: 'Worker not found' });
+
+    const allocations = await getAllocationsByWorker(workerId);
+    const activeSalary = await getActiveSalaryByWorker(workerId);
+
+    return res.json({
+      workerId: worker.id,
+      name: worker.name,
+      department: worker.department,
+      totalSalary: activeSalary ? parseFloat(activeSalary.salary) : 0,
+      allocations: allocations.map(a => ({
+        id: a.id,
+        ngo_id: a.ngo_id,
+        ngo_name: a.ngos?.name || null,
+        salary_portion: parseFloat(a.salary_portion),
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const removeSalary = async (req, res) => {
   try {
     const result = await deleteSalary(req.params.id);
@@ -78,29 +107,6 @@ export const removeSalary = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
-function parseShift(shiftStr) {
-  if (!shiftStr || shiftStr === 'general') return { startH: 10, startM: 0, endH: 19, endM: 0 };
-  const cleaned = shiftStr.replace(/:/g, '');
-  const match = cleaned.match(/^(\d{1,2})(\d{2})?[-/](\d{1,2})(\d{2})?$/);
-  if (!match) return { startH: 10, startM: 0, endH: 19, endM: 0 };
-  return {
-    startH: parseInt(match[1]), startM: parseInt(match[2] || '0'),
-    endH: parseInt(match[3]), endM: parseInt(match[4] || '0'),
-  };
-}
-
-function calcActualHours(punchIn, punchOut, sMin, eMin) {
-  if (!punchIn || !punchOut) return 0;
-  const IST_OFFSET = 5.5 * 60 * 60000;
-  const inD = new Date(new Date(punchIn).getTime() + IST_OFFSET);
-  const outD = new Date(new Date(punchOut).getTime() + IST_OFFSET);
-  const inMin = inD.getUTCHours() * 60 + inD.getUTCMinutes();
-  const outMin = outD.getUTCHours() * 60 + outD.getUTCMinutes();
-  const start = Math.max(inMin, sMin);
-  const end = Math.min(outMin, eMin);
-  return Math.max(0, (end - start) / 60);
-}
 
 function getISTMonthBounds() {
   const IST_OFFSET = 5.5 * 60 * 60 * 1000;
@@ -203,44 +209,114 @@ export const getMySalaryBreakdown = async (req, res) => {
     // Late minutes
     const totalLateMinutes = afterJoin.reduce((sum, r) => sum + (r.late_minutes || 0), 0);
 
-    // Shift parsing
-    const SHIFT = parseShift(worker.shift);
-    const SHIFT_START = SHIFT.startH * 60 + SHIFT.startM;
-    const SHIFT_END   = SHIFT.endH * 60 + SHIFT.endM;
-
     // Late deduction
     let lateDeductionDays = 0;
-    let hourlyMode = false;
-    let hourlyRate = 0;
-    let totalActualHours = 0;
 
-    if (totalLateMinutes > 480) {
-      hourlyMode = true;
-      hourlyRate = salary / (daysInMonth * 9);
-      totalActualHours = afterJoin
-        .filter(r => r.status !== 'absent')
-        .reduce((sum, r) => sum + calcActualHours(r.punch_in_time, r.punch_out_time, SHIFT_START, SHIFT_END), 0);
-    } else {
-      if (totalLateMinutes > 240) lateDeductionDays = 1;
-      else if (totalLateMinutes > 180) lateDeductionDays = 0.5;
+    if (totalLateMinutes > 540) {
+      lateDeductionDays = Math.round((totalLateMinutes / 540) * 2) / 2;
+    } else if (totalLateMinutes > 270) {
+      lateDeductionDays = 1;
+    } else if (totalLateMinutes > 180) {
+      lateDeductionDays = 0.5;
     }
 
-    // Joining deduction
     const joiningDeduction = joinedThisMonth ? 1.5 : 0;
 
-    // Total due
-    const totalDue = hourlyMode
-      ? Math.max(0, hourlyRate * totalActualHours - joiningDeduction * perDay)
-      : perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+    const totalDue = perDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+    const normalTotalDue = perDay * paidDays;
 
-    const normalTotalDue = hourlyMode
-      ? perDay * Math.max(0, paidDays - joiningDeduction)
-      : perDay * paidDays;
+    // FRO target + incentives
+    let currentTarget = null;
+    let incentiveAKI = 0;
+    let incentiveAKIPayout = 0;
+    let incentiveMonthly = 0;
+    let incentiveTotal = 0;
+    let monthlyAchievement = 0;
+    let monthlyTargetMet = false;
+    let isNewJoiner = false;
+
+    if (worker.department === 'FRO') {
+      try {
+        const month = startDate;
+        let tgt = await getTarget(workerId, month);
+        if (!tgt) {
+          const monthsEmployed = (() => {
+            const join = new Date(worker.created_at);
+            const now2 = new Date();
+            const m = (now2.getFullYear() - join.getFullYear()) * 12 + (now2.getMonth() - join.getMonth());
+            return now2.getDate() >= join.getDate() ? m + 1 : m;
+          })();
+          const multipliers = [1, 2.5, 3];
+          const idx = Math.min(Math.max(monthsEmployed - 1, 0), multipliers.length - 1);
+          const targetAmount = Math.round(salary * multipliers[idx]);
+          tgt = await upsertTarget({
+            worker_id: workerId,
+            month,
+            target_amount: targetAmount,
+            is_auto_generated: true,
+          });
+        }
+        currentTarget = parseFloat(tgt.target_amount);
+
+        const achievements = await getAchievements(workerId, startDate, endDate);
+        monthlyAchievement = achievements.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+        const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const AKI_RANGES = {
+          Sunday: [{min:3750,max:6999,incentive:200},{min:7000,max:11999,incentive:400},{min:12000,max:13749,incentive:800},{min:13750,max:18999,incentive:1100},{min:19000,max:Infinity,incentive:1500}],
+          Monday: [{min:3000,max:5999,incentive:180},{min:6000,max:8999,incentive:360},{min:9000,max:11999,incentive:540},{min:12000,max:13999,incentive:720},{min:14000,max:Infinity,incentive:900}],
+          Tuesday: [{min:2500,max:7999,incentive:100},{min:8000,max:12499,incentive:400},{min:12500,max:15999,incentive:700},{min:16000,max:Infinity,incentive:1100}],
+          Wednesday: [{min:3000,max:5499,incentive:250},{min:5500,max:7499,incentive:300},{min:7500,max:10499,incentive:450},{min:10500,max:12499,incentive:610},{min:12500,max:Infinity,incentive:750}],
+          Thursday: [{min:3750,max:6999,incentive:200},{min:7000,max:11999,incentive:400},{min:12000,max:13749,incentive:800},{min:13750,max:18999,incentive:1100},{min:19000,max:Infinity,incentive:1500}],
+          Friday: [{min:3000,max:5999,incentive:180},{min:6000,max:8999,incentive:360},{min:9000,max:11999,incentive:540},{min:12000,max:13999,incentive:720},{min:14000,max:Infinity,incentive:900}],
+          Saturday: [{min:2500,max:3999,incentive:100},{min:4000,max:7999,incentive:200},{min:8000,max:12499,incentive:400},{min:12500,max:15999,incentive:700},{min:16000,max:Infinity,incentive:1100}],
+        };
+        function getDayName(d) { return DAY_NAMES[new Date(d + 'T00:00:00+05:30').getDay()]; }
+        function calcAKI(amt, dn) { const r = AKI_RANGES[dn]; if (!r) return 0; const found = r.find(x => amt >= x.min && amt <= x.max); return found ? found.incentive : 0; }
+
+        incentiveAKI = achievements.reduce((sum, r) => sum + calcAKI(parseFloat(r.amount || 0), getDayName(r.date)), 0);
+
+        const join = new Date(worker.created_at);
+        const now2 = new Date();
+        const m = (now2.getFullYear() - join.getFullYear()) * 12 + (now2.getMonth() - join.getMonth());
+        const monthsEmp = now2.getDate() >= join.getDate() ? m + 1 : m;
+        isNewJoiner = monthsEmp <= 3;
+        monthlyTargetMet = monthlyAchievement >= currentTarget;
+
+        if (monthlyTargetMet) {
+          const overage = monthlyAchievement - currentTarget;
+          incentiveMonthly = Math.round(overage * 0.1);
+          incentiveAKIPayout = isNewJoiner ? incentiveAKI : Math.round(incentiveAKI / 2);
+          incentiveTotal = incentiveAKIPayout + incentiveMonthly;
+        }
+      } catch {
+        // silently fail — incentives are supplemental
+      }
+    }
 
     const safeRecord = (r) => ({
       id: r.id, date: r.date, status: r.status, late_minutes: r.late_minutes || 0,
       punch_in_time: r.punch_in_time, punch_out_time: r.punch_out_time,
     });
+
+    // Build per-NGO allocation breakdown
+    let allocations = [];
+    try {
+      const rows = await getAllocationsByWorker(workerId);
+      allocations = rows.map(r => {
+        const portion = parseFloat(r.salary_portion);
+        const allocPerDay = portion / daysInMonth;
+        const allocTotalDue = allocPerDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+        return {
+          id: r.id,
+          ngo_id: r.ngo_id,
+          ngo_name: r.ngos?.name || null,
+          salary_portion: portion,
+          perDay: Math.round(allocPerDay),
+          totalDue: Math.round(allocTotalDue),
+        };
+      });
+    } catch { /* allocations are supplemental */ }
 
     return res.json({
       hasSalary: true,
@@ -251,9 +327,6 @@ export const getMySalaryBreakdown = async (req, res) => {
       paidDays,
       totalLateMinutes,
       lateDeductionDays,
-      hourlyMode,
-      hourlyRate: Math.round(hourlyRate * 100) / 100,
-      totalActualHours: Math.round(totalActualHours * 100) / 100,
       joiningDeduction,
       totalDue: Math.round(totalDue),
       normalTotalDue: Math.round(normalTotalDue),
@@ -263,9 +336,18 @@ export const getMySalaryBreakdown = async (req, res) => {
       absentCount: absentDatesAfterJoin.length,
       absentDates: absentDatesAfterJoin,
       extraSundayCount: extraSundays.length,
+      currentTarget,
+      incentiveAKI,
+      incentiveAKIPayout,
+      incentiveMonthly,
+      incentiveTotal,
+      monthlyAchievement,
+      monthlyTargetMet,
+      isNewJoiner,
       shift: worker.shift,
       createdAt: worker.created_at,
       records: (records || []).map(safeRecord),
+      allocations,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

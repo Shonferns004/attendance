@@ -18,6 +18,7 @@ const navMap = {
     { path: '/leaves', label: 'Leaves', icon: 'event_note' },
     { path: '/qr', label: 'QR Codes', icon: 'qr_code' },
     { path: '/salary', label: 'Payroll', icon: 'payments' },
+    { path: '/fro-targets', label: 'FRO Targets', icon: 'track_changes' },
     { path: '/letters', label: 'Letters', icon: 'description' },
     { path: '/settings', label: 'Settings', icon: 'settings' },
     { path: '/events', label: 'Events', icon: 'event' },
@@ -33,6 +34,7 @@ const navMap = {
     { path: '/leaves', label: 'Leaves', icon: 'event_note' },
     { path: '/qr', label: 'QR Codes', icon: 'qr_code' },
     { path: '/salary', label: 'Payroll', icon: 'payments' },
+    { path: '/fro-targets', label: 'FRO Targets', icon: 'track_changes' },
     {
       label: 'Letters',
       icon: 'description',

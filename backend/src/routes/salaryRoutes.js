@@ -7,6 +7,7 @@ import {
   paySalary,
   removeSalary,
   getMySalaryBreakdown,
+  getWorkerSalaryWithAllocations,
 } from '../controllers/salaryController.js';
 import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
@@ -21,5 +22,6 @@ router.put('/:id', adminOrHrOrHo, editSalary);
 router.put('/:id/pay', adminOrHrOrHo, paySalary);
 router.delete('/:id', adminOrHrOrHo, removeSalary);
 router.get('/my-breakdown', authenticateWorker, getMySalaryBreakdown);
+router.get('/worker/:workerId/allocations', adminOrHrOrHo, getWorkerSalaryWithAllocations);
 
 export default router;

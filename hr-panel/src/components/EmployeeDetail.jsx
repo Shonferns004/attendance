@@ -6,7 +6,7 @@ import { Dropdown } from './ui';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function EmployeeDetail({ worker, onBack, onOffboard }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,12 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const [extraVal, setExtraVal] = useState('');
   const [extraSaving, setExtraSaving] = useState(false);
   const [viewingMonthKey, setViewingMonthKey] = useState(null);
+  const [currentTarget, setCurrentTarget] = useState(null);
+  const [workerAchs, setWorkerAchs] = useState([]);
+  const [incSummary, setIncSummary] = useState(null);
+  const [achForm, setAchForm] = useState({});
+  const [achSaving, setAchSaving] = useState({});
+  const [allocations, setAllocations] = useState([]);
 
   useEffect(() => {
     setLoading(true);
@@ -32,12 +38,28 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
       fetchWorkerById(worker.id).catch(() => null),
       fetchWorkerLetters(worker.id),
       fetchWorkerSalaries(worker.id).catch(() => []),
-    ]).then(([d, l, s]) => {
+      fetchWorkerAllocations(worker.id).catch(() => []),
+    ]).then(([d, l, s, a]) => {
       if (cancelled) return;
       setData(d);
       setLetters(l || []);
       setSalaries(s || []);
+      setAllocations(a || []);
       setLoading(false);
+
+      if (d?.department === 'FRO') {
+        const now = new Date();
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        fetchWorkerTargetForMonth(worker.id, month)
+          .then(t => setCurrentTarget(t?.target_amount || null))
+          .catch(() => {});
+        fetchWorkerAchievements(worker.id, month)
+          .then(a => setWorkerAchs(Array.isArray(a) ? a : []))
+          .catch(() => {});
+        fetchIncentiveSummary(worker.id, month)
+          .then(s => setIncSummary(s?.hasIncentive ? s : null))
+          .catch(() => {});
+      }
     });
     if (!attendance.length) fetchAttendance();
     if (!leaves.length) fetchLeaves();
@@ -1025,6 +1047,52 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                 </div>
               </div>
 
+              {/* NGO Allocations Breakdown */}
+              {allocations.length > 0 && (
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>NGO Allocations</h3></div>
+                <div className="card-pad">
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign:'left', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>NGO</th>
+                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Salary Portion</th>
+                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Per Day</th>
+                        <th style={{ textAlign:'right', padding:'6px 8px', borderBottom:'2px solid var(--line)' }}>Total Due</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allocations.map(a => {
+                        const portion = parseFloat(a.salary_portion);
+                        const allocPerDay = portion / daysInMonth;
+                        const allocDue = allocPerDay * Math.max(0, paidDays - lateDeductionDays - joiningDeduction);
+                        const ngoName = ngos.find(n => n.id === a.ngo_id)?.name || a.ngo_name || 'Unknown';
+                        return (
+                          <tr key={a.id || a.ngo_id}>
+                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', fontWeight:500 }}>{ngoName}</td>
+                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right' }}>₹{portion.toLocaleString('en-IN')}</td>
+                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right' }}>₹{Math.round(allocPerDay).toLocaleString('en-IN')}</td>
+                            <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, color:'var(--sage)' }}>₹{Math.round(allocDue).toLocaleString('en-IN')}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td style={{ padding:'8px', fontWeight:700, fontSize:14 }}>Merged Total</td>
+                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14 }}>₹{parseFloat(activeSalary.salary).toLocaleString('en-IN')}</td>
+                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14 }}>₹{Math.round(perDay).toLocaleString('en-IN')}</td>
+                        <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  <div style={{ marginTop:8, fontSize:11, color:'var(--ink-soft)' }}>
+                    Attendance is shared across all allocations. Deductions affect each portion equally.
+                  </div>
+                </div>
+              </div>
+              )}
+
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>Add Salary</h3></div>
                 <div className="card-pad">
@@ -1136,6 +1204,118 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                   </table>
                 )}
               </div>
+
+              {data.department === 'FRO' && (
+              <div className="card" style={{ marginBottom:16 }}>
+                <div className="card-head"><h3>FRO Target & Incentives</h3></div>
+                <div className="card-pad">
+                  {currentTarget != null ? (
+                    <div style={{ fontSize:22, fontWeight:700, color:'var(--sage)', marginBottom:12 }}>
+                      Monthly Target: ₹{currentTarget.toLocaleString('en-IN')}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:14, color:'var(--ink-soft)', marginBottom:12 }}>Monthly target not set</div>
+                  )}
+
+                  {incSummary && (
+                    <div style={{ marginBottom:12, padding:'10px 14px', borderRadius:8, background: incSummary.monthlyTargetMet ? '#f0fdf4' : '#fef2f2', border:'1px solid', borderColor: incSummary.monthlyTargetMet ? '#bbf7d0' : '#fecaca' }}>
+                      <div style={{ fontWeight:600, fontSize:13, color: incSummary.monthlyTargetMet ? '#16a34a' : '#ef4444', marginBottom:4 }}>
+                        {incSummary.monthlyTargetMet ? '✓ Target Met' : '✗ Target Not Met — AKI forfeited'}
+                      </div>
+                      <div style={{ fontSize:12, color:'var(--ink-soft)' }}>
+                        Achieved: ₹{incSummary.monthlyAchievement.toLocaleString('en-IN')} / ₹{incSummary.monthlyTarget.toLocaleString('en-IN')}
+                        {' | '}AKI Payout: ₹{incSummary.akiPayout.toLocaleString('en-IN')} ({incSummary.isNewJoiner ? 'Full' : 'Half'})
+                        {' | '}Monthly: ₹{incSummary.monthlyIncentive.toLocaleString('en-IN')}
+                        {' | '}<strong style={{ color: incSummary.monthlyTargetMet ? '#16a34a' : '#ef4444' }}>Total: ₹{incSummary.totalIncentive.toLocaleString('en-IN')}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="salary-metrics" style={{ marginBottom:8 }}>
+                    <div className="salary-metric">
+                      <div className="salary-metric-num">₹{(incSummary?.totalAKI || 0).toLocaleString('en-IN')}</div>
+                      <div className="salary-metric-lbl">Total AKI</div>
+                    </div>
+                    <div className="salary-metric">
+                      <div className="salary-metric-num">₹{(incSummary?.monthlyIncentive || 0).toLocaleString('en-IN')}</div>
+                      <div className="salary-metric-lbl">Monthly (10%)</div>
+                    </div>
+                    <div className="salary-metric">
+                      <div className="salary-metric-num" style={{ color: incSummary?.monthlyTargetMet ? 'var(--sage)' : 'var(--danger)' }}>
+                        ₹{(incSummary?.totalIncentive || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div className="salary-metric-lbl">Total Incentive</div>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop:'1px solid var(--line)', paddingTop:12 }}>
+                    <div style={{ color:'var(--ink-soft)', fontSize:11, textTransform:'uppercase', letterSpacing:0.5, marginBottom:8 }}>
+                      Daily Achievements & AKI
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, fontSize:10 }}>
+                      {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
+                        <div key={d} style={{ textAlign:'center', fontWeight:600, color:'var(--ink-soft)', padding:'2px 0' }}>{d}</div>
+                      )}
+                      {(() => {
+                        const now = new Date();
+                        const yr = now.getFullYear();
+                        const mo = now.getMonth();
+                        const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+                        const firstDay = new Date(yr, mo, 1).getDay();
+                        const cells = [];
+                        for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+                        for (let d = 1; d <= daysInMonth; d++) {
+                          const dateStr = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                          const ach = workerAchs.find(a => a.date === dateStr);
+                          const formKey = `ach-${dateStr}`;
+                          const saving = achSaving[formKey];
+                          const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                          const dayName = dayNames[new Date(dateStr).getDay()];
+                          cells.push(
+                            <div key={dateStr} style={{ textAlign:'center', padding:'3px 0', borderRadius:3, background: ach ? '#f0fdf4' : '#fff', fontSize:9, border:'1px solid', borderColor: ach ? '#bbf7d0' : '#f3f4f6', position:'relative' }}>
+                              <div style={{ fontWeight:600 }}>{d}</div>
+                              {ach ? (
+                                <div style={{ color:'#16a34a', fontSize:8 }}>₹{parseFloat(ach.amount).toLocaleString('en-IN')}</div>
+                              ) : (
+                                <div style={{ marginTop:1 }}>
+                                  <input type="number" min="0" placeholder="amt"
+                                    value={achForm[formKey] || ''}
+                                    onChange={e => setAchForm(f => ({ ...f, [formKey]: e.target.value }))}
+                                    style={{ width:'100%', border:'none', background:'transparent', fontSize:8, textAlign:'center', padding:0, outline:'none' }}
+                                    onKeyDown={async e => {
+                                      if (e.key === 'Enter' && achForm[formKey]) {
+                                        setAchSaving(f => ({ ...f, [formKey]: true }));
+                                        try {
+                                          await setAchievement(data.id, dateStr, parseFloat(achForm[formKey]));
+                                          const month = `${yr}-${String(mo + 1).padStart(2, '0')}-01`;
+                                          const a = await fetchWorkerAchievements(data.id, month);
+                                          setWorkerAchs(Array.isArray(a) ? a : []);
+                                          const s = await fetchIncentiveSummary(data.id, month);
+                                          setIncSummary(s?.hasIncentive ? s : null);
+                                          setAchForm(f => ({ ...f, [formKey]: '' }));
+                                        } catch (e) { alert(e.message); }
+                                        finally { setAchSaving(f => ({ ...f, [formKey]: false })); }
+                                      }
+                                    }}
+                                  />
+                                  {saving && <div style={{ fontSize:7, color:'#6b7280' }}>...</div>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        return cells;
+                      })()}
+                    </div>
+                    <div style={{ display:'flex', gap:16, marginTop:6, fontSize:9, color:'var(--ink-soft)', flexWrap:'wrap' }}>
+                      <span><span style={{ display:'inline-block', width:8, height:8, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />AKI earned</span>
+                      <span><span style={{ display:'inline-block', width:8, height:8, background:'#fff', border:'1px solid #f3f4f6', borderRadius:2, marginRight:3, verticalAlign:'middle' }} />No entry</span>
+                      <span style={{ color:'var(--ink-soft)' }}>Type amount + Enter to save</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
 
             </div>
           )}

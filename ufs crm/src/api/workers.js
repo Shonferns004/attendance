@@ -10,14 +10,16 @@ export const getWorkers = async () => {
   return res.json();
 };
 
-export const addWorker = async (name, email, gender, dob) => {
+export const addWorker = async (name, email, gender, dob, allocations) => {
+  const body = { name, email, gender, dob };
+  if (allocations) body.allocations = allocations;
   const res = await fetch(`${API_BASE_URL}/workers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ name, email, gender, dob }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     let message = 'Request failed';

@@ -10,6 +10,8 @@ import {
   getMyProfile,
   updateMyProfile,
   updateMyEducation,
+  getWorkerAllocations,
+  setWorkerAllocations,
 } from '../controllers/workerController.js';
 import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
@@ -27,5 +29,7 @@ router.put('/me/education', authenticateWorker, updateMyEducation);
 router.get('/:id', adminOrHrOrHo, getWorker);
 router.put('/:id', adminOrHrOrHo, editWorker);
 router.delete('/:id', adminOrHrOrHo, removeWorker);
+router.get('/:id/allocations', adminOrHrOrHo, getWorkerAllocations);
+router.put('/:id/allocations', adminOrHrOrHo, setWorkerAllocations);
 
 export default router;

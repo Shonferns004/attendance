@@ -1,27 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { addWorker } from '../../../api/workers';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+const MAX_NGO_PORTION = 15000;
+
+const getToken = () => localStorage.getItem('auth_token');
 
 function AddWorker() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
+  const [salary, setSalary] = useState('');
+  const [allocations, setAllocations] = useState([{ ngo_id: '', salary_portion: '' }]);
+  const [ngos, setNgos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch(API_BASE_URL + '/ngos', {
+      headers: { Authorization: 'Bearer ' + getToken() },
+    })
+      .then(r => r.json())
+      .then(setNgos)
+      .catch(() => {});
+  }, []);
+
+  // Auto-fill allocations when salary changes
+  useEffect(() => {
+    const sal = parseFloat(salary) || 0;
+    if (sal > 0) {
+      if (sal <= MAX_NGO_PORTION) {
+        setAllocations([{ ngo_id: allocations[0]?.ngo_id || '', salary_portion: String(sal) }]);
+      } else {
+        const first = Math.min(sal, MAX_NGO_PORTION);
+        const second = sal - first;
+        setAllocations([
+          { ngo_id: allocations[0]?.ngo_id || '', salary_portion: String(first) },
+          { ngo_id: allocations[1]?.ngo_id || '', salary_portion: String(second) },
+        ]);
+      }
+    }
+  }, [salary]);
+
+  const updateAlloc = (idx, key, val) => {
+    setAllocations(prev => prev.map((a, i) => i === idx ? { ...a, [key]: val } : a));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setResult(null);
+    if (!salary.trim()) { setError('Salary is required'); setLoading(false); return; }
+    const salNum = parseFloat(salary);
+    if (!salNum) { setError('Invalid salary'); setLoading(false); return; }
+    for (const a of allocations) {
+      if (!a.ngo_id) { setError('Please select NGO for all allocations'); return; }
+      if (parseFloat(a.salary_portion) > MAX_NGO_PORTION) { setError(`Each NGO portion cannot exceed ₹${MAX_NGO_PORTION.toLocaleString('en-IN')}`); return; }
+    }
+    const totalPortion = allocations.reduce((s, a) => s + (parseFloat(a.salary_portion) || 0), 0);
+    if (Math.abs(totalPortion - salNum) > 0.01) { setError(`Allocations total (${totalPortion}) must equal salary (${salNum})`); return; }
     setLoading(true);
     try {
-      const data = await addWorker(name, email, gender, dob);
+      const data = await addWorker(name, email, gender, dob, allocations.map(a => ({ ngo_id: a.ngo_id, salary_portion: parseFloat(a.salary_portion) })));
       setResult(data.worker);
       setName('');
       setEmail('');
       setGender('');
       setDob('');
+      setSalary('');
+      setAllocations([{ ngo_id: '', salary_portion: '' }]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -110,7 +159,52 @@ function AddWorker() {
                       className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
                     />
                   </div>
+                  <div className="space-y-stack-sm">
+                    <label className="text-label-md text-on-surface-variant block uppercase">Salary (₹)</label>
+                    <input
+                      type="number" min="0" step="1" value={salary}
+                      onChange={(e) => setSalary(e.target.value)}
+                      placeholder="e.g. 30000"
+                      className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              <div className="space-y-gutter">
+                <h4 className="text-label-md text-on-surface-variant uppercase">NGO Allocations</h4>
+                {allocations.map((alloc, i) => (
+                  <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                    <div className="space-y-stack-sm">
+                      <label className="text-label-md text-on-surface-variant block uppercase">NGO {i + 1}</label>
+                      <select
+                        value={alloc.ngo_id}
+                        onChange={(e) => updateAlloc(i, 'ngo_id', e.target.value)}
+                        className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                      >
+                        <option value="">Select NGO</option>
+                        {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-stack-sm">
+                      <label className="text-label-md text-on-surface-variant block uppercase">Salary Portion (₹)</label>
+                      <input
+                        type="number" min="0" step="1" value={alloc.salary_portion}
+                        onChange={(e) => updateAlloc(i, 'salary_portion', e.target.value)}
+                        placeholder="15000"
+                        className="w-full px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-body-md outline-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+                {parseFloat(salary) > MAX_NGO_PORTION && allocations.length < 2 && (
+                  <button type="button"
+                    onClick={() => setAllocations(prev => [...prev, { ngo_id: '', salary_portion: '' }])}
+                    className="px-4 py-2 text-label-md text-primary border border-outline-variant rounded-lg hover:bg-surface-container transition-all"
+                  >
+                    + Add second NGO
+                  </button>
+                )}
               </div>
 
               {error && (

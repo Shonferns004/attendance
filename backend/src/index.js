@@ -25,6 +25,7 @@ import recruiterRoutes from './routes/recruiterRoutes.js';
 import holidayRoutes from './routes/holidayRoutes.js';
 import calendarRoutes from './routes/calendarRoutes.js';
 import salaryRoutes from './routes/salaryRoutes.js';
+import incentiveRoutes from './routes/incentiveRoutes.js';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/recruiters', recruiterRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/salary', salaryRoutes);
+app.use('/api/incentive', incentiveRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });

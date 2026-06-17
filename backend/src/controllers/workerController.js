@@ -8,8 +8,13 @@ import {
   updateWorker,
   deleteWorker,
 } from '../models/workerModel.js';
+import {
+  getAllocationsByWorker,
+  setAllocations,
+} from '../models/workerNgoAllocationModel.js';
 import { saveWorkerEducation, getFullWorkerProfile } from '../models/onboardingModel.js';
 
+const MAX_NGO_PORTION = 15000;
 const DEFAULT_PASSWORD = '123456';
 
 async function generateLoginId(name) {
@@ -23,26 +28,66 @@ async function generateLoginId(name) {
   return `${base}_ufs_${String(count + 1).padStart(2, '0')}`;
 }
 
+function validateAllocations(allocations, salary) {
+  if (!allocations || !Array.isArray(allocations) || allocations.length === 0) {
+    return { valid: false, message: 'At least one NGO allocation is required' };
+  }
+  if (allocations.length > 2) {
+    return { valid: false, message: 'Maximum 2 NGO allocations allowed' };
+  }
+  const totalPortion = allocations.reduce((sum, a) => sum + (parseFloat(a.salary_portion) || 0), 0);
+  if (Math.abs(totalPortion - parseFloat(salary)) > 0.01) {
+    return { valid: false, message: `Allocation portions (${totalPortion}) must sum to salary (${salary})` };
+  }
+  for (const a of allocations) {
+    if ((parseFloat(a.salary_portion) || 0) > MAX_NGO_PORTION) {
+      return { valid: false, message: `Each NGO portion cannot exceed ₹${MAX_NGO_PORTION.toLocaleString('en-IN')}` };
+    }
+    if (!a.ngo_id) {
+      return { valid: false, message: 'Each allocation must have an NGO' };
+    }
+  }
+  return { valid: true };
+}
+
 export const addWorker = async (req, res) => {
   try {
-    const { name, email, gender, dob, ngo_id } = req.body;
+    const { name, email, gender, dob, ngo_id, department, allocations } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Name is required' });
     }
+
+    // Build allocations: use new format or fallback to legacy ngo_id
+    let finalAllocations = allocations;
+    if (!finalAllocations && ngo_id) {
+      finalAllocations = [{ ngo_id, salary_portion: 0 }];
+    }
+
     const login_id = await generateLoginId(name);
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, salt);
 
-    const worker = await createWorker({
+    const workerData = {
       name,
       email,
       login_id,
       password: hashedPassword,
       gender: gender || null,
       dob: dob || null,
-      ngo_id: ngo_id || req.user.ngo_id || null,
+      ngo_id: (finalAllocations && finalAllocations[0]?.ngo_id) || req.user.ngo_id || null,
+      department: department || null,
       created_by: req.user.id,
-    });
+    };
+
+    const worker = await createWorker(workerData);
+
+    // Create allocations
+    if (finalAllocations && finalAllocations.length > 0) {
+      await setAllocations(worker.id, finalAllocations.map(a => ({
+        ngo_id: a.ngo_id,
+        salary_portion: parseFloat(a.salary_portion) || 0,
+      })));
+    }
 
     return res.status(201).json({
       message: 'Worker added successfully',
@@ -53,6 +98,7 @@ export const addWorker = async (req, res) => {
         login_id: worker.login_id,
         gender: worker.gender,
         dob: worker.dob,
+        department: worker.department,
         generated_password: DEFAULT_PASSWORD,
       },
     });
@@ -85,11 +131,20 @@ export const bulkAddWorkers = async (req, res) => {
         password: hashedPassword,
         gender: w.gender || null,
         dob: w.dob || null,
-        ngo_id: w.ngo_id || req.user.ngo_id || null,
+        ngo_id: w.ngo_id || (w.allocations?.[0]?.ngo_id) || req.user.ngo_id || null,
         created_by: req.user.id,
       };
     });
     const created = await createWorkers(prepared);
+    // Create allocations if provided
+    for (let i = 0; i < created.length; i++) {
+      if (workers[i].allocations && workers[i].allocations.length > 0) {
+        await setAllocations(created[i].id, workers[i].allocations.map(a => ({
+          ngo_id: a.ngo_id,
+          salary_portion: parseFloat(a.salary_portion) || 0,
+        })));
+      }
+    }
     return res.status(201).json({
       message: `${created.length} workers added successfully`,
       workers: created.map((w) => ({
@@ -311,6 +366,32 @@ export const updateMyEducation = async (req, res) => {
     }
     const result = await saveWorkerEducation(req.user.id, education);
     return res.json({ message: 'Education updated', education: result });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getWorkerAllocations = async (req, res) => {
+  try {
+    const rows = await getAllocationsByWorker(req.params.id);
+    return res.json(rows);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const setWorkerAllocations = async (req, res) => {
+  try {
+    const { allocations, salary } = req.body;
+    const validation = validateAllocations(allocations, salary);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
+    }
+    const rows = await setAllocations(req.params.id, allocations.map(a => ({
+      ngo_id: a.ngo_id,
+      salary_portion: parseFloat(a.salary_portion),
+    })));
+    return res.json({ message: 'Allocations updated', allocations: rows });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

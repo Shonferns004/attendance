@@ -72,6 +72,7 @@ import TeamLeadCallLogs from '../panels/TeamLead/pages/CallLogs';
 import TeamLeadEventsView from '../panels/TeamLead/pages/EventsView';
 import TeamLeadNoticesView from '../panels/TeamLead/pages/NoticesView';
 import TeamLeadAchievementsView from '../panels/TeamLead/pages/AchievementsView';
+import FROTargets from '../panels/FROTargets';
 import SuperAdminEventList from '../panels/SuperAdmin/pages/EventList';
 import SuperAdminEventForm from '../panels/SuperAdmin/pages/EventForm';
 import SuperAdminNoticeList from '../panels/SuperAdmin/pages/NoticeList';
@@ -128,6 +129,7 @@ function AdminLayout({ user, onLogout }) {
               <Route path="/attendance" element={<HOAdminAttendance />} />
               <Route path="/qr" element={<HOAdminGenerateQR />} />
               <Route path="/salary" element={<HOAdminAccountsSalary />} />
+              <Route path="/fro-targets" element={<FROTargets />} />
               <Route path="/settings" element={<HOAdminSettings />} />
               <Route path="/letters" element={<HOAdminHRTemplateList />} />
               <Route path="/events" element={<HOAdminEventList />} />
@@ -167,6 +169,7 @@ function AdminLayout({ user, onLogout }) {
               <Route path="/letters/generate" element={<HRGenerateLetter />} />
               <Route path="/letters/generated" element={<HRGeneratedList />} />
               <Route path="/salary" element={<HRAccountsSalary />} />
+              <Route path="/fro-targets" element={<FROTargets />} />
               <Route path="/events" element={<HREventList />} />
               <Route path="/events/new" element={<HREventForm />} />
               <Route path="/events/:id/edit" element={<HREventForm />} />
