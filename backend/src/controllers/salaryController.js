@@ -113,14 +113,44 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
 
     if (worker.department === 'FRO' && totalSalary > 0) {
       try {
-        // Find last Sunday date
-        const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0));
+        // Find the Sunday date to check for bonus
+        const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+        const now = new Date();
+        const todayIST = new Date(now.getTime() + IST_OFFSET);
+        const isCurrentMonth = year === todayIST.getUTCFullYear() && month === todayIST.getUTCMonth();
         let lastSunDate = null;
-        for (let d = lastDayOfMonth.getUTCDate(); d >= 1; d--) {
-          const dt = new Date(Date.UTC(year, month, d));
-          if (dt.getUTCDay() === 0) {
-            lastSunDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            break;
+
+        if (isCurrentMonth) {
+          // Current month: use most recent past Sunday (≤ today)
+          for (let d = todayIST.getUTCDate(); d >= 1; d--) {
+            const dt = new Date(Date.UTC(year, month, d));
+            if (dt.getUTCDay() === 0 && dt <= todayIST) {
+              lastSunDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              break;
+            }
+          }
+          // If none found in current month, look at previous month
+          if (!lastSunDate) {
+            const prevEnd = new Date(Date.UTC(year, month, 0));
+            const py = prevEnd.getUTCFullYear();
+            const pm = prevEnd.getUTCMonth();
+            for (let d = prevEnd.getUTCDate(); d >= 1; d--) {
+              const dt = new Date(Date.UTC(py, pm, d));
+              if (dt.getUTCDay() === 0) {
+                lastSunDate = `${py}-${String(pm + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                break;
+              }
+            }
+          }
+        } else {
+          // Past month: use last Sunday of that month
+          const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0));
+          for (let d = lastDayOfMonth.getUTCDate(); d >= 1; d--) {
+            const dt = new Date(Date.UTC(year, month, d));
+            if (dt.getUTCDay() === 0) {
+              lastSunDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              break;
+            }
           }
         }
 
