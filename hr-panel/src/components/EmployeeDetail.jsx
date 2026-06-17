@@ -1154,6 +1154,27 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         );
                       })}
                     </tbody>
+                    {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
+                      <tbody>
+                        <tr>
+                          <td colSpan={4} style={{ padding:'0 8px', borderBottom:'1px solid var(--line)', height:8 }} />
+                        </tr>
+                        <tr>
+                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', fontWeight:500, color:'#92400e' }}>
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                              Sunday Bonus
+                            </span>
+                          </td>
+                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-soft)' }} colSpan={2}>
+                            <em style={{ fontSize:11 }}>Not split across NGOs</em>
+                          </td>
+                          <td style={{ padding:'6px 8px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, color:'#f59e0b' }}>
+                            +₹{sundayBonus.bonusAmount.toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    )}
                     <tfoot>
                       <tr>
                         <td style={{ padding:'8px', fontWeight:700, fontSize:14 }}>Merged Total</td>
@@ -1161,6 +1182,15 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14 }}>₹{Math.round(perDay).toLocaleString('en-IN')}</td>
                         <td style={{ padding:'8px', textAlign:'right', fontWeight:700, fontSize:14, color:'var(--sage)' }}>₹{Math.round(totalDue).toLocaleString('en-IN')}</td>
                       </tr>
+                      {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
+                      <tr>
+                        <td style={{ padding:'6px 8px 12px', fontWeight:700, fontSize:14, color:'#16a34a' }}>Grand Total</td>
+                        <td style={{ padding:'6px 8px 12px', textAlign:'right', fontWeight:700, fontSize:14 }} colSpan={2}></td>
+                        <td style={{ padding:'6px 8px 12px', textAlign:'right', fontWeight:800, fontSize:18, color:'#16a34a' }}>
+                          ₹{(Math.round(totalDue) + sundayBonus.bonusAmount).toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                      )}
                     </tfoot>
                   </table>
                   <div style={{ marginTop:8, fontSize:11, color:'var(--ink-soft)' }}>
