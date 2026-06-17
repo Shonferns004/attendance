@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchCallLogs } from '../api/callLogs';
+import { DatePicker } from '../components/ui';
 
 const STATUS_STYLES = {
   connected: 'pill-green',
@@ -48,10 +49,10 @@ export default function CallLogs() {
               <option value="switched_off">Switched Off</option>
               <option value="wrong_number">Wrong Number</option>
             </select>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-              placeholder="From" style={{ maxWidth:140 }} />
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-              placeholder="To" style={{ maxWidth:140 }} />
+            <DatePicker value={fromDate} onChange={e => setFromDate(e.target.value)}
+              placeholder="From" />
+            <DatePicker value={toDate} onChange={e => setToDate(e.target.value)}
+              placeholder="To" />
             <button className="btn btn-sm btn-primary" onClick={handleFilter}>Filter</button>
             <span className="count">{logs.length} log{logs.length !== 1 ? 's' : ''}</span>
           </div>

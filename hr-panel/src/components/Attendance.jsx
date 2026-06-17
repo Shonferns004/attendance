@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useHR } from '../store';
-import { Dropdown } from './ui';
+import { Dropdown, DatePicker } from './ui';
 
 const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
@@ -359,11 +359,11 @@ export default function Attendance() {
                 <div className="filters">
                   <div className="filter-group">
                     <label>Date From</label>
-                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                    <DatePicker value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="From" />
                   </div>
                   <div className="filter-group">
                     <label>Date To</label>
-                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                    <DatePicker value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="To" />
                   </div>
                   <div className="filter-group">
                     <label>Department</label>

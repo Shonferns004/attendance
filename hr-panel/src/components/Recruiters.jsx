@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../store';
-import { Pill, Dropdown } from './ui';
+import { Pill, Dropdown, DatePicker } from './ui';
 import { Users, Clock, Check, X, Cal, Heart, Plus } from '../icons';
 
 const calcAge = (dob) => {
@@ -316,7 +316,7 @@ export default function Recruiters() {
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
                 </label>
                 <label className="field">DOB
-                  <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
+                  <DatePicker value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
                   {formAge !== null && <span style={{fontSize:11,color:'var(--ink-soft)',marginTop:2}}>Age: {formAge}</span>}
                 </label>
               </div>

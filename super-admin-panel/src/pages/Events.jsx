@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/auth'
+import { DatePicker } from '../components/ui'
 
 export default function Events() {
   const [events, setEvents] = useState([])
@@ -44,7 +45,7 @@ export default function Events() {
           <div className="sa-modal" onClick={e => e.stopPropagation()}>
             <h3>{edit ? 'Edit Event' : 'New Event'}</h3>
             <label className="field">Title <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} /></label>
-            <label className="field">Date <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></label>
+            <label className="field">Date <DatePicker value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></label>
             <label className="field">Time <input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})} /></label>
             <label className="field">Location <input value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></label>
             <label className="field">Description <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></label>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR, avatarColor, avatarTint, initials, DEPTS } from '../store';
 import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
-import { Dropdown } from './ui';
+import { Dropdown, DatePicker } from './ui';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -428,9 +428,9 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                     </div>
                   ) : <Field label="NGO" value={ngoName} />}
                   {editing ? <EditField label="Shift" value={form.shift} onChange={setField('shift')} /> : <Field label="Shift" value={data.shift} />}
-                  {editing ? <EditField label="Joining Date" value={form.created_at} onChange={setField('created_at')} type="date" /> : <Field label="Joining Date" value={data.created_at ? new Date(data.created_at).toLocaleDateString() : '—'} />}
+                  {editing ? <div className="detail-field"><span className="detail-label">Joining Date</span><DatePicker value={form.created_at} onChange={setField('created_at')} /></div> : <Field label="Joining Date" value={data.created_at ? new Date(data.created_at).toLocaleDateString() : '—'} />}
                   {editing ? <EditField label="Gender" value={form.gender} onChange={setField('gender')} /> : <Field label="Gender" value={data.gender} />}
-                  {editing ? <EditField label="Date of Birth" value={form.dob} onChange={setField('dob')} type="date" /> : <Field label="Date of Birth" value={data.dob} />}
+                  {editing ? <div className="detail-field"><span className="detail-label">Date of Birth</span><DatePicker value={form.dob} onChange={setField('dob')} /></div> : <Field label="Date of Birth" value={data.dob} />}
                   {editing ? <EditField label="Phone" value={form.phone} onChange={setField('phone')} /> : <Field label="Phone" value={data.phone} />}
                   {editing ? <EditField label="Alternate Phone" value={form.alternate_phone} onChange={setField('alternate_phone')} /> : <Field label="Alternate Phone" value={data.alternate_phone} />}
                   {editing ? <EditField label="Father/Husband" value={form.father_husband_name} onChange={setField('father_husband_name')} /> : <Field label="Father/Husband" value={data.father_husband_name} />}

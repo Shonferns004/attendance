@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/auth'
+import { DatePicker } from '../components/ui'
 
 export default function Holidays() {
   const [holidays, setHolidays] = useState([])
@@ -49,7 +50,7 @@ export default function Holidays() {
           <div className="sa-modal" onClick={e => e.stopPropagation()}>
             <h3>{edit ? 'Edit Holiday' : 'Add Holiday'}</h3>
             <label className="field">Title <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} /></label>
-            <label className="field">Date <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></label>
+            <label className="field">Date <DatePicker value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></label>
             <label className="field">Type
               <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
                 <option value="public">Public</option>

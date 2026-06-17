@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchLeadById, updateLead } from '../api/leads';
 import { fetchLeadCallLogs, addCallLog } from '../api/callLogs';
+import { DatePicker } from '../components/ui';
 
 const STATUS_STYLES = {
   hold: 'pill-yellow',
@@ -216,7 +217,7 @@ export default function LeadDetail({ leadId, onBack }) {
                   <input type="number" min="0" value={logDuration} onChange={e => setLogDuration(e.target.value)} placeholder="e.g. 120" />
                 </label>
                 <label className="field">Follow-up Date
-                  <input type="date" value={logFollowUp} onChange={e => setLogFollowUp(e.target.value)} />
+                  <DatePicker value={logFollowUp} onChange={e => setLogFollowUp(e.target.value)} />
                 </label>
               </div>
               <label className="field" style={{ marginTop:10 }}>Notes
