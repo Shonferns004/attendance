@@ -855,9 +855,16 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label={'Late\nDeduction'} color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
                         {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
                         <Equals />
-                        <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
-                        {sundayBonus?.bonusAmount > 0 && (
-                          <><Arrow /><Box num={'+₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" /><Equals /><Box num={'₹' + (Math.round(totalDue) + (sundayBonus?.bonusAmount || 0)).toLocaleString('en-IN')} label={'Grand\nTotal'} color="#16a34a" big /></>
+                        {sundayBonus?.bonusAmount > 0 ? (
+                          <>
+                            <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Salary\nDue'} color="#5B6B4E" big />
+                            <Arrow />
+                            <Box num={'+₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" />
+                            <Equals />
+                            <Box num={'₹' + (Math.round(totalDue) + sundayBonus.bonusAmount).toLocaleString('en-IN')} label={'Total\nDue'} color="#16a34a" big />
+                          </>
+                        ) : (
+                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
                         )}
                       </div>
 
