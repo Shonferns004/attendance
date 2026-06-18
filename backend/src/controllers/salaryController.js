@@ -5,6 +5,7 @@ import {
   updateSalary,
   deleteSalary,
   getAllWorkersSalarySummary,
+  getPayrollData,
 } from '../models/salaryModel.js';
 import { getMonthlyAttendance } from '../models/attendanceModel.js';
 import { getWorkerById } from '../models/workerModel.js';
@@ -260,6 +261,16 @@ export const removeSalary = async (req, res) => {
   try {
     const result = await deleteSalary(req.params.id);
     return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getPayrollExport = async (req, res) => {
+  try {
+    const month = req.query.month;
+    const data = await getPayrollData(month);
+    return res.json(data);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

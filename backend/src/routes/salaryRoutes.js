@@ -8,6 +8,7 @@ import {
   removeSalary,
   getMySalaryBreakdown,
   getWorkerSalaryWithAllocations,
+  getPayrollExport,
 } from '../controllers/salaryController.js';
 import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
 
@@ -16,6 +17,7 @@ const router = Router();
 const adminOrHrOrHo = authenticateRole('super_admin', 'hoadmin', 'hr');
 
 router.get('/workers-summary', adminOrHrOrHo, getWorkersSummary);
+router.get('/payroll', adminOrHrOrHo, getPayrollExport);
 router.get('/worker/:workerId', adminOrHrOrHo, getWorkerSalaries);
 router.post('/', adminOrHrOrHo, addSalary);
 router.put('/:id', adminOrHrOrHo, editSalary);

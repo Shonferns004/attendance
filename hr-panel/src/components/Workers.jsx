@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useHR } from '../store';
 import { Who, Dropdown } from './ui';
 import { Plus, Trash } from '../icons';
+import * as XLSX from 'xlsx';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -81,6 +82,32 @@ export default function Workers({ onSelect, onOffboard }) {
     if (onOffboard) onOffboard(worker);
   };
 
+  const handlePayExport = async () => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const token = localStorage.getItem('hr_token');
+    try {
+      const res = await fetch(API_BASE + '/salary/payroll?month=' + month, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!res.ok) throw new Error('Failed to fetch payroll data');
+      const data = await res.json();
+      if (!data.rows || data.rows.length === 0) { alert('No payroll data for this month'); return; }
+
+      const wsData = [
+        ['NGO', 'Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
+        ...data.rows.map(r => [r.ngo_name, r.name, r.account_number, r.ifsc_code, r.total_due]),
+      ];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [
+        { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, 'Payroll');
+      XLSX.writeFile(wb, `payroll-${month}.xlsx`);
+    } catch (e) { alert(e.message); }
+  };
+
   return (
     <>
       <div className="card" style={{ marginBottom:20 }}>
@@ -105,6 +132,7 @@ export default function Workers({ onSelect, onOffboard }) {
       <div className="card" ref={tableRef}>
         <div className="card-head"><h3>Employees</h3>
           <div className="search-input-wrap">
+            <button className="btn btn-primary btn-sm" onClick={handlePayExport} title="Download payroll Excel">Pay</button>
             <span className="sub">{filtered.length} total</span>
             <Dropdown className="role-filter" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}
               options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />
