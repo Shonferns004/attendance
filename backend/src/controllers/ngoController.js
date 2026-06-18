@@ -3,11 +3,11 @@ import { getAllUsers } from '../models/userModel.js';
 
 export const addNgo = async (req, res) => {
   try {
-    const { name, code, address } = req.body;
+    const { name, code, address, registration_no } = req.body;
     if (!name || !code) {
       return res.status(400).json({ message: 'Name and code are required' });
     }
-    const ngo = await createNgo({ name, code: code.toUpperCase(), address });
+    const ngo = await createNgo({ name, code: code.toUpperCase(), address, registration_no });
     return res.status(201).json({ message: 'NGO created successfully', ngo });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -46,11 +46,12 @@ export const getNgo = async (req, res) => {
 
 export const editNgo = async (req, res) => {
   try {
-    const { name, code, address, is_active } = req.body;
+    const { name, code, address, registration_no, is_active } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (code) updates.code = code.toUpperCase();
     if (address !== undefined) updates.address = address;
+    if (registration_no !== undefined) updates.registration_no = registration_no;
     if (is_active !== undefined) updates.is_active = is_active;
     const ngo = await updateNgo(req.params.id, updates);
     return res.json({ message: 'NGO updated successfully', ngo });
@@ -63,6 +64,17 @@ export const removeNgo = async (req, res) => {
   try {
     const result = await deleteNgo(req.params.id);
     return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const toggleNgo = async (req, res) => {
+  try {
+    const ngo = await getNgoById(req.params.id);
+    if (!ngo) return res.status(404).json({ message: 'NGO not found' });
+    const updated = await updateNgo(req.params.id, { is_active: !ngo.is_active });
+    return res.json({ message: `NGO ${updated.is_active ? 'activated' : 'deactivated'} successfully`, ngo: updated });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

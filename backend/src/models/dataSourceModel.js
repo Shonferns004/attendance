@@ -1,27 +1,27 @@
 import supabase from '../config/supabase.js';
 
-export const createNgo = async ({ name, code, address, registration_no }) => {
+export const createDataSource = async ({ name }) => {
   const { data, error } = await supabase
-    .from('ngos')
-    .insert({ name, code, address, registration_no })
+    .from('data_sources')
+    .insert({ name })
     .select('*')
     .single();
   if (error) throw error;
   return data;
 };
 
-export const getAllNgos = async () => {
+export const getAllDataSources = async () => {
   const { data, error } = await supabase
-    .from('ngos')
+    .from('data_sources')
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 };
 
-export const getNgoById = async (id) => {
+export const getDataSourceById = async (id) => {
   const { data, error } = await supabase
-    .from('ngos')
+    .from('data_sources')
     .select('*')
     .eq('id', id)
     .single();
@@ -29,9 +29,9 @@ export const getNgoById = async (id) => {
   return data;
 };
 
-export const updateNgo = async (id, updates) => {
+export const updateDataSource = async (id, updates) => {
   const { data, error } = await supabase
-    .from('ngos')
+    .from('data_sources')
     .update(updates)
     .eq('id', id)
     .select('*')
@@ -40,11 +40,11 @@ export const updateNgo = async (id, updates) => {
   return data;
 };
 
-export const deleteNgo = async (id) => {
+export const deleteDataSource = async (id) => {
   const { error } = await supabase
-    .from('ngos')
+    .from('data_sources')
     .delete()
     .eq('id', id);
   if (error) throw error;
-  return { message: 'NGO deleted successfully' };
+  return { message: 'Data source deleted successfully' };
 };
