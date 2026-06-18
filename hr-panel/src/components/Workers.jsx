@@ -94,16 +94,23 @@ export default function Workers({ onSelect, onOffboard }) {
       const data = await res.json();
       if (!data.rows || data.rows.length === 0) { alert('No payroll data for this month'); return; }
 
-      const wsData = [
-        ['NGO', 'Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
-        ...data.rows.map(r => [r.ngo_name, r.name, r.account_number, r.ifsc_code, r.total_due]),
-      ];
+      const groups = {};
+      for (const r of data.rows) {
+        if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
+        groups[r.ngo_name].push(r);
+      }
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [
-        { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, 'Payroll');
+      const colWidths = [{ wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
+      for (const [ngo, rows] of Object.entries(groups)) {
+        const wsData = [
+          ['Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
+          ...rows.map(r => [r.name, r.account_number, r.ifsc_code, r.total_due]),
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = colWidths;
+        const sheetName = ngo.slice(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
       XLSX.writeFile(wb, `payroll-${month}.xlsx`);
     } catch (e) { alert(e.message); }
   };
