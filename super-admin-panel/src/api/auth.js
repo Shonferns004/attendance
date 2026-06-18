@@ -20,13 +20,16 @@ export function clearSession() {
 
 export async function api(path, options = {}) {
   const token = getToken()
-  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  const isFormData = options.body instanceof FormData
+  const headers = { ...options.headers }
+  if (!isFormData) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
     throw new Error(err.message || `Request failed: ${res.status}`)
   }
+  if (options.raw) return res
   return res.json()
 }
 

@@ -78,8 +78,22 @@ body {
 }
 .sa-nav-item:hover { background: var(--bg-sidebar-hover); color: var(--text-light); }
 .sa-nav-item.active { background: var(--bg-sidebar-active); color: #fff; }
+.sa-nav-item.sa-nav-sub { padding-left: 34px; font-size: 12px; }
 .sa-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
 .sa-nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-nav-group-header {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-top: 4px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted); cursor: pointer; border-radius: 6px; user-select: none;
+  transition: color 0.15s;
+}
+.sa-nav-group-header:hover { color: var(--text-light); }
+.sa-nav-group-header .sa-nav-icon { font-size: 12px; opacity: 0.7; }
+.sa-nav-chevron { margin-left: auto; font-size: 10px; transition: transform 0.2s; color: var(--text-muted); }
+.sa-nav-chevron.open { transform: rotate(90deg); }
+.sa-nav-group-items { overflow: hidden; transition: max-height 0.2s; }
+.sa-nav-group-items.collapsed { max-height: 0; }
+.sa-nav-group-items:not(.collapsed) { max-height: 400px; }
 
 .sa-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
@@ -323,3 +337,28 @@ code {
 .dp-year.today { font-weight: 700; color: var(--primary); }
 .dp-year.selected { background: var(--primary); color: white; }
 .dp-year.selected:hover { background: var(--primary); }
+
+/* ── THEME PICKER ── */
+.sa-theme-btn {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+  color: var(--text-soft); transition: background 0.15s, color 0.15s;
+}
+.sa-theme-btn:hover { background: var(--bg); color: var(--text); }
+.sa-theme-popover {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,.12);
+  padding: 8px; min-width: 160px; display: flex; flex-direction: column; gap: 4px;
+}
+.sa-theme-option {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+  border-radius: 6px; cursor: pointer; transition: background 0.1s;
+}
+.sa-theme-option:hover { background: var(--bg); }
+.sa-theme-option.active { background: var(--bg); outline: 1px solid var(--primary); }
+.sa-theme-swatches { display: flex; gap: 3px; }
+.sa-theme-swatch {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0;
+}

@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import multer from 'multer';
+import { uploadImport, listImportBatches, getImportBatch, exportBatch, downloadSample, downloadTestSheet, uploadOldDataImport } from '../controllers/dataImportController.js';
+import { authenticateRole } from '../middleware/authMiddleware.js';
+
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post('/upload', authenticateRole('super_admin'), upload.single('file'), uploadImport);
+router.get('/batches', authenticateRole('super_admin'), listImportBatches);
+router.get('/batch/:id', authenticateRole('super_admin'), getImportBatch);
+router.get('/batch/:id/export', authenticateRole('super_admin'), exportBatch);
+router.get('/sample', authenticateRole('super_admin'), downloadSample);
+router.get('/test-sheet', authenticateRole('super_admin'), downloadTestSheet);
+router.post('/upload-old', authenticateRole('super_admin'), upload.single('file'), uploadOldDataImport);
+
+export default router;

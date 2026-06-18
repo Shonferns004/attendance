@@ -16,3 +16,7 @@ export const getIncentiveMonthlySummary = () => api('/incentive/monthly-summary'
 export const getEvents = () => api('/events')
 export const getNotices = () => api('/notices')
 export const getAchievements = () => api('/achievements')
+export const getCauses = (params = '') => api(`/causes${params}`)
+export const getDataSources = () => api('/data-sources')
+export const getDataImportBatches = () => api('/data-import/batches')
+export const getDataImportBatch = (id) => api(`/data-import/batch/${id}`)
