@@ -12,7 +12,7 @@ import { getWorkerById } from '../models/workerModel.js';
 import { getAllocationsByWorker } from '../models/workerNgoAllocationModel.js';
 import { getTarget, upsertTarget } from '../models/incentiveModel.js';
 import { getAchievements } from '../models/dailyAchievementModel.js';
-import { calculateAKI, getDayName, getMonthsEmployed } from './incentiveController.js';
+import { calculateAKI, getDayName, getMonthsEmployed } from '../utils/incentive.js';
 
 export const getWorkerSalaries = async (req, res) => {
   try {
@@ -430,26 +430,9 @@ export const getMySalaryBreakdown = async (req, res) => {
         const achievements = await getAchievements(workerId, startDate, endDate);
         monthlyAchievement = achievements.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
-        const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const AKI_RANGES = {
-          Sunday: [{min:3750,max:6999,incentive:200},{min:7000,max:11999,incentive:400},{min:12000,max:13749,incentive:800},{min:13750,max:18999,incentive:1100},{min:19000,max:Infinity,incentive:1500}],
-          Monday: [{min:3000,max:5999,incentive:180},{min:6000,max:8999,incentive:360},{min:9000,max:11999,incentive:540},{min:12000,max:13999,incentive:720},{min:14000,max:Infinity,incentive:900}],
-          Tuesday: [{min:2500,max:7999,incentive:100},{min:8000,max:12499,incentive:400},{min:12500,max:15999,incentive:700},{min:16000,max:Infinity,incentive:1100}],
-          Wednesday: [{min:3000,max:5499,incentive:250},{min:5500,max:7499,incentive:300},{min:7500,max:10499,incentive:450},{min:10500,max:12499,incentive:610},{min:12500,max:Infinity,incentive:750}],
-          Thursday: [{min:3750,max:6999,incentive:200},{min:7000,max:11999,incentive:400},{min:12000,max:13749,incentive:800},{min:13750,max:18999,incentive:1100},{min:19000,max:Infinity,incentive:1500}],
-          Friday: [{min:3000,max:5999,incentive:180},{min:6000,max:8999,incentive:360},{min:9000,max:11999,incentive:540},{min:12000,max:13999,incentive:720},{min:14000,max:Infinity,incentive:900}],
-          Saturday: [{min:2500,max:3999,incentive:100},{min:4000,max:7999,incentive:200},{min:8000,max:12499,incentive:400},{min:12500,max:15999,incentive:700},{min:16000,max:Infinity,incentive:1100}],
-        };
-        function getDayName(d) { return DAY_NAMES[new Date(d + 'T00:00:00+05:30').getDay()]; }
-        function calcAKI(amt, dn) { const r = AKI_RANGES[dn]; if (!r) return 0; const found = r.find(x => amt >= x.min && amt <= x.max); return found ? found.incentive : 0; }
+        incentiveAKI = achievements.reduce((sum, r) => sum + calculateAKI(parseFloat(r.amount || 0), getDayName(r.date)), 0);
 
-        incentiveAKI = achievements.reduce((sum, r) => sum + calcAKI(parseFloat(r.amount || 0), getDayName(r.date)), 0);
-
-        const join = new Date(worker.created_at);
-        const now2 = new Date();
-        const m = (now2.getFullYear() - join.getFullYear()) * 12 + (now2.getMonth() - join.getMonth());
-        const monthsEmp = now2.getDate() >= join.getDate() ? m + 1 : m;
-        isNewJoiner = monthsEmp <= 3;
+        isNewJoiner = getMonthsEmployed(worker.created_at) <= 3;
         monthlyTargetMet = monthlyAchievement >= currentTarget;
 
         if (monthlyTargetMet) {

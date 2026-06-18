@@ -126,8 +126,8 @@ export default function Workers({ onSelect, onOffboard }) {
             0,                        // L: Sunday Need To Add
             null,                     // M: Net May Present Days (formula)
             r.total_due || 0,        // N: May Salary
-            0,                        // O: Monthly 10% Incentive
-            0,                        // P: Aaj Ka Incentive
+            r.monthly_incentive || 0,  // O: Monthly 10% Incentive
+            r.aki_payout || 0,         // P: Aaj Ka Incentive
             0,                        // Q: Weekly Incentive
             null,                     // R: Gross Payable Salary (formula)
             0,                        // S: OT/Appreciation

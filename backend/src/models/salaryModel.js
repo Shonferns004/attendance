@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+import { getDayName, calculateAKI, getMonthsEmployed } from '../utils/incentive.js';
 
 export const getSalariesByWorker = async (workerId) => {
   const { data, error } = await supabase
@@ -112,6 +113,7 @@ export const getPayrollData = async (month, extended = false) => {
 
   let targetsByWorker = {};
   let achievedByWorker = {};
+  let akiByWorker = {};
   if (extended) {
     const { data: targets, error: tErr } = await supabase
       .from('incentive_targets')
@@ -126,12 +128,14 @@ export const getPayrollData = async (month, extended = false) => {
 
     const { data: achievements, error: aErr2 } = await supabase
       .from('daily_achievements')
-      .select('worker_id, amount')
+      .select('worker_id, amount, date')
       .gte('date', startDate)
       .lte('date', endDate);
     if (!aErr2) {
       for (const a of achievements) {
         achievedByWorker[a.worker_id] = (achievedByWorker[a.worker_id] || 0) + parseFloat(a.amount || 0);
+        const dayName = getDayName(a.date);
+        akiByWorker[a.worker_id] = (akiByWorker[a.worker_id] || 0) + calculateAKI(parseFloat(a.amount || 0), dayName);
       }
     }
   }
@@ -179,6 +183,20 @@ export const getPayrollData = async (month, extended = false) => {
     const presentCount = workerAtt.filter(r => r.status === 'present').length;
     const totalDue = Math.round(salary - perDay * absentCount);
 
+    let monthlyIncentive = 0;
+    let akiPayout = 0;
+    if (extended) {
+      const target = targetsByWorker[w.id] || 0;
+      const achieved = achievedByWorker[w.id] || 0;
+      const totalAKI = akiByWorker[w.id] || 0;
+      if (target > 0 && achieved >= target) {
+        const overage = achieved - target;
+        monthlyIncentive = Math.round(overage * 0.1);
+        const monthsEmp = w.created_at ? getMonthsEmployed(w.created_at) : 99;
+        akiPayout = monthsEmp <= 3 ? Math.round(totalAKI) : Math.round(totalAKI / 2);
+      }
+    }
+
     const workerAllocs = allocsByWorker[w.id] || [];
     if (workerAllocs.length === 0) {
       const row = {
@@ -201,6 +219,8 @@ export const getPayrollData = async (month, extended = false) => {
         row.date_of_joining = w.created_at || '';
         row.target = Math.round(targetsByWorker[w.id] || 0);
         row.achieved = Math.round(achievedByWorker[w.id] || 0);
+        row.monthly_incentive = monthlyIncentive;
+        row.aki_payout = akiPayout;
       }
       rows.push(row);
     } else {
@@ -228,6 +248,8 @@ export const getPayrollData = async (month, extended = false) => {
           row.date_of_joining = w.created_at || '';
           row.target = Math.round(targetsByWorker[w.id] || 0);
           row.achieved = Math.round(achievedByWorker[w.id] || 0);
+          row.monthly_incentive = monthlyIncentive;
+          row.aki_payout = akiPayout;
         }
         rows.push(row);
       }
