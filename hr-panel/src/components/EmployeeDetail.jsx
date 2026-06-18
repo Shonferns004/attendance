@@ -1292,125 +1292,178 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>Add Salary</h3></div>
                 <div className="card-pad">
-                  <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
-                    <div>
-                      <span className="detail-label">Salary Amount</span>
-                      <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
-                        value={salaryForm.salary}
-                        onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
-                        style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
-                    </div>
-                  </div>
-                  <div style={{ marginTop:10 }}>
-                    <span className="detail-label" style={{ display:'block', marginBottom:6 }}>Allocate to</span>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
-                        <input type="radio" name="ngoCount" checked={salaryNgoCount === 1}
-                          onChange={() => { setSalaryNgoCount(1); setSalaryNgo2(''); }} />
-                        1 NGO
-                      </label>
-                      <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
-                        <input type="radio" name="ngoCount" checked={salaryNgoCount === 2}
-                          onChange={() => setSalaryNgoCount(2)} />
-                        2 NGOs
-                      </label>
-                    </div>
-                  </div>
-                  <div style={{ marginTop:10, display:'flex', gap:12, flexWrap:'wrap' }}>
-                    {salaryNgoCount === 1 ? (
-                      <div>
-                        <span className="detail-label">NGO</span>
-                        <Dropdown value={salaryNgo1} onChange={e => {
-                          setSalaryNgo1(e.target.value);
-                          setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
-                        }}
-                          options={[
-                            { value: '', label: 'Select NGO' },
-                            ...ngos.map(n => ({ value: n.id, label: n.name }))
-                          ]}
-                          style={{ minWidth:180 }} />
+                  {allocations.length === 0 ? (
+                    <>
+                      <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+                        <div>
+                          <span className="detail-label">Salary Amount</span>
+                          <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
+                            value={salaryForm.salary}
+                            onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
+                            style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        <div>
-                          <span className="detail-label">NGO 1</span>
-                          <Dropdown value={salaryNgo1} onChange={e => {
-                            setSalaryNgo1(e.target.value);
-                            setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
-                          }}
-                            options={[
-                              { value: '', label: 'Select NGO' },
-                              ...ngos.map(n => ({ value: n.id, label: n.name }))
-                            ]}
-                            style={{ minWidth:160 }} />
+                      <div style={{ marginTop:10 }}>
+                        <span className="detail-label" style={{ display:'block', marginBottom:6 }}>Allocate to</span>
+                        <div style={{ display:'flex', gap:8 }}>
+                          <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
+                            <input type="radio" name="ngoCount" checked={salaryNgoCount === 1}
+                              onChange={() => { setSalaryNgoCount(1); setSalaryNgo2(''); }} />
+                            1 NGO
+                          </label>
+                          <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
+                            <input type="radio" name="ngoCount" checked={salaryNgoCount === 2}
+                              onChange={() => setSalaryNgoCount(2)} />
+                            2 NGOs
+                          </label>
                         </div>
-                        <div>
-                          <span className="detail-label">NGO 2</span>
-                          <Dropdown value={salaryNgo2} onChange={e => {
-                            setSalaryNgo2(e.target.value);
-                            setSalaryNgo1(prev => prev === e.target.value ? '' : prev);
-                          }}
-                            options={[
-                              { value: '', label: 'Select NGO' },
-                              ...ngos.map(n => ({ value: n.id, label: n.name }))
-                            ]}
-                            style={{ minWidth:160 }} />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ display:'flex', gap:12, alignItems:'center', marginTop:12 }}>
-                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary || !salaryNgo1 || (salaryNgoCount === 2 && !salaryNgo2)}
-                      onClick={async () => {
-                        setSalarySubmitting(true);
-                        try {
-                          const joinDate = new Date(data.created_at);
-                          const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
-                          const now = new Date();
-                          const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                      </div>
+                      <div style={{ marginTop:10, display:'flex', gap:12, flexWrap:'wrap' }}>
+                        {salaryNgoCount === 1 ? (
+                          <div>
+                            <span className="detail-label">NGO</span>
+                            <Dropdown value={salaryNgo1} onChange={e => {
+                              setSalaryNgo1(e.target.value);
+                              setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
+                            }}
+                              options={[
+                                { value: '', label: 'Select NGO' },
+                                ...ngos.map(n => ({ value: n.id, label: n.name }))
+                              ]}
+                              style={{ minWidth:180 }} />
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <span className="detail-label">NGO 1</span>
+                              <Dropdown value={salaryNgo1} onChange={e => {
+                                setSalaryNgo1(e.target.value);
+                                setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
+                              }}
+                                options={[
+                                  { value: '', label: 'Select NGO' },
+                                  ...ngos.map(n => ({ value: n.id, label: n.name }))
+                                ]}
+                                style={{ minWidth:160 }} />
+                            </div>
+                            <div>
+                              <span className="detail-label">NGO 2</span>
+                              <Dropdown value={salaryNgo2} onChange={e => {
+                                setSalaryNgo2(e.target.value);
+                                setSalaryNgo1(prev => prev === e.target.value ? '' : prev);
+                              }}
+                                options={[
+                                  { value: '', label: 'Select NGO' },
+                                  ...ngos.map(n => ({ value: n.id, label: n.name }))
+                                ]}
+                                style={{ minWidth:160 }} />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', gap:12, alignItems:'center', marginTop:12 }}>
+                        <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary || !salaryNgo1 || (salaryNgoCount === 2 && !salaryNgo2)}
+                          onClick={async () => {
+                            setSalarySubmitting(true);
+                            try {
+                              const joinDate = new Date(data.created_at);
+                              const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
+                              const now = new Date();
+                              const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-                          const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
-                          const latest = sorted[0];
+                              const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+                              const latest = sorted[0];
 
-                          let from_month;
-                          if (!latest) {
-                            from_month = joinMonth;
-                          } else {
-                            from_month = currMonth;
-                          }
+                              let from_month;
+                              if (!latest) {
+                                from_month = joinMonth;
+                              } else {
+                                from_month = currMonth;
+                              }
 
-                          if (latest && !latest.to_month) {
-                            const d = new Date(from_month);
-                            d.setDate(0);
-                            const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-                            await updateWorkerSalary(latest.id, { to_month: prevMonth });
-                            setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
-                          }
+                              if (latest && !latest.to_month) {
+                                const d = new Date(from_month);
+                                d.setDate(0);
+                                const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                                await updateWorkerSalary(latest.id, { to_month: prevMonth });
+                                setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
+                              }
 
-                          const salNum = parseFloat(salaryForm.salary);
-                          const res = await addWorkerSalary({
-                            worker_id: worker.id,
-                            salary: salNum,
-                            from_month,
-                            to_month: null,
-                          });
-                          setSalaries(p => [res.record, ...p]);
+                              const salNum = parseFloat(salaryForm.salary);
+                              const res = await addWorkerSalary({
+                                worker_id: worker.id,
+                                salary: salNum,
+                                from_month,
+                                to_month: null,
+                              });
+                              setSalaries(p => [res.record, ...p]);
 
-                          const allocs = salaryNgoCount === 1
-                            ? [{ ngo_id: salaryNgo1, salary_portion: salNum }]
-                            : [{ ngo_id: salaryNgo1, salary_portion: salNum / 2 }, { ngo_id: salaryNgo2, salary_portion: salNum / 2 }];
-                          await setWorkerAllocations(worker.id, allocs, salNum);
-                          setAllocations(allocs);
+                              const allocs = salaryNgoCount === 1
+                                ? [{ ngo_id: salaryNgo1, salary_portion: salNum }]
+                                : [{ ngo_id: salaryNgo1, salary_portion: salNum / 2 }, { ngo_id: salaryNgo2, salary_portion: salNum / 2 }];
+                              await setWorkerAllocations(worker.id, allocs, salNum);
+                              setAllocations(allocs);
 
-                          setSalaryForm({ salary: '' });
-                          setSalaryNgo1('');
-                          setSalaryNgo2('');
-                        } catch (e) { alert(e.message); }
-                        finally { setSalarySubmitting(false); }
-                      }}>
-                      {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
-                    </button>
-                  </div>
+                              setSalaryForm({ salary: '' });
+                              setSalaryNgo1('');
+                              setSalaryNgo2('');
+                            } catch (e) { alert(e.message); }
+                            finally { setSalarySubmitting(false); }
+                          }}>
+                          {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+                      <div>
+                        <span className="detail-label">Salary Amount</span>
+                        <input type="number" step="0.01" min="0" placeholder="e.g. 25000"
+                          value={salaryForm.salary}
+                          onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
+                          style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
+                      </div>
+                      <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
+                        onClick={async () => {
+                          setSalarySubmitting(true);
+                          try {
+                            const joinDate = new Date(data.created_at);
+                            const joinMonth = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}-01`;
+                            const now = new Date();
+                            const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+                            const sorted = [...salaries].sort((a, b) => b.from_month.localeCompare(a.from_month));
+                            const latest = sorted[0];
+
+                            let from_month;
+                            if (!latest) {
+                              from_month = joinMonth;
+                            } else {
+                              from_month = currMonth;
+                            }
+
+                            if (latest && !latest.to_month) {
+                              const d = new Date(from_month);
+                              d.setDate(0);
+                              const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                              await updateWorkerSalary(latest.id, { to_month: prevMonth });
+                              setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
+                            }
+
+                            await addWorkerSalary({
+                              worker_id: worker.id,
+                              salary: parseFloat(salaryForm.salary),
+                              from_month,
+                              to_month: null,
+                            });
+                            setSalaryForm({ salary: '' });
+                          } catch (e) { alert(e.message); }
+                          finally { setSalarySubmitting(false); }
+                        }}>
+                        {salarySubmitting ? 'Adding\u2026' : 'Add Salary'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
