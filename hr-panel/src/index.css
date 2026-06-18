@@ -262,6 +262,8 @@ label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; 
 .btn:active { transform: scale(.98); }
 .btn-primary { background: var(--sage); border-color: var(--sage); color: var(--paper); }
 .btn-primary:hover { filter: brightness(.9); }
+.btn-outline { background: transparent; border-color: var(--sage); color: var(--sage); }
+.btn-outline:hover { background: var(--sage); color: var(--paper); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-icon { padding: 6px; border-color: transparent; background: transparent; color: var(--ink-soft); }
 .btn-icon:hover { background: var(--sand); color: var(--ink); }

@@ -262,7 +262,7 @@ export const editWorker = async (req, res) => {
       permanent_address, father_husband_name, marital_status,
       pan_number, aadhar_number, is_active, ngo_id,
       emergency_contact_name, emergency_contact_relation, emergency_contact_phone,
-      account_holder_name, ifsc_code, account_number, created_at,
+      account_holder_name, bank_name, ifsc_code, account_number, created_at,
     } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
@@ -288,6 +288,7 @@ export const editWorker = async (req, res) => {
     if (emergency_contact_relation !== undefined) updates.emergency_contact_relation = emergency_contact_relation;
     if (emergency_contact_phone !== undefined) updates.emergency_contact_phone = emergency_contact_phone;
     if (account_holder_name !== undefined) updates.account_holder_name = account_holder_name;
+    if (bank_name !== undefined) updates.bank_name = bank_name;
     if (ifsc_code !== undefined) updates.ifsc_code = ifsc_code;
     if (account_number !== undefined) updates.account_number = account_number;
     if (created_at !== undefined) updates.created_at = created_at.includes('T') ? created_at : created_at + 'T00:00:00.000Z';
@@ -342,7 +343,7 @@ export const updateMyProfile = async (req, res) => {
       'father_husband_name', 'marital_status', 'pan_number', 'aadhar_number',
       'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
       'emergency_contact_name2', 'emergency_contact_relation2', 'emergency_contact_phone2',
-      'account_holder_name', 'ifsc_code', 'account_number',
+      'account_holder_name', 'bank_name', 'ifsc_code', 'account_number',
       'photo_url',
     ];
     const updates = {};

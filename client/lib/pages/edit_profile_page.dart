@@ -27,6 +27,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _emergency2NameCtrl;
   late TextEditingController _emergency2RelationCtrl;
   late TextEditingController _emergency2PhoneCtrl;
+  late TextEditingController _bankNameCtrl;
   late TextEditingController _accountHolderCtrl;
   late TextEditingController _ifscCtrl;
   late TextEditingController _accountNoCtrl;
@@ -62,6 +63,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _emergency2NameCtrl = TextEditingController(text: w['emergency_contact_name2'] ?? '');
     _emergency2RelationCtrl = TextEditingController(text: w['emergency_contact_relation2'] ?? '');
     _emergency2PhoneCtrl = TextEditingController(text: w['emergency_contact_phone2'] ?? '');
+    _bankNameCtrl = TextEditingController(text: w['bank_name'] ?? '');
     _accountHolderCtrl = TextEditingController(text: w['account_holder_name'] ?? '');
     _ifscCtrl = TextEditingController(text: w['ifsc_code'] ?? '');
     _accountNoCtrl = TextEditingController(text: w['account_number'] ?? '');
@@ -103,6 +105,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _emergency2NameCtrl.dispose();
     _emergency2RelationCtrl.dispose();
     _emergency2PhoneCtrl.dispose();
+    _bankNameCtrl.dispose();
     _accountHolderCtrl.dispose();
     _ifscCtrl.dispose();
     _accountNoCtrl.dispose();
@@ -141,6 +144,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'emergency_contact_name2': _emergency2NameCtrl.text.trim(),
         'emergency_contact_relation2': _emergency2RelationCtrl.text.trim(),
         'emergency_contact_phone2': _emergency2PhoneCtrl.text.trim(),
+        'bank_name': _bankNameCtrl.text.trim(),
         'account_holder_name': _accountHolderCtrl.text.trim(),
         'ifsc_code': _ifscCtrl.text.trim(),
         'account_number': _accountNoCtrl.text.trim(),
@@ -323,6 +327,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Text('These details are used for salary disbursement',
             style: TextStyle(fontSize: 12, color: const Color(0xFF74777e))),
           const SizedBox(height: 8),
+          _field('Bank Name', _bankNameCtrl),
+          const SizedBox(height: 12),
           _field('Account Holder Name', _accountHolderCtrl),
           const SizedBox(height: 12),
           Row(

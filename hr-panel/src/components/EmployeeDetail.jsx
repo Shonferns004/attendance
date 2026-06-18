@@ -109,6 +109,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
       emergency_contact_relation: data.emergency_contact_relation || '',
       emergency_contact_phone: data.emergency_contact_phone || '',
       account_holder_name: data.account_holder_name || '',
+      bank_name: data.bank_name || '',
       ifsc_code: data.ifsc_code || '',
       account_number: data.account_number || '',
     });
@@ -469,6 +470,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                 <div className="card-head"><h3>Bank Details</h3></div>
                 <div className="detail-grid">
                   {editing ? <EditField label="Account Holder" value={form.account_holder_name} onChange={setField('account_holder_name')} /> : <Field label="Account Holder" value={data.account_holder_name} />}
+                  {editing ? <EditField label="Bank Name" value={form.bank_name} onChange={setField('bank_name')} /> : <Field label="Bank Name" value={data.bank_name} />}
                   {editing ? <EditField label="IFSC Code" value={form.ifsc_code} onChange={setField('ifsc_code')} /> : <Field label="IFSC Code" value={data.ifsc_code} />}
                   {editing ? <EditField label="Account Number" value={form.account_number} onChange={setField('account_number')} /> : <Field label="Account Number" value={data.account_number} />}
                 </div>

@@ -78,6 +78,102 @@ export default function Workers({ onSelect, onOffboard }) {
     }
   };
 
+  const handleFullPayExport = async () => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const token = localStorage.getItem('hr_token');
+    try {
+      const res = await fetch(API_BASE + '/salary/payroll?month=' + month + '&extended=true', {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!res.ok) throw new Error('Failed to fetch payroll data');
+      const data = await res.json();
+      if (!data.rows || data.rows.length === 0) { alert('No payroll data for this month'); return; }
+
+      const groups = {};
+      for (const r of data.rows) {
+        if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
+        groups[r.ngo_name].push(r);
+      }
+
+      const headers = [
+        'Team Name', 'Branch Name', 'Agent Name', 'Date of Joining',
+        'Salary', 'Target', 'Achieved', 'Balance', 'Achieved %',
+        'May Present Days', 'Training and Sunday Deduction',
+        'Sunday Need To Add', 'Net May Present Days', 'May Salary',
+        'Monthly 10% Incentive', 'Aaj Ka Incentive (Daily 50% for PC)',
+        'Weekly Incentive / TL', 'Gross Payable Salary',
+        'OT/Appreciation/Extra Incentive', 'Any Pending Expenses Paid for Previous Month',
+        'Advance need to be deducted in May, 2026', 'Net Payable Salary',
+        'ACCOUNT HOL', 'ACC COL', 'Bank', 'IFSC Code',
+      ];
+
+      const wsData = [headers];
+      for (const [ngo, rows] of Object.entries(groups)) {
+        for (const r of rows) {
+          wsData.push([
+            r.department || '',
+            r.ngo_name,
+            r.name,
+            r.date_of_joining ? r.date_of_joining.split('T')[0] : '',
+            r.salary || 0,           // E: Salary
+            r.target || 0,           // F: Target
+            r.achieved || 0,         // G: Achieved
+            null,                     // H: Balance (formula)
+            null,                     // I: Achieved % (formula)
+            r.present_days || 0,     // J: May Present Days
+            0,                        // K: Training and Sunday Deduction
+            0,                        // L: Sunday Need To Add
+            null,                     // M: Net May Present Days (formula)
+            r.total_due || 0,        // N: May Salary
+            0,                        // O: Monthly 10% Incentive
+            0,                        // P: Aaj Ka Incentive
+            0,                        // Q: Weekly Incentive
+            null,                     // R: Gross Payable Salary (formula)
+            0,                        // S: OT/Appreciation
+            0,                        // T: Pending Expenses
+            0,                        // U: Advance to Deduct
+            null,                     // V: Net Payable Salary (formula)
+            r.account_holder_name || '',  // W: ACCOUNT HOL
+            r.account_number || '',       // X: ACC COL
+            r.bank_name || '',            // Y: Bank
+            r.ifsc_code || '',            // Z: IFSC Code
+          ]);
+        }
+      }
+
+      for (let i = 1; i < wsData.length; i++) {
+        const row = i + 1;
+        wsData[i][7] = { f: `E${row}-F${row}` };                         // H: Balance
+        wsData[i][8] = { f: `IF(F${row}>0,G${row}/F${row}*100,0)` };     // I: Achieved %
+        wsData[i][12] = { f: `J${row}-K${row}+L${row}` };                // M: Net May Present Days
+        wsData[i][17] = { f: `N${row}+O${row}+P${row}+Q${row}` };        // R: Gross Payable Salary
+        wsData[i][21] = { f: `R${row}+S${row}+T${row}-U${row}` };        // V: Net Payable Salary
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 },
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        { wch: 16 }, { wch: 22 },
+        { wch: 16 }, { wch: 18 }, { wch: 14 },
+        { wch: 18 }, { wch: 26 }, { wch: 16 },
+        { wch: 20 }, { wch: 30 }, { wch: 30 },
+        { wch: 28 }, { wch: 18 },
+        { wch: 18 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([xlsxBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      link.download = `payroll-full-${month}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) { alert(e.message); }
+  };
+
   const handleOffboard = (e, worker) => {
     e.stopPropagation();
     if (onOffboard) onOffboard(worker);
@@ -95,11 +191,6 @@ export default function Workers({ onSelect, onOffboard }) {
       const data = await res.json();
       if (!data.rows || data.rows.length === 0) { alert('No payroll data for this month'); return; }
 
-      const groups = {};
-      for (const r of data.rows) {
-        if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
-        groups[r.ngo_name].push(r);
-      }
       const groups = {};
       for (const r of data.rows) {
         if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
@@ -154,6 +245,7 @@ export default function Workers({ onSelect, onOffboard }) {
         <div className="card-head"><h3>Employees</h3>
           <div className="search-input-wrap">
             <button className="btn btn-primary btn-sm" onClick={handlePayExport} title="Download payroll Excel">Pay</button>
+            <button className="btn btn-outline btn-sm" onClick={handleFullPayExport} title="Download full payroll with formulas">Full Excel</button>
             <span className="sub">{filtered.length} total</span>
             <Dropdown className="role-filter" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}
               options={[{value:'',label:'All members'}, ...roles.map(r => ({value:r, label:r}))]} />

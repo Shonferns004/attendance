@@ -269,7 +269,8 @@ export const removeSalary = async (req, res) => {
 export const getPayrollExport = async (req, res) => {
   try {
     const month = req.query.month;
-    const data = await getPayrollData(month);
+    const extended = req.query.extended === 'true';
+    const data = await getPayrollData(month, extended);
     return res.json(data);
   } catch (error) {
     return res.status(500).json({ message: error.message });

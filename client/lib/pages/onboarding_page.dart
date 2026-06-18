@@ -35,6 +35,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String? _lightBillUrl;
 
   // Bank Details
+  final _bankNameCtrl = TextEditingController();
   final _accountHolderCtrl = TextEditingController();
   final _ifscCtrl = TextEditingController();
   final _accountNoCtrl = TextEditingController();
@@ -132,6 +133,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _emergencyNameCtrl.dispose();
     _emergencyRelationCtrl.dispose();
     _emergencyPhoneCtrl.dispose();
+    _bankNameCtrl.dispose();
     _accountHolderCtrl.dispose();
     _ifscCtrl.dispose();
     _accountNoCtrl.dispose();
@@ -378,6 +380,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'pan_card_url': _panCardUrl,
           'bank_proof_url': _bankProofUrl,
           'light_bill_url': _lightBillUrl,
+          'bank_name': _bankNameCtrl.text.trim(),
           'account_holder_name': _accountHolderCtrl.text.trim(),
           'ifsc_code': _ifscCtrl.text.trim(),
           'account_number': _accountNoCtrl.text.trim(),
@@ -1200,6 +1203,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           const SizedBox(height: 24),
           _sectionTitle('Bank Account Details'),
           const SizedBox(height: 12),
+          _textField(_bankNameCtrl, 'Bank Name *', Icons.account_balance, 'e.g., State Bank of India'),
+          const SizedBox(height: 12),
           _textField(_accountHolderCtrl, 'Account Holder Name *', Icons.person, 'As per bank records'),
           const SizedBox(height: 12),
           _textField(_ifscCtrl, 'IFSC Code *', Icons.code, 'e.g., SBIN0001234'),
@@ -1530,6 +1535,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             _reviewItem('PAN Card', _panCardUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
             _reviewItem('Bank Proof', _bankProofUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
             _reviewItem('Light Bill', _lightBillUrl != null ? 'Uploaded ✓' : 'Not uploaded'),
+            if (_bankNameCtrl.text.isNotEmpty) _reviewItem('Bank Name', _bankNameCtrl.text),
             if (_accountHolderCtrl.text.isNotEmpty) _reviewItem('Account Holder', _accountHolderCtrl.text),
             if (_ifscCtrl.text.isNotEmpty) _reviewItem('IFSC', _ifscCtrl.text),
             if (_accountNoCtrl.text.isNotEmpty) _reviewItem('Account No', _accountNoCtrl.text),

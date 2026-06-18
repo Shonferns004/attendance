@@ -72,7 +72,7 @@ export const getAllWorkersSalarySummary = async () => {
   }));
 };
 
-export const getPayrollData = async (month) => {
+export const getPayrollData = async (month, extended = false) => {
   let year, monthIdx, startDate, endDate, daysInMonth;
   if (month) {
     const p = month.split('-');
@@ -90,9 +90,12 @@ export const getPayrollData = async (month) => {
     endDate = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
   }
 
+  const selectFields = extended
+    ? 'id, name, account_number, ifsc_code, account_holder_name, bank_name, department, created_at'
+    : 'id, name, account_number, ifsc_code';
   const { data: workers, error: wErr } = await supabase
     .from('workers')
-    .select('id, name, account_number, ifsc_code')
+    .select(selectFields)
     .order('name');
   if (wErr) throw wErr;
 
@@ -105,6 +108,32 @@ export const getPayrollData = async (month) => {
   const latestSalary = {};
   for (const s of salaries) {
     if (!latestSalary[s.worker_id]) latestSalary[s.worker_id] = s;
+  }
+
+  let targetsByWorker = {};
+  let achievedByWorker = {};
+  if (extended) {
+    const { data: targets, error: tErr } = await supabase
+      .from('incentive_targets')
+      .select('worker_id, target_amount')
+      .gte('month', startDate)
+      .lte('month', endDate);
+    if (!tErr) {
+      for (const t of targets) {
+        targetsByWorker[t.worker_id] = parseFloat(t.target_amount);
+      }
+    }
+
+    const { data: achievements, error: aErr2 } = await supabase
+      .from('daily_achievements')
+      .select('worker_id, amount')
+      .gte('date', startDate)
+      .lte('date', endDate);
+    if (!aErr2) {
+      for (const a of achievements) {
+        achievedByWorker[a.worker_id] = (achievedByWorker[a.worker_id] || 0) + parseFloat(a.amount || 0);
+      }
+    }
   }
 
   const { data: allAllocs, error: aErr } = await supabase
@@ -120,17 +149,23 @@ export const getPayrollData = async (month) => {
 
   const { data: attRecords, error: attErr } = await supabase
     .from('attendance')
-    .select('worker_id, status')
+    .select('worker_id, status, date')
     .gte('date', startDate)
     .lte('date', endDate);
   if (attErr) throw attErr;
 
-  const absentCountByWorker = {};
+  const attByWorker = {};
   for (const r of attRecords) {
-    if (r.status === 'absent') {
-      absentCountByWorker[r.worker_id] = (absentCountByWorker[r.worker_id] || 0) + 1;
-    }
+    if (!attByWorker[r.worker_id]) attByWorker[r.worker_id] = [];
+    attByWorker[r.worker_id].push(r);
   }
+
+  const monthDays = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, monthIdx, d);
+    monthDays.push({ date: d, dayName: dt.getDay() });
+  }
+  const allSundays = monthDays.filter(d => d.dayName === 0).length;
 
   const rows = [];
   for (const w of workers) {
@@ -139,29 +174,62 @@ export const getPayrollData = async (month) => {
     if (salary <= 0) continue;
 
     const perDay = salary / daysInMonth;
-    const absentCount = absentCountByWorker[w.id] || 0;
+    const workerAtt = attByWorker[w.id] || [];
+    const absentCount = workerAtt.filter(r => r.status === 'absent').length;
+    const presentCount = workerAtt.filter(r => r.status === 'present').length;
     const totalDue = Math.round(salary - perDay * absentCount);
 
     const workerAllocs = allocsByWorker[w.id] || [];
     if (workerAllocs.length === 0) {
-      rows.push({
+      const row = {
         ngo_name: 'Unallocated',
         name: w.name,
         account_number: w.account_number || '',
         ifsc_code: w.ifsc_code || '',
         total_due: totalDue,
-      });
+      };
+      if (extended) {
+        row.account_holder_name = w.account_holder_name || '';
+        row.bank_name = w.bank_name || '';
+        row.salary = salary;
+        row.per_day = Math.round(perDay);
+        row.days_in_month = daysInMonth;
+        row.present_days = presentCount;
+        row.absent_days = absentCount;
+        row.sundays = allSundays;
+        row.department = w.department || '';
+        row.date_of_joining = w.created_at || '';
+        row.target = Math.round(targetsByWorker[w.id] || 0);
+        row.achieved = Math.round(achievedByWorker[w.id] || 0);
+      }
+      rows.push(row);
     } else {
       for (const a of workerAllocs) {
         const portion = parseFloat(a.salary_portion);
         const portionDue = Math.round(totalDue * (portion / salary));
-        rows.push({
+        const portionPerDay = Math.round(portion / daysInMonth);
+        const row = {
           ngo_name: a.ngos?.name || 'Unknown',
           name: w.name,
           account_number: w.account_number || '',
           ifsc_code: w.ifsc_code || '',
           total_due: portionDue,
-        });
+        };
+        if (extended) {
+          row.account_holder_name = w.account_holder_name || '';
+          row.bank_name = w.bank_name || '';
+          row.salary = Math.round(portion);
+          row.per_day = portionPerDay;
+          row.days_in_month = daysInMonth;
+          row.present_days = presentCount;
+          row.absent_days = absentCount;
+          row.sundays = allSundays;
+          row.department = w.department || '';
+          row.date_of_joining = w.created_at || '';
+          row.target = Math.round(targetsByWorker[w.id] || 0);
+          row.achieved = Math.round(achievedByWorker[w.id] || 0);
+        }
+        rows.push(row);
       }
     }
   }
