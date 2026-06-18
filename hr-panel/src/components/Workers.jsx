@@ -100,11 +100,11 @@ export default function Workers({ onSelect, onOffboard }) {
         groups[r.ngo_name].push(r);
       }
       const wb = XLSX.utils.book_new();
-      const colWidths = [{ wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
+      const colWidths = [{ wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
       for (const [ngo, rows] of Object.entries(groups)) {
         const wsData = [
-          ['Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
-          ...rows.map(r => [r.name, r.account_number, r.ifsc_code, r.total_due]),
+          ['NGO', 'Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
+          ...rows.map(r => [r.ngo_name, r.name, r.account_number, r.ifsc_code, r.total_due]),
         ];
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         ws['!cols'] = colWidths;
