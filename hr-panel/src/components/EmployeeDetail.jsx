@@ -1292,7 +1292,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>Add Salary</h3></div>
                 <div className="card-pad">
-                  {allocations.length === 0 ? (
+                  {salaries.length === 0 ? (
                     <>
                       <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
                         <div>
