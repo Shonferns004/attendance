@@ -8,6 +8,7 @@ import {
   extractQuickRowData,
   isFullSheet,
   dedupRows,
+  normalizeDate,
 } from '../services/fileParser.js';
 
 export const uploadImport = async (req, res) => {
@@ -44,6 +45,14 @@ export const uploadImport = async (req, res) => {
         message: 'No valid rows found. Ensure file has Name and Mobile Number columns.',
         errors,
       });
+    }
+
+    if (fullSheet) {
+      for (const r of extracted) {
+        r.transaction_date = normalizeDate(r.transaction_date);
+        r.birth_date = normalizeDate(r.birth_date);
+        r.receipt_date = normalizeDate(r.receipt_date);
+      }
     }
 
     const { deduped, duplicatesRemoved } = dedupRows(extracted);
@@ -155,50 +164,123 @@ export const uploadOldDataImport = async (req, res) => {
       return res.status(400).json({ message: 'File is empty or has no data rows' });
     }
 
+    const fullSheet = isFullSheet(rows);
+
     const extracted = [];
     const errors = [];
     for (let i = 0; i < rows.length; i++) {
       const norm = normalizeHeaders(rows[i]);
-      const data = extractQuickRowData(norm);
+      const data = fullSheet ? extractFullRowData(norm) : extractQuickRowData(norm);
       if (data) {
         extracted.push(data);
       } else {
-        errors.push({ row: i + 2, data: rows[i], reason: 'Missing name or mobile number' });
+        errors.push({ row: i + 2, data: rows[i], reason: 'Missing mobile number' });
       }
     }
 
     if (extracted.length === 0) {
-      return res.status(400).json({ message: 'No valid rows found', errors });
+      return res.status(400).json({
+        message: 'No valid rows found. Ensure file has Name and Mobile Number columns.',
+        errors,
+      });
+    }
+
+    if (fullSheet) {
+      for (const r of extracted) {
+        r.transaction_date = normalizeDate(r.transaction_date);
+        r.birth_date = normalizeDate(r.birth_date);
+        r.receipt_date = normalizeDate(r.receipt_date);
+      }
     }
 
     const importBatchId = uuidv4();
 
-    const donorRows = extracted.map((r) => ({
-      mobile_number: r.mobile_number,
-      name: r.name || null,
-      category: r.category || '',
-      data_category: r.category || '',
-      amount: r.amount || 0,
-      raw_data: r,
-      import_batch_id: importBatchId,
-    }));
+    const dbRows = extracted.map((r) => {
+      const row = {
+        data_source_id,
+        import_date: date,
+        import_batch_id: importBatchId,
+        mobile_number: r.mobile_number,
+        name: r.name || null,
+        category: r.category || '',
+        amount: r.amount || 0,
+      };
+      if (fullSheet) {
+        Object.assign(row, {
+          transaction_date: r.transaction_date || null,
+          bank_donor_name: r.bank_donor_name || null,
+          agent_donor_name: r.agent_donor_name || null,
+          mobile_2: r.mobile_2 || null,
+          address_1: r.address_1 || null,
+          address_2: r.address_2 || null,
+          city: r.city || null,
+          pin_code: r.pin_code || null,
+          pan_number: r.pan_number || null,
+          email: r.email || null,
+          birth_date: r.birth_date || null,
+          data_category: r.data_category || null,
+          team: r.team || null,
+          agent_name: r.agent_name || null,
+          mop: r.mop || null,
+          received_bank: r.received_bank || null,
+          payment_id_no: r.payment_id_no || null,
+          donors_bank_name: r.donors_bank_name || null,
+          receipt_no: r.receipt_no || null,
+          receipt_date: r.receipt_date || null,
+          receipt_time: r.receipt_time || null,
+          project_supported: r.project_supported || null,
+          account_of: r.account_of || null,
+          branch: r.branch || null,
+        });
+      }
+      return row;
+    });
 
-    let inserted = 0;
-    for (const row of donorRows) {
+    const inserted = await insertImportedBatch(dbRows);
+
+    let profilesCreated = 0;
+    for (const r of extracted) {
+      const profile = {
+        mobile_number: r.mobile_number,
+        name: r.name || null,
+        bank_donor_name: r.bank_donor_name || null,
+        agent_donor_name: r.agent_donor_name || null,
+        mobile_2: r.mobile_2 || null,
+        address_1: r.address_1 || null,
+        address_2: r.address_2 || null,
+        city: r.city || null,
+        pin_code: r.pin_code || null,
+        pan_number: r.pan_number || null,
+        email: r.email || null,
+        birth_date: r.birth_date || null,
+        data_category: r.data_category || null,
+        team: r.team || null,
+        agent_name: r.agent_name || null,
+        mop: r.mop || null,
+        donors_bank_name: r.donors_bank_name || null,
+        project_supported: r.project_supported || null,
+        account_of: r.account_of || null,
+        raw_data: r,
+        import_batch_id: importBatchId,
+        category: r.category || '',
+        amount: r.amount || 0,
+      };
       try {
-        await insertDonorProfile(row);
-        inserted++;
+        await insertDonorProfile(profile);
+        profilesCreated++;
       } catch (e) {
-        errors.push({ row: row, reason: e.message });
+        errors.push({ row: r, reason: e.message });
       }
     }
 
     return res.status(201).json({
       message: 'Old data imported successfully',
+      type: fullSheet ? 'full' : 'quick',
       batch_id: importBatchId,
       total_in_file: rows.length,
       valid_rows: extracted.length,
-      imported: inserted,
+      imported: inserted.length,
+      profiles_created: profilesCreated,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {

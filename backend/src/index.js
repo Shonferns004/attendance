@@ -30,6 +30,8 @@ import callLogRoutes from './routes/callLogRoutes.js';
 import causeRoutes from './routes/causeRoutes.js';
 import dataSourceRoutes from './routes/dataSourceRoutes.js';
 import dataImportRoutes from './routes/dataImportRoutes.js';
+import ngoAdminRoutes from './routes/ngoAdminRoutes.js';
+import froRoutes from './routes/froRoutes.js';
 
 dotenv.config();
 
@@ -67,6 +69,8 @@ app.use('/api/incentive', incentiveRoutes);
 app.use('/api/causes', causeRoutes);
 app.use('/api/data-sources', dataSourceRoutes);
 app.use('/api/data-import', dataImportRoutes);
+app.use('/api/ngo-admin', ngoAdminRoutes);
+app.use('/api/fro', froRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance API is running' });

@@ -73,6 +73,7 @@ const COLUMN_MAP = {
   accountof: 'account_of',
   remark1: null,
   branch: 'branch',
+  branchname: 'branch',
   name: 'name',
   'donorname': 'bank_donor_name',
   fullname: 'name',
@@ -142,6 +143,43 @@ export function isFullSheet(rows) {
     }
   }
   return hits >= 3;
+}
+
+export function normalizeDate(val) {
+  if (!val || val === 'NA' || val === 'na') return null;
+  const s = String(val).trim();
+
+  // Excel serial date number
+  if (/^\d+$/.test(s) && s.length <= 5) {
+    const d = new Date(1900, 0, parseInt(s) - 1);
+    return d.toISOString().split('T')[0];
+  }
+
+  // YYYY-MM-DD (already valid ISO)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // DD-MM-YYYY (hyphen-separated, e.g. "16-04-1965")
+  const hyphenMatch = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (hyphenMatch) {
+    const [, d, m, y] = hyphenMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // DD.MM.YYYY (dot-separated, e.g. "13.12.1992")
+  const dotMatch = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dotMatch) {
+    const [, d, m, y] = dotMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // DD/MM/YYYY (slash-separated, e.g. "13/12/1992")
+  const slashMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, d, m, y] = slashMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  return null;
 }
 
 export function dedupRows(rows) {
