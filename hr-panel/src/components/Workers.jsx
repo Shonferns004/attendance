@@ -144,9 +144,10 @@ export default function Workers({ onSelect, onOffboard }) {
 
       for (let i = 1; i < wsData.length; i++) {
         const row = i + 1;
-        wsData[i][7] = { f: `E${row}-F${row}` };                         // H: Balance
+        wsData[i][7] = { f: `F${row}-G${row}` };                         // H: Balance (Target - Achieved)
         wsData[i][8] = { f: `IF(F${row}>0,G${row}/F${row}*100,0)` };     // I: Achieved %
         wsData[i][12] = { f: `J${row}-K${row}+L${row}` };                // M: Net May Present Days
+        wsData[i][14] = { f: `IF(F${row}>0,IF(G${row}>=F${row},(G${row}-F${row})*0.1,0),0)` }; // O: Monthly 10% Incentive
         wsData[i][17] = { f: `N${row}+O${row}+P${row}+Q${row}` };        // R: Gross Payable Salary
         wsData[i][21] = { f: `R${row}+S${row}+T${row}-U${row}` };        // V: Net Payable Salary
       }
