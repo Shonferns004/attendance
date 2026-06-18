@@ -72,6 +72,15 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
     return () => { cancelled = true; };
   }, [worker.id]);
 
+  useEffect(() => {
+    if (data?.department === 'FRO' && viewingMonthKey) {
+      const month = viewingMonthKey + '-01';
+      fetchWorkerSalaryAllocations(worker.id, month)
+        .then(r => setSundayBonus(r?.sundayBonus || null))
+        .catch(() => {});
+    }
+  }, [viewingMonthKey, worker.id, data?.department]);
+
   const startEdit = () => {
     setForm({
       name: data.name || '',
@@ -846,7 +855,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                           </>
                         )}
                         <span style={{ marginLeft:'auto', fontWeight:600, fontSize:15 }}>
-                          Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0) + (sundayBonus?.bonusAmount || 0)).toLocaleString('en-IN')}</span>
+                          Grand Total: <span style={{ color:'var(--sage)', fontSize:20, fontWeight:800 }}>₹{(Math.round(totalDue) + parseFloat(activeSalary?.extra_amount || 0) + (sundayBonus?.bonusAmount || 0) + (sundayBonus?.incentiveAKI || 0) + (sundayBonus?.incentiveMonthly || 0)).toLocaleString('en-IN')}</span>
                         </span>
                       </div>
 
@@ -863,18 +872,32 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         <Arrow />
                         <Box num={lateDeductionDays > 0 ? '-' + lateDeductionDays : '0'} label={'Late\nDeduction'} color={lateDeductionDays > 0 ? '#e67e22' : '#5B6B4E'} />
                         {joiningDeduction > 0 && <><Arrow /><Box num={'−' + joiningDeduction + 'd'} label={'Join\nDeduction'} color="#8B5CF6" /></>}
-                        <Equals />
-                        {sundayBonus?.bonusAmount > 0 ? (
-                          <>
-                            <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Salary\nDue'} color="#5B6B4E" big />
-                            <Arrow />
-                            <Box num={'+₹' + sundayBonus.bonusAmount.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" />
-                            <Equals />
-                            <Box num={'₹' + (Math.round(totalDue) + sundayBonus.bonusAmount).toLocaleString('en-IN')} label={'Total\nDue'} color="#16a34a" big />
-                          </>
-                        ) : (
-                          <Box num={'₹' + Math.round(totalDue).toLocaleString('en-IN')} label={'Total\nDue'} color="#5B6B4E" big />
-                        )}
+                        {(() => {
+                          const sb = sundayBonus || {};
+                          const bonusAmt = sb.bonusAmount || 0;
+                          const akiAmt = sb.incentiveAKI || 0;
+                          const monthlyAmt = sb.incentiveMonthly || 0;
+                          const baseDue = Math.round(totalDue);
+                          const total = baseDue + bonusAmt + akiAmt + monthlyAmt;
+                          const showSunday = bonusAmt > 0;
+                          const showAKI = akiAmt > 0;
+                          const showMonthly = monthlyAmt > 0;
+                          const showAny = showSunday || showAKI || showMonthly;
+
+                          return (
+                            <>
+                              <Box num={'₹' + baseDue.toLocaleString('en-IN')} label={'Salary\nDue'} color="#5B6B4E" big />
+                              {showAny && <Arrow />}
+                              {showSunday && <Box num={'+₹' + bonusAmt.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" />}
+                              {showSunday && (showAKI || showMonthly) && <Arrow />}
+                              {showAKI && <Box num={'+₹' + akiAmt.toLocaleString('en-IN')} label={'Incentive\nAKI'} color="#8B5CF6" />}
+                              {showAKI && showMonthly && <Arrow />}
+                              {showMonthly && <Box num={'+₹' + monthlyAmt.toLocaleString('en-IN')} label={'Incentive\nMonthly'} color="#3B82F6" />}
+                              {showAny && <Equals />}
+                              <Box num={'₹' + total.toLocaleString('en-IN')} label={'Total\nDue'} color="#16a34a" big />
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Sunday bonus explanation */}

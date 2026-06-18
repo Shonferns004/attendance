@@ -127,9 +127,10 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
           }
         }
 
-        // If last Sunday hasn't happened yet, don't compute Sunday bonus
-        const lastSunDt = new Date(lastSunDate + 'T00:00:00+05:30');
-        if (lastSunDt > todayIST) { lastSunDate = null; }
+        // Only skip Sunday bonus if the entire month is in the future
+        const monthStart = new Date(Date.UTC(year, month, 1));
+        const monthStartIST = new Date(monthStart.getTime() + IST_OFFSET);
+        if (monthStartIST > todayIST) { lastSunDate = null; }
 
         if (lastSunDate) {
 
