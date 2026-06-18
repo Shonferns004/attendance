@@ -6,7 +6,7 @@ import { Dropdown, DatePicker } from './ui';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function EmployeeDetail({ worker, onBack, onOffboard }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, setWorkerAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +20,9 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const [salaries, setSalaries] = useState([]);
   const [salaryForm, setSalaryForm] = useState({ salary: '' });
   const [salarySubmitting, setSalarySubmitting] = useState(false);
+  const [salaryNgoCount, setSalaryNgoCount] = useState(1);
+  const [salaryNgo1, setSalaryNgo1] = useState('');
+  const [salaryNgo2, setSalaryNgo2] = useState('');
   const [extraEditing, setExtraEditing] = useState(false);
   const [extraVal, setExtraVal] = useState('');
   const [extraSaving, setExtraSaving] = useState(false);
@@ -60,9 +63,6 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
         fetchIncentiveSummary(worker.id, month)
           .then(s => setIncSummary(s?.hasIncentive ? s : null))
           .catch(() => {});
-        fetchWorkerSalaryAllocations(worker.id, month)
-          .then(r => setSundayBonus(r?.sundayBonus || null))
-          .catch(() => {});
       }
     });
     if (!attendance.length) fetchAttendance();
@@ -72,9 +72,11 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
     return () => { cancelled = true; };
   }, [worker.id]);
 
+  // Fetch Sunday bonus + incentive data whenever the viewing month changes
   useEffect(() => {
-    if (data?.department === 'FRO' && viewingMonthKey) {
-      const month = viewingMonthKey + '-01';
+    if (data?.department === 'FRO') {
+      const monthKey = viewingMonthKey || defaultMonthKey;
+      const month = monthKey + '-01';
       fetchWorkerSalaryAllocations(worker.id, month)
         .then(r => setSundayBonus(r?.sundayBonus || null))
         .catch(() => {});
@@ -752,7 +754,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                           })()}
                         </svg>
                         <div className="salary-visual-main">
-                          <div className="salary-visual-total">₹{Math.round(totalDue).toLocaleString('en-IN')}</div>
+                          <div className="salary-visual-total">₹{(Math.round(totalDue) + (sundayBonus?.bonusAmount || 0) + (sundayBonus?.incentiveAKI || 0) + (sundayBonus?.incentiveMonthly || 0)).toLocaleString('en-IN')}</div>
                           <div className="salary-visual-label">Total Due</div>
                         </div>
                       </div>
@@ -879,21 +881,17 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                           const monthlyAmt = sb.incentiveMonthly || 0;
                           const baseDue = Math.round(totalDue);
                           const total = baseDue + bonusAmt + akiAmt + monthlyAmt;
-                          const showSunday = bonusAmt > 0;
-                          const showAKI = akiAmt > 0;
-                          const showMonthly = monthlyAmt > 0;
-                          const showAny = showSunday || showAKI || showMonthly;
 
                           return (
                             <>
                               <Box num={'₹' + baseDue.toLocaleString('en-IN')} label={'Salary\nDue'} color="#5B6B4E" big />
-                              {showAny && <Arrow />}
-                              {showSunday && <Box num={'+₹' + bonusAmt.toLocaleString('en-IN')} label={'Sunday\nBonus'} color="#f59e0b" />}
-                              {showSunday && (showAKI || showMonthly) && <Arrow />}
-                              {showAKI && <Box num={'+₹' + akiAmt.toLocaleString('en-IN')} label={'Incentive\nAKI'} color="#8B5CF6" />}
-                              {showAKI && showMonthly && <Arrow />}
-                              {showMonthly && <Box num={'+₹' + monthlyAmt.toLocaleString('en-IN')} label={'Incentive\nMonthly'} color="#3B82F6" />}
-                              {showAny && <Equals />}
+                              <Arrow />
+                              <Box num={'+₹' + bonusAmt.toLocaleString('en-IN')} label={'Sunday\nBonus'} color={bonusAmt > 0 ? '#f59e0b' : '#ddd'} />
+                              <Arrow />
+                              <Box num={'+₹' + akiAmt.toLocaleString('en-IN')} label={'Incentive\nAKI'} color={akiAmt > 0 ? '#8B5CF6' : '#ddd'} />
+                              <Arrow />
+                              <Box num={'+₹' + monthlyAmt.toLocaleString('en-IN')} label={'Incentive\nMonthly'} color={monthlyAmt > 0 ? '#3B82F6' : '#ddd'} />
+                              <Equals />
                               <Box num={'₹' + total.toLocaleString('en-IN')} label={'Total\nDue'} color="#16a34a" big />
                             </>
                           );
@@ -1167,19 +1165,28 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               {allocations.length > 0 && (
               <div className="card" style={{ marginBottom:16 }}>
                 <div className="card-head"><h3>NGO Allocations</h3></div>
-                <div className="card-pad">
-                  <div style={{ overflowX:'auto' }}>
-                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <div className="card-pad" style={{ overflow:'hidden' }}>
+                  <table style={{ width:'100%', tableLayout:'fixed', borderCollapse:'collapse', fontSize:10, fontVariantNumeric:'tabular-nums' }}>
+                    <colgroup>
+                      <col style={{ width:'25%' }} />
+                      <col style={{ width:'11%' }} />
+                      <col style={{ width:'10%' }} />
+                      <col style={{ width:'13%' }} />
+                      <col style={{ width:'10%' }} />
+                      <col style={{ width:'11%' }} />
+                      <col style={{ width:'10%' }} />
+                      <col style={{ width:'10%' }} />
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th style={{ textAlign:'left', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>NGO</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Portion</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Per Day</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Salary Due</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>AKI</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>Monthly</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', color:'#92400e' }}>Sunday</th>
-                        <th style={{ textAlign:'right', padding:'6px 6px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap' }}>Grand Total</th>
+                        <th style={{ textAlign:'left', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10 }}>NGO</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10 }}>Portion</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10 }}>Day</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10 }}>Salary</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10, color:'#92400e' }}>AKI</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10, color:'#92400e' }}>Mon.</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10, color:'#92400e' }}>Sun.</th>
+                        <th style={{ textAlign:'right', padding:'4px 3px', borderBottom:'2px solid var(--line)', whiteSpace:'nowrap', fontSize:10 }}>Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1203,20 +1210,20 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
 
                           return (
                             <tr key={a.id || a.ngo_id}>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', fontWeight:500, whiteSpace:'nowrap' }}>{ngoName}</td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap' }}>₹{portion.toLocaleString('en-IN')}</td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap' }}>₹{Math.round(allocPerDay).toLocaleString('en-IN')}</td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, whiteSpace:'nowrap' }}>₹{Math.round(allocDue).toLocaleString('en-IN')}</td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocAKI > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
-                                {allocAKI > 0 ? '+₹' + allocAKI.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontSize:10 }}>{ngoName}</td>
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap', fontSize:10 }}>₹{portion.toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', whiteSpace:'nowrap', fontSize:10 }}>₹{Math.round(allocPerDay).toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:600, whiteSpace:'nowrap', fontSize:10 }}>₹{Math.round(allocDue).toLocaleString('en-IN')}</td>
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocAKI > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap', fontSize:10 }}>
+                                {allocAKI > 0 ? '₹' + allocAKI.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
-                                {allocMonthly > 0 ? '+₹' + allocMonthly.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap', fontSize:10 }}>
+                                {allocMonthly > 0 ? '₹' + allocMonthly.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocSunday > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap' }}>
-                                {allocSunday > 0 ? '+₹' + allocSunday.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', color: allocSunday > 0 ? '#f59e0b' : 'var(--ink-soft)', whiteSpace:'nowrap', fontSize:10 }}>
+                                {allocSunday > 0 ? '₹' + allocSunday.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'5px 6px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:700, color: allocGrand > Math.round(allocDue) ? '#16a34a' : 'var(--sage)', whiteSpace:'nowrap' }}>
+                              <td style={{ padding:'3px 3px', borderBottom:'1px solid var(--line)', textAlign:'right', fontWeight:700, color: allocGrand > Math.round(allocDue) ? '#16a34a' : 'var(--sage)', whiteSpace:'nowrap', fontSize:10 }}>
                                 ₹{allocGrand.toLocaleString('en-IN')}
                               </td>
                             </tr>
@@ -1244,26 +1251,26 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         return (
                           <>
                             <tr>
-                              <td style={{ padding:'8px 6px', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>Merged Total</td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>
+                              <td style={{ padding:'5px 3px', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)' }}>Merged Total</td>
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)' }}>
                                 ₹{totalSalaryVal.toLocaleString('en-IN')}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)' }}>
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)' }}>
                                 ₹{Math.round(perDay).toLocaleString('en-IN')}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color:'var(--sage)' }}>
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)', color:'var(--sage)' }}>
                                 ₹{sumDue.toLocaleString('en-IN')}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumAKI > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
-                                {sumAKI > 0 ? '+₹' + sumAKI.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)', color: sumAKI > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumAKI > 0 ? '₹' + sumAKI.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
-                                {sumMonthly > 0 ? '+₹' + sumMonthly.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)', color: sumMonthly > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumMonthly > 0 ? '₹' + sumMonthly.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:700, fontSize:13, borderTop:'2px solid var(--line)', color: sumSunday > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
-                                {sumSunday > 0 ? '+₹' + sumSunday.toLocaleString('en-IN') : '\u2014'}
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:700, fontSize:10, borderTop:'2px solid var(--line)', color: sumSunday > 0 ? '#f59e0b' : 'var(--ink-soft)' }}>
+                                {sumSunday > 0 ? '₹' + sumSunday.toLocaleString('en-IN') : '₹0'}
                               </td>
-                              <td style={{ padding:'8px 6px', textAlign:'right', fontWeight:800, fontSize:15, borderTop:'2px solid var(--line)', color:'#16a34a' }}>
+                              <td style={{ padding:'5px 3px', textAlign:'right', fontWeight:800, fontSize:11, borderTop:'2px solid var(--line)', color:'#16a34a' }}>
                                 ₹{sumGrand.toLocaleString('en-IN')}
                               </td>
                             </tr>
@@ -1272,7 +1279,6 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                       })()}
                     </tfoot>
                   </table>
-                  </div>
                   <div style={{ marginTop:8, fontSize:11, color:'var(--ink-soft)' }}>
                     Attendance is shared across all allocations. Deductions affect each portion equally.
                     {data.department === 'FRO' && sundayBonus?.bonusAmount > 0 && (
@@ -1294,7 +1300,67 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                         onChange={e => setSalaryForm(f => ({ ...f, salary: e.target.value }))}
                         style={{ border:'1px solid var(--line)', borderRadius:'var(--radius-sm)', padding:'6px 10px', fontSize:13, width:160 }} />
                     </div>
-                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary}
+                  </div>
+                  <div style={{ marginTop:10 }}>
+                    <span className="detail-label" style={{ display:'block', marginBottom:6 }}>Allocate to</span>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
+                        <input type="radio" name="ngoCount" checked={salaryNgoCount === 1}
+                          onChange={() => { setSalaryNgoCount(1); setSalaryNgo2(''); }} />
+                        1 NGO
+                      </label>
+                      <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:13 }}>
+                        <input type="radio" name="ngoCount" checked={salaryNgoCount === 2}
+                          onChange={() => setSalaryNgoCount(2)} />
+                        2 NGOs
+                      </label>
+                    </div>
+                  </div>
+                  <div style={{ marginTop:10, display:'flex', gap:12, flexWrap:'wrap' }}>
+                    {salaryNgoCount === 1 ? (
+                      <div>
+                        <span className="detail-label">NGO</span>
+                        <Dropdown value={salaryNgo1} onChange={e => {
+                          setSalaryNgo1(e.target.value);
+                          setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
+                        }}
+                          options={[
+                            { value: '', label: 'Select NGO' },
+                            ...ngos.map(n => ({ value: n.id, label: n.name }))
+                          ]}
+                          style={{ minWidth:180 }} />
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="detail-label">NGO 1</span>
+                          <Dropdown value={salaryNgo1} onChange={e => {
+                            setSalaryNgo1(e.target.value);
+                            setSalaryNgo2(prev => prev === e.target.value ? '' : prev);
+                          }}
+                            options={[
+                              { value: '', label: 'Select NGO' },
+                              ...ngos.map(n => ({ value: n.id, label: n.name }))
+                            ]}
+                            style={{ minWidth:160 }} />
+                        </div>
+                        <div>
+                          <span className="detail-label">NGO 2</span>
+                          <Dropdown value={salaryNgo2} onChange={e => {
+                            setSalaryNgo2(e.target.value);
+                            setSalaryNgo1(prev => prev === e.target.value ? '' : prev);
+                          }}
+                            options={[
+                              { value: '', label: 'Select NGO' },
+                              ...ngos.map(n => ({ value: n.id, label: n.name }))
+                            ]}
+                            style={{ minWidth:160 }} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ display:'flex', gap:12, alignItems:'center', marginTop:12 }}>
+                    <button className="btn btn-primary btn-sm" disabled={salarySubmitting || !salaryForm.salary || !salaryNgo1 || (salaryNgoCount === 2 && !salaryNgo2)}
                       onClick={async () => {
                         setSalarySubmitting(true);
                         try {
@@ -1321,14 +1387,24 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                             setSalaries(p => p.map(x => x.id === latest.id ? { ...x, to_month: prevMonth } : x));
                           }
 
+                          const salNum = parseFloat(salaryForm.salary);
                           const res = await addWorkerSalary({
                             worker_id: worker.id,
-                            salary: parseFloat(salaryForm.salary),
+                            salary: salNum,
                             from_month,
                             to_month: null,
                           });
                           setSalaries(p => [res.record, ...p]);
+
+                          const allocs = salaryNgoCount === 1
+                            ? [{ ngo_id: salaryNgo1, salary_portion: salNum }]
+                            : [{ ngo_id: salaryNgo1, salary_portion: salNum / 2 }, { ngo_id: salaryNgo2, salary_portion: salNum / 2 }];
+                          await setWorkerAllocations(worker.id, allocs, salNum);
+                          setAllocations(allocs);
+
                           setSalaryForm({ salary: '' });
+                          setSalaryNgo1('');
+                          setSalaryNgo2('');
                         } catch (e) { alert(e.message); }
                         finally { setSalarySubmitting(false); }
                       }}>

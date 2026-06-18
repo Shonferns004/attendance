@@ -12,14 +12,10 @@ function save(v) {
   try { const d = load(); sessionStorage.setItem('wrk', JSON.stringify({ ...d, ...v })); } catch {}
 }
 
-const MAX_NGO_PORTION = 17000;
-
 export default function Workers({ onSelect, onOffboard }) {
-  const { workers, addWorker, DEPTS, ngos, fetchWorkers, fetchNGOs } = useHR();
+  const { workers, addWorker, DEPTS, fetchWorkers, fetchNGOs } = useHR();
   const [name, setName] = useState('');
   const [dept, setDept] = useState(DEPTS[0]);
-  const [salary, setSalary] = useState('');
-  const [allocations, setAllocations] = useState([{ ngo_id: '', salary_portion: '' }]);
   const [err, setErr] = useState('');
   const [search, setSearch] = useState(load().search || '');
   const [roleFilter, setRoleFilter] = useState(load().roleFilter || '');
@@ -43,27 +39,6 @@ export default function Workers({ onSelect, onOffboard }) {
       })
       .catch(() => {});
   }, []);
-
-  // Auto-fill allocations when salary changes
-  useEffect(() => {
-    const sal = parseFloat(salary) || 0;
-    if (sal > 0) {
-      if (sal <= MAX_NGO_PORTION) {
-        setAllocations([{ ngo_id: allocations[0]?.ngo_id || '', salary_portion: String(sal) }]);
-      } else {
-        const first = Math.min(sal, MAX_NGO_PORTION);
-        const second = sal - first;
-        setAllocations([
-          { ngo_id: allocations[0]?.ngo_id || '', salary_portion: String(first) },
-          { ngo_id: allocations[1]?.ngo_id || '', salary_portion: String(second) },
-        ]);
-      }
-    }
-  }, [salary]);
-
-  const updateAlloc = (idx, key, val) => {
-    setAllocations(prev => prev.map((a, i) => i === idx ? { ...a, [key]: val } : a));
-  };
 
   const roles = [...new Set(workers.map(w => (w.department || 'Team Member')).filter(Boolean))].sort();
   const filtered = workers.filter(w => {
@@ -92,21 +67,10 @@ export default function Workers({ onSelect, onOffboard }) {
   const submit = async () => {
     if (!name.trim()) return;
     setErr('');
-    if (!salary.trim()) { setErr('Salary is required'); return; }
-    const salNum = parseFloat(salary);
-    if (!salNum) { setErr('Invalid salary'); return; }
-    for (const a of allocations) {
-      if (!a.ngo_id) { setErr('Please select NGO for all allocations'); return; }
-      if (parseFloat(a.salary_portion) > MAX_NGO_PORTION) { setErr(`Each NGO portion cannot exceed ₹${MAX_NGO_PORTION.toLocaleString('en-IN')}`); return; }
-    }
-    const totalPortion = allocations.reduce((s, a) => s + (parseFloat(a.salary_portion) || 0), 0);
-    if (Math.abs(totalPortion - salNum) > 0.01) { setErr(`Allocations total (${totalPortion}) must equal salary (${salNum})`); return; }
     try {
-      await addWorker({ name: name.trim(), dept, allocations: allocations.map(a => ({ ngo_id: a.ngo_id, salary_portion: parseFloat(a.salary_portion) })) });
+      await addWorker({ name: name.trim(), dept });
       setName('');
       setDept(DEPTS[0]);
-      setSalary('');
-      setAllocations([{ ngo_id: '', salary_portion: '' }]);
     } catch (e) {
       setErr(e.message);
     }
@@ -130,38 +94,9 @@ export default function Workers({ onSelect, onOffboard }) {
             <label className="field">Team
               <Dropdown value={dept} onChange={e=>setDept(e.target.value)} options={DEPTS} />
             </label>
-            <label className="field" style={{ maxWidth:120 }}>Salary (₹)
-              <input type="number" min="0" step="1" value={salary} onChange={e=>setSalary(e.target.value)}
-                placeholder="e.g. 30000" />
-            </label>
-          </div>
-          <div className="form-row" style={{ marginTop:8 }}>
-            {allocations.map((alloc, i) => (
-              <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-end', flex:1 }}>
-                <label className="field" style={{ flex:2 }}>NGO {i + 1}
-                  <Dropdown value={alloc.ngo_id} onChange={e=>updateAlloc(i, 'ngo_id', e.target.value)}
-                    options={[{value:'',label:'Select NGO'}, ...ngos.map(n => ({value:n.id, label:n.name}))]} />
-                </label>
-                <label className="field" style={{ flex:1, maxWidth:120 }}>Portion (₹)
-                  <input type="number" min="0" step="1" value={alloc.salary_portion}
-                    onChange={e=>updateAlloc(i, 'salary_portion', e.target.value)}
-                    placeholder="15000" />
-                </label>
-              </div>
-            ))}
           </div>
           <div style={{ display:'flex', gap:8, marginTop:8, alignItems:'center' }}>
             <button className="btn btn-primary" onClick={submit}><Plus width={16}/> Add employee</button>
-            {allocations.length < 4 && (
-              <button className="btn btn-sm" onClick={() => {
-                const sal = parseFloat(salary) || 0;
-                const totalPortion = allocations.reduce((s, a) => s + (parseFloat(a.salary_portion) || 0), 0);
-                const remaining = sal - totalPortion;
-                setAllocations(prev => [...prev, { ngo_id: '', salary_portion: remaining > 0 ? String(Math.min(remaining, MAX_NGO_PORTION)) : '' }]);
-              }}>
-                + Add NGO ({allocations.length}/4)
-              </button>
-            )}
           </div>
           {err && <div style={{ color:'var(--danger)', fontSize:13, marginTop:8 }}>{err}</div>}
         </div>

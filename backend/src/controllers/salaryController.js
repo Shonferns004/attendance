@@ -109,7 +109,22 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
     const records = await getMonthlyAttendance(workerId, startDate, endDate);
 
     // Sunday bonus (FRO only)
-    let sundayBonus = null;
+    let sundayBonus = {
+      lastSundayDate: null,
+      cameOnLastSunday: false,
+      monthlyAchievement: 0,
+      currentTarget: 0,
+      targetPercentage: 0,
+      threshold: 60,
+      thresholdMet: false,
+      isNewJoiner: false,
+      bonusAmount: 0,
+      sundayAchievement: 0,
+      sundayAKI: 0,
+      incentiveAKI: 0,
+      incentiveMonthly: 0,
+      incentiveTotal: 0,
+    };
 
     if (worker.department === 'FRO' && totalSalary > 0) {
       try {
@@ -211,15 +226,13 @@ export const getWorkerSalaryWithAllocations = async (req, res) => {
           bonusAmount,
           sundayAchievement: sundayAchievementAmount,
           sundayAKI,
+          incentiveAKI: akiPayout,
+          incentiveMonthly: monthlyIncentive,
+          incentiveTotal: akiPayout + monthlyIncentive,
         };
-
-        // Attach incentive totals to the same sundayBonus object to avoid a new top-level field
-        sundayBonus.incentiveAKI = akiPayout;
-        sundayBonus.incentiveMonthly = monthlyIncentive;
-        sundayBonus.incentiveTotal = akiPayout + monthlyIncentive;
         }
       } catch {
-        // silent fail
+        // keep the default zero-object
       }
     }
 
