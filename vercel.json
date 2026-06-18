@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/src/index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "fro-panel/dist/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "ngo-admin-panel/dist/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/admin/assets/(.*)",
+      "dest": "/ngo-admin-panel/dist/assets/$1"
+    },
+    {
+      "src": "/admin(/.*)?",
+      "dest": "/ngo-admin-panel/dist/index.html"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/fro-panel/dist/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/fro-panel/dist/index.html"
+    }
+  ]
+}
