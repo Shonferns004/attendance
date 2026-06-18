@@ -24,8 +24,8 @@ export default function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">TC</div>
-          <h2>Telecalling Panel</h2>
+          <div className="login-logo">FR</div>
+          <h2>FRO Panel</h2>
           <p>Sign in with your FRO / Telecaller account</p>
         </div>
         <div className="login-form">
