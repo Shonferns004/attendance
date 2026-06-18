@@ -3,6 +3,7 @@ import { useHR } from '../store';
 import { Who, Dropdown } from './ui';
 import { Plus, Trash } from '../icons';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -99,8 +100,13 @@ export default function Workers({ onSelect, onOffboard }) {
         if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
         groups[r.ngo_name].push(r);
       }
-      const wb = XLSX.utils.book_new();
+      const groups = {};
+      for (const r of data.rows) {
+        if (!groups[r.ngo_name]) groups[r.ngo_name] = [];
+        groups[r.ngo_name].push(r);
+      }
       const colWidths = [{ wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
+      const zip = new JSZip();
       for (const [ngo, rows] of Object.entries(groups)) {
         const wsData = [
           ['NGO', 'Name', 'Account Number', 'IFSC Code', 'Total Due (₹)'],
@@ -108,10 +114,18 @@ export default function Workers({ onSelect, onOffboard }) {
         ];
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         ws['!cols'] = colWidths;
-        const sheetName = ngo.slice(0, 31);
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+        const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+        const safeName = ngo.replace(/[\/:*?"<>|]/g, '_');
+        zip.file(`${safeName}.xlsx`, xlsxBuf);
       }
-      XLSX.writeFile(wb, `payroll-${month}.xlsx`);
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `payroll-${month}.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
     } catch (e) { alert(e.message); }
   };
 
