@@ -82,22 +82,23 @@ export const unifiedLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    const userFromName = await getUserByName(identifier);
+    if (userFromName) {
+      const isMatch = await bcrypt.compare(password, userFromName.password_hash);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Invalid password' });
+      }
+      const token = jwt.sign(
+        { id: userFromName.id, ngo_id: userFromName.ngo_id, email: userFromName.email, role: userFromName.role, name: userFromName.name },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      const { password_hash, ...safeUser } = userFromName;
+      return res.json({ token, role: userFromName.role, user: safeUser, message: 'Login successful' });
+    }
+
     const worker = await getWorkerByLoginId(identifier);
     if (!worker) {
-      const user = await getUserByName(identifier);
-      if (user) {
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-          return res.status(401).json({ message: 'Invalid password' });
-        }
-        const token = jwt.sign(
-          { id: user.id, ngo_id: user.ngo_id, email: user.email, role: user.role, name: user.name },
-          process.env.JWT_SECRET,
-          { expiresIn: '7d' }
-        );
-        const { password_hash, ...safeUser } = user;
-        return res.json({ token, role: user.role, user: safeUser, message: 'Login successful' });
-      }
       return res.status(401).json({ message: 'Invalid login ID' });
     }
     const isMatch = await bcrypt.compare(password, worker.password);
