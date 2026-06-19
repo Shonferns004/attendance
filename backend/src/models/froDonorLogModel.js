@@ -25,7 +25,7 @@ export const getTotalCollectedByWorker = async (workerId, monthStart, monthEnd) 
     .from('fro_donor_logs')
     .select('amount_collected, fro_assignments!inner(fro_worker_id)')
     .eq('fro_assignments.fro_worker_id', workerId)
-    .eq('action', 'donation')
+    .or('action.eq.donation,and(disposition_detail.eq.lead_done,action.eq.disposition)')
     .gte('created_at', monthStart)
     .lte('created_at', monthEnd);
   if (error) throw error;
@@ -40,9 +40,9 @@ export const getTotalCollectedByWorker = async (workerId, monthStart, monthEnd) 
 export const getTotalCollectedByAssignment = async (assignmentId) => {
   const { data, error } = await supabase
     .from('fro_donor_logs')
-    .select('amount_collected')
+    .select('amount_collected, action, disposition_detail')
     .eq('assignment_id', assignmentId)
-    .eq('action', 'donation');
+    .or('action.eq.donation,and(disposition_detail.eq.lead_done,action.eq.disposition)');
   if (error) throw error;
 
   let total = 0;

@@ -45,6 +45,10 @@ ALTER TABLE fro_donor_logs DROP CONSTRAINT IF EXISTS fro_donor_logs_action_check
 ALTER TABLE fro_donor_logs ADD CONSTRAINT fro_donor_logs_action_check
   CHECK (action IN ('call','visit','message','follow_up','donation','note','disposition'));
 
+-- 3b. Add payment tracking columns for lead_done with screenshot
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS payment_screenshot_url TEXT;
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS accounts_status TEXT DEFAULT NULL;
+
 -- 4. Create fro_scheduled_contacts table
 CREATE TABLE IF NOT EXISTS fro_scheduled_contacts (
   id SERIAL PRIMARY KEY,

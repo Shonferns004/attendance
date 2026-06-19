@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getDonorDetail, addDonorLog } from '../api/donors';
+import { getDonorDetail, addDonorLog, uploadPaymentScreenshot } from '../api/donors';
 
 const NOT_CONNECTED = [
   { id: 'busy', label: 'Busy' },
@@ -45,6 +45,9 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
   const [selected, setSelected] = useState(null);
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -68,6 +71,20 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
       now.setMinutes(now.getMinutes() + 5 - now.getTimezoneOffset());
       setScheduledAt(now.toISOString().slice(0, 16));
     }
+    if (detail !== 'lead_done') {
+      setPaymentAmount('');
+      setPaymentScreenshot(null);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPaymentScreenshot({ base64: reader.result.split(',')[1], mime_type: file.type });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
@@ -79,11 +96,26 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
       setMessage({ type: 'error', text: 'Select date & time' });
       return;
     }
+    if (selected === 'lead_done') {
+      if (!paymentAmount || isNaN(paymentAmount) || Number(paymentAmount) <= 0) {
+        setMessage({ type: 'error', text: 'Enter a valid payment amount' });
+        return;
+      }
+    }
 
     setSaving(true);
     setMessage(null);
+    setUploading(false);
 
     try {
+      let screenshotUrl = null;
+
+      if (selected === 'lead_done' && paymentScreenshot) {
+        setUploading(true);
+        const uploadRes = await uploadPaymentScreenshot(paymentScreenshot.base64, paymentScreenshot.mime_type);
+        screenshotUrl = uploadRes.file_url;
+      }
+
       const logData = {
         action: 'disposition',
         disposition_category: isConnected(selected) ? 'connected' : 'not_connected',
@@ -95,15 +127,25 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
         logData.scheduled_at = new Date(scheduledAt + ':00').toISOString();
       }
 
+      if (selected === 'lead_done') {
+        logData.amount_collected = parseFloat(paymentAmount);
+        if (screenshotUrl) {
+          logData.payment_screenshot_url = screenshotUrl;
+        }
+      }
+
       await addDonorLog(assignmentId, logData);
-      setMessage({ type: 'success', text: 'Disposition logged' });
+      setMessage({ type: 'success', text: selected === 'lead_done' ? 'Sent to Accounts for review' : 'Disposition logged' });
       setSelected(null);
       setNotes('');
+      setPaymentAmount('');
+      setPaymentScreenshot(null);
       load();
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -191,14 +233,34 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
             </div>
           )}
 
+          {selected === 'lead_done' && (
+            <>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Payment Amount (₹)</label>
+                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min="1" placeholder="Enter amount" style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Payment Screenshot (optional)</label>
+                <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: 13, width: '100%' }} />
+                {paymentScreenshot && <span style={{ fontSize: 11, color: 'var(--primary)' }}>File selected</span>}
+              </div>
+            </>
+          )}
+
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Notes (optional)</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add any notes..." style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical', width: '100%', boxSizing: 'border-box' }} />
           </div>
 
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !selected} style={{ width: '100%' }}>
-            {saving ? 'Saving...' : selected ? `Log ${findDisposition(selected)?.label || selected}` : 'Select a disposition above'}
-          </button>
+          {selected === 'lead_done' ? (
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving || uploading || !selected || !paymentAmount} style={{ width: '100%', background: 'var(--success)', borderColor: 'var(--success)' }}>
+              {uploading ? 'Uploading screenshot...' : saving ? 'Sending...' : 'Send to Accounts'}
+            </button>
+          ) : (
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving || !selected} style={{ width: '100%' }}>
+              {saving ? 'Saving...' : selected ? `Log ${findDisposition(selected)?.label || selected}` : 'Select a disposition above'}
+            </button>
+          )}
         </div>
       </div>
 

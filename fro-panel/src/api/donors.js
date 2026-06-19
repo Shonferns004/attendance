@@ -48,6 +48,16 @@ export async function scheduleContact(assignmentId, data) {
   return res.json();
 }
 
+export async function uploadPaymentScreenshot(fileBase64, mimeType) {
+  const res = await fetch(`${API_BASE}/fro/upload-payment-screenshot`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ file_base64: fileBase64, mime_type: mimeType }),
+  });
+  if (!res.ok) throw new Error('Failed to upload screenshot');
+  return res.json();
+}
+
 export async function getMyDashboard() {
   const res = await fetch(`${API_BASE}/fro/dashboard`, { headers: headers() });
   if (!res.ok) throw new Error('Failed to fetch dashboard');

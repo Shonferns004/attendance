@@ -1,3 +1,4 @@
+import supabase from '../config/supabase.js';
 import { getWorkerById } from '../models/workerModel.js';
 import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 import {
@@ -209,7 +210,7 @@ export const getDonorLogs = async (req, res) => {
 export const createDonorLogHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at } = req.body;
+    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url } = req.body;
 
     if (!action) {
       return res.status(400).json({ message: 'action is required' });
@@ -234,8 +235,14 @@ export const createDonorLogHandler = async (req, res) => {
       disposition_category: disposition_category || null,
       disposition_detail: disposition_detail || null,
       scheduled_at: scheduled_at || null,
+      payment_screenshot_url: payment_screenshot_url || null,
+      accounts_status: null,
       created_by: req.user.id,
     };
+
+    if (action === 'disposition' && disposition_detail === 'lead_done' && amount_collected) {
+      logData.accounts_status = 'pending';
+    }
 
     const log = await createDonorLog(logData);
 
@@ -274,6 +281,53 @@ export const createDonorLogHandler = async (req, res) => {
     }
 
     return res.json({ message: 'Log entry created', data: log });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const uploadPaymentScreenshot = async (req, res) => {
+  try {
+    const { file_base64, mime_type } = req.body;
+
+    if (!file_base64) {
+      return res.status(400).json({ message: 'File data is required' });
+    }
+
+    const buffer = Buffer.from(file_base64, 'base64');
+    const contentType = mime_type || 'image/jpeg';
+    const ext = contentType.split('/')[1] || 'jpg';
+    const fileName = `payment_screenshots/${req.user.id}_${Date.now()}.${ext}`;
+
+    let { data: uploadData, error: uploadError } = await supabase.storage
+      .from('worker-documents')
+      .upload(fileName, buffer, { contentType, upsert: true });
+
+    if (uploadError) {
+      if (uploadError.message?.includes('bucket')) {
+        const { error: bucketError } = await supabase.storage.createBucket('worker-documents', { public: true });
+        if (bucketError) {
+          return res.status(500).json({ message: 'Failed to create storage bucket: ' + bucketError.message });
+        }
+        const { data: retryData, error: retryError } = await supabase.storage
+          .from('worker-documents')
+          .upload(fileName, buffer, { contentType, upsert: true });
+        if (retryError) {
+          return res.status(500).json({ message: 'Upload failed: ' + retryError.message });
+        }
+        uploadData = retryData;
+      } else {
+        return res.status(500).json({ message: 'Upload failed: ' + uploadError.message });
+      }
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('worker-documents')
+      .getPublicUrl(fileName);
+
+    const fileUrl = publicUrlData?.publicUrl || `${process.env.SUPABASE_URL}/storage/v1/object/public/worker-documents/${fileName}`;
+
+    return res.json({ message: 'Screenshot uploaded', file_url: fileUrl });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
