@@ -4,18 +4,17 @@ import DonorDetail from './DonorDetail';
 
 export default function MyDonors({ onSelect }) {
   const [donors, setDonors] = useState([]);
-  const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     setLoading(true);
     setIndex(0);
-    getMyDonors(filterStatus)
+    getMyDonors()
       .then(setDonors)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [filterStatus]);
+  }, []);
 
   const current = donors[index];
 
@@ -24,33 +23,6 @@ export default function MyDonors({ onSelect }) {
       <div className="card">
         <div className="card-head">
           <h3>My Donors</h3>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="contacted">Contacted</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="follow_up">Follow Up</option>
-            <option value="busy">Busy</option>
-            <option value="ringing">Ringing</option>
-            <option value="unreachable">Unreachable</option>
-            <option value="switched_off">Switched Off</option>
-            <option value="wrong_number">Wrong Number</option>
-            <option value="invalid_number">Invalid</option>
-            <option value="rejected">Rejected</option>
-            <option value="lead_done">Lead Done</option>
-            <option value="visit_donate">Visit & Donate</option>
-            <option value="promise_to_pay">Promise to Pay</option>
-            <option value="payment_pending">Payment Pending</option>
-            <option value="already_donated">Already Donated</option>
-            <option value="not_interested">Not Interested</option>
-            <option value="not_interested_now">Not Interested Now</option>
-            <option value="language_barrier">Language Barrier</option>
-            <option value="transferred_senior">Transferred to Senior</option>
-            <option value="query_complaint">Query/Complaint</option>
-            <option value="receipt_request">Receipt Request</option>
-            <option value="donation_collected">Donation Collected</option>
-            <option value="payment_rejected">Payment Rejected</option>
-          </select>
         </div>
       </div>
 
