@@ -111,6 +111,21 @@ export const verifyLead = async (req, res) => {
 
     if (updateAsgnError) throw updateAsgnError;
 
+    if (log.fro_assignments?.donor_id) {
+      const donorUpdate = { updated_at: new Date().toISOString() };
+      if (pan_number) donorUpdate.pan_number = pan_number;
+      try {
+        const { data: donor } = await supabase
+          .from('donor_profiles')
+          .select('total_amount, donation_count')
+          .eq('id', log.fro_assignments.donor_id)
+          .single();
+        donorUpdate.total_amount = (donor?.total_amount || 0) + (log.amount_collected || 0);
+        donorUpdate.donation_count = (donor?.donation_count || 0) + 1;
+        await supabase.from('donor_profiles').update(donorUpdate).eq('id', log.fro_assignments.donor_id);
+      } catch (_) {}
+    }
+
     return res.json({ message: 'Lead verified, amount added to target' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -168,6 +183,10 @@ export const rejectLead = async (req, res) => {
       .eq('id', assignmentId);
 
     if (updateAsgnError) throw updateAsgnError;
+
+    if (log.fro_assignments?.donor_id) {
+      await supabase.from('donor_profiles').update({ updated_at: new Date().toISOString() }).eq('id', log.fro_assignments.donor_id);
+    }
 
     return res.json({ message: 'Lead rejected' });
   } catch (error) {

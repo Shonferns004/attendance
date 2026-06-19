@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost } from '../api/auth';
+import { apiGet } from '../api/auth';
+import LeadDetail from './LeadDetail';
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
-  const [selectedLead, setSelectedLead] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -17,6 +18,10 @@ export default function Dashboard() {
   }, [statusFilter]);
 
   useEffect(load, [load]);
+
+  if (viewingId) {
+    return <LeadDetail logId={viewingId} onBack={() => setViewingId(null)} />;
+  }
 
   const pending = leads.filter(l => l.accounts_status === 'pending');
   const verified = leads.filter(l => l.accounts_status === 'verified');
@@ -70,7 +75,7 @@ export default function Dashboard() {
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(l.created_at).toLocaleDateString()}</td>
                     <td>
-                      <button className="btn btn-sm btn-outline" onClick={() => setSelectedLead(l)}>View</button>
+                      <button className="btn btn-sm btn-outline" onClick={() => setViewingId(l.log_id)}>View</button>
                     </td>
                   </tr>
                 ))}
@@ -79,70 +84,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
-      {selectedLead && (
-        <div className="modal-overlay" onClick={() => setSelectedLead(null)}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Donor Details</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => setSelectedLead(null)}>{'\u2715'}</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <LeadDetail lead={selectedLead} onClose={() => setSelectedLead(null)} onRefresh={load} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LeadDetail({ lead, onClose, onRefresh }) {
-  const l = lead;
-
-  return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13, marginBottom: 20 }}>
-        <div className="detail-field"><strong>Donor Name:</strong> {l.donor_name}</div>
-        <div className="detail-field"><strong>Mobile:</strong> {l.donor_mobile}</div>
-        <div className="detail-field"><strong>City:</strong> {l.donor_city || '—'}</div>
-        <div className="detail-field"><strong>Email:</strong> {l.donor_email || '—'}</div>
-        <div className="detail-field"><strong>Address:</strong> {l.donor_address || '—'}</div>
-        <div className="detail-field"><strong>PAN:</strong> {l.pan_number || l.donor_pan || '—'}</div>
-        <div className="detail-field"><strong>DOB:</strong> {l.donor_dob || '—'}</div>
-        <div className="detail-field"><strong>Project:</strong> {l.donor_project || '—'}</div>
-        <div className="detail-field"><strong>Donations:</strong> {l.donation_count || 0} times</div>
-        <div className="detail-field"><strong>Total Donated:</strong> ₹{Number(l.total_donated || 0).toLocaleString('en-IN')}</div>
-        <div className="detail-field"><strong>Agent:</strong> {l.agent_name} ({l.agent_login})</div>
-        <div className="detail-field">
-          <strong>Submitted:</strong> {new Date(l.created_at).toLocaleString()}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <strong style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>Screenshot:</strong>
-        {l.screenshot_url ? (
-          <a href={l.screenshot_url} target="_blank" rel="noopener noreferrer">
-            <img src={l.screenshot_url} alt="Payment screenshot" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, border: '1px solid var(--line)' }} />
-          </a>
-        ) : (
-          <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>No screenshot</span>
-        )}
-      </div>
-
-      {l.notes && (
-        <div style={{ marginBottom: 16 }}>
-          <strong style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Notes:</strong>
-          <p style={{ fontSize: 13, margin: 0, color: 'var(--ink-med)' }}>{l.notes}</p>
-        </div>
-      )}
-
-      {l.rejection_reason && (
-        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-          <strong style={{ fontSize: 13, color: '#991b1b' }}>Rejection Reason:</strong>
-          <p style={{ fontSize: 13, margin: '4px 0 0', color: '#991b1b' }}>{l.rejection_reason}</p>
-        </div>
-      )}
     </div>
   );
 }
