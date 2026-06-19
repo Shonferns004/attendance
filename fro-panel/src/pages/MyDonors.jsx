@@ -80,86 +80,70 @@ export default function MyDonors({ onSelect }) {
     return <span className={`pill ${STATUS_PILL_MAP[status] || 'pill-gray'}`}>{label}</span>;
   };
 
+  if (selectedDonor) {
+    return <DonorDetail assignmentId={selectedDonor.id} donor={selectedDonor} onBack={() => setSelectedDonor(null)} />;
+  }
+
   return (
-    <>
-      <div className="card">
-        <div className="card-head">
-          <h3>My Donors</h3>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="card-pad">
-          {loading ? (
-            <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
-          ) : (
-            <CardView
-              items={donors}
-              emptyHeading="No donors assigned"
-              emptyText="Your assigned donors will appear here once the NGO admin assigns them."
-              renderCard={(d) => {
-                const overdue = d.is_overdue;
-                const nextAction = d.next_scheduled_at
-                  ? new Date(d.next_scheduled_at).toLocaleString()
-                  : d.next_follow_up
-                    ? new Date(d.next_follow_up).toLocaleDateString()
-                    : '—';
+    <div className="card">
+      <div className="card-head">
+        <h3>My Donors</h3>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          {STATUS_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="card-pad">
+        {loading ? (
+          <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
+        ) : (
+          <CardView
+            items={donors}
+            emptyHeading="No donors assigned"
+            emptyText="Your assigned donors will appear here once the NGO admin assigns them."
+            renderCard={(d) => {
+              const overdue = d.is_overdue;
+              const nextAction = d.next_scheduled_at
+                ? new Date(d.next_scheduled_at).toLocaleString()
+                : d.next_follow_up
+                  ? new Date(d.next_follow_up).toLocaleDateString()
+                  : '—';
 
-                return (
-                  <div className="donor-card">
-                    <div className="donor-card-avatar">{initials(d.donor_name)}</div>
-                    <div className="donor-card-name">{d.donor_name}</div>
-                    <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
+              return (
+                <div className="donor-card" style={{ cursor: 'pointer' }} onClick={() => setSelectedDonor(d)}>
+                  <div className="donor-card-avatar">{initials(d.donor_name)}</div>
+                  <div className="donor-card-name">{d.donor_name}</div>
+                  <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
 
-                    {overdue && <div className="donor-card-overdue">⚠ OVERDUE</div>}
+                  {overdue && <div className="donor-card-overdue">⚠ OVERDUE</div>}
 
-                    <div className="donor-card-details">
-                      <div>
-                        <div className="label">City</div>
-                        <div className="value">{d.donor_city || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="label">Amount</div>
-                        <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
-                      </div>
-                      <div>
-                        <div className="label">Status</div>
-                        <div className="value">{statusPill(d.status)}</div>
-                      </div>
-                      <div>
-                        <div className="label">Next Action</div>
-                        <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
-                          {nextAction}
-                        </div>
+                  <div className="donor-card-details">
+                    <div>
+                      <div className="label">City</div>
+                      <div className="value">{d.donor_city || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="label">Amount</div>
+                      <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
+                    </div>
+                    <div>
+                      <div className="label">Status</div>
+                      <div className="value">{statusPill(d.status)}</div>
+                    </div>
+                    <div>
+                      <div className="label">Next Action</div>
+                      <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
+                        {nextAction}
                       </div>
                     </div>
-
-                    <button className="btn btn-primary" onClick={() => setSelectedDonor(d)}>
-                      View Full Details →
-                    </button>
                   </div>
-                );
-              }}
-            />
-          )}
-        </div>
+                </div>
+              );
+            }}
+          />
+        )}
       </div>
-
-      {selectedDonor && (
-        <div className="modal-overlay" onClick={() => setSelectedDonor(null)}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>{selectedDonor.donor_name} — {selectedDonor.donor_mobile}</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => setSelectedDonor(null)}>✕</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <DonorDetail assignmentId={selectedDonor.id} donor={selectedDonor} onBack={() => setSelectedDonor(null)} hideHeader />
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }
