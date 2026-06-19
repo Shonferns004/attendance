@@ -27,6 +27,7 @@ const STATUS_OPTIONS = [
   { value: 'query_complaint', label: 'Query/Complaint' },
   { value: 'receipt_request', label: 'Receipt Request' },
   { value: 'donation_collected', label: 'Donation Collected' },
+  { value: 'payment_rejected', label: 'Payment Rejected' },
 ];
 
 const STATUS_PILL_MAP = {
@@ -53,6 +54,7 @@ const STATUS_PILL_MAP = {
   transferred_senior: 'pill-blue',
   query_complaint: 'pill-yellow',
   receipt_request: 'pill-blue',
+  payment_rejected: 'pill-red',
 };
 
 export default function MyDonors({ onSelect }) {

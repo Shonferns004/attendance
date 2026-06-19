@@ -183,6 +183,12 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
         </div>
       )}
 
+      {d.status === 'payment_rejected' && (
+        <div className="callout callout-danger">
+          Payment rejected by Accounts — {d.notes || 'No details provided'}
+        </div>
+      )}
+
       <div className="card">
         <div className="card-head"><h3>Contact Information</h3></div>
         <div className="card-pad">
@@ -306,6 +312,15 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
                     {log.outcome && <div className="desc">Outcome: {log.outcome}</div>}
                     {log.scheduled_at && <div className="desc" style={{ color: 'var(--primary)' }}>Scheduled: {new Date(log.scheduled_at).toLocaleString()}</div>}
                     {log.amount_collected && <div className="desc" style={{ color: 'var(--success)' }}>Amount: ₹{Number(log.amount_collected).toLocaleString('en-IN')}</div>}
+                    {log.disposition_detail === 'lead_done' && log.accounts_status === 'verified' && (
+                      <div className="desc" style={{ color: '#16a34a' }}>Accounts: Verified ✓</div>
+                    )}
+                    {log.disposition_detail === 'lead_done' && log.accounts_status === 'rejected' && (
+                      <div className="desc" style={{ color: '#dc2626' }}>Accounts: Rejected — {log.rejection_reason || log.notes || 'No reason given'}</div>
+                    )}
+                    {log.disposition_detail === 'lead_done' && log.accounts_status === 'pending' && (
+                      <div className="desc" style={{ color: '#f59e0b' }}>Accounts: Pending verification</div>
+                    )}
                   </div>
                 );
               })}

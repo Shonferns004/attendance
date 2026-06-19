@@ -32,7 +32,9 @@ ALTER TABLE fro_assignments ADD CONSTRAINT fro_assignments_status_check
     'language_barrier',
     'transferred_senior',
     'query_complaint',
-    'receipt_request'
+    'receipt_request',
+    -- Accounts
+    'payment_rejected'
   ));
 
 -- 2. Add disposition columns to fro_donor_logs
@@ -51,6 +53,7 @@ ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS accounts_status TEXT DEFAULT
 ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS pan_number TEXT DEFAULT NULL;
 ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ DEFAULT NULL;
 ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES workers(id);
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL;
 
 -- 4. Create fro_scheduled_contacts table
 CREATE TABLE IF NOT EXISTS fro_scheduled_contacts (
