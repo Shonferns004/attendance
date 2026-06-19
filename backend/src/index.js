@@ -35,6 +35,7 @@ import dataSourceRoutes from './routes/dataSourceRoutes.js';
 import dataImportRoutes from './routes/dataImportRoutes.js';
 import ngoAdminRoutes from './routes/ngoAdminRoutes.js';
 import froRoutes from './routes/froRoutes.js';
+import accountsRoutes from './routes/accountsRoutes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const froDist = path.resolve(__dirname, '../../fro-panel/dist');
 const ngoAdminDist = path.resolve(__dirname, '../../ngo-admin-panel/dist');
+const accountsDist = path.resolve(__dirname, '../../accounts-panel/dist');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/workers', workerRoutes);
@@ -79,10 +81,11 @@ app.use('/api/data-sources', dataSourceRoutes);
 app.use('/api/data-import', dataImportRoutes);
 app.use('/api/ngo-admin', ngoAdminRoutes);
 app.use('/api/fro', froRoutes);
+app.use('/api/accounts', accountsRoutes);
 
 if (fs.existsSync(froDist)) {
   app.use('/assets', express.static(path.join(froDist, 'assets')));
-  app.get(/^\/(?!api\/|admin).*$/, (req, res) => {
+  app.get(/^\/(?!api\/|admin\/|accounts\/).*$/, (req, res) => {
     res.sendFile(path.join(froDist, 'index.html'));
   });
   app.get('/', (req, res) => {
@@ -98,6 +101,13 @@ if (fs.existsSync(ngoAdminDist)) {
   app.use('/admin/assets', express.static(path.join(ngoAdminDist, 'assets')));
   app.get('/admin*', (req, res) => {
     res.sendFile(path.join(ngoAdminDist, 'index.html'));
+  });
+}
+
+if (fs.existsSync(accountsDist)) {
+  app.use('/accounts/assets', express.static(path.join(accountsDist, 'assets')));
+  app.get('/accounts*', (req, res) => {
+    res.sendFile(path.join(accountsDist, 'index.html'));
   });
 }
 
