@@ -63,8 +63,9 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
   useEffect(load, [load]);
 
   const handleChipClick = (detail) => {
-    if (detail === selected) {
+    if (!detail || detail === selected) {
       setSelected(null);
+      setMessage(null);
       return;
     }
     setSelected(detail);
@@ -231,25 +232,20 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
           )}
 
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}>NOT CONNECTED</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {NOT_CONNECTED.map(opt => (
-                <button key={opt.id} className={`chip ${selected === opt.id ? 'chip-selected chip-not-connected' : ''}`} onClick={() => handleChipClick(opt.id)}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a', marginBottom: 8 }}>CONNECTED</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {CONNECTED.map(opt => (
-                <button key={opt.id} className={`chip ${selected === opt.id ? 'chip-selected chip-connected' : ''}`} onClick={() => handleChipClick(opt.id)}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Disposition</label>
+            <select value={selected || ''} onChange={e => handleChipClick(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}>
+              <option value="">— Select —</option>
+              <optgroup label="NOT CONNECTED">
+                {NOT_CONNECTED.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="CONNECTED">
+                {CONNECTED.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </optgroup>
+            </select>
           </div>
 
           {selected === 'scheduled' && (
