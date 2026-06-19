@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API = import.meta.env.VITE_API_URL;
 
 export function setSession(token, user) {
   localStorage.setItem('na_token', token);
@@ -23,7 +23,7 @@ export function getUser() {
 }
 
 export async function login(email, password) {
-  const res = await fetch(`${API}/auth/unified-login`, {
+  const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier: email, password }),

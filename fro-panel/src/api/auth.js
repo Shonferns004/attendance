@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export async function login(identifier, password) {
-  const res = await fetch(`${API_BASE}/auth/unified-login`, {
+  const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier, password }),
