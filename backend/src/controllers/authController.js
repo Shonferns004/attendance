@@ -19,7 +19,7 @@ export const adminLogin = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
-      return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email }, message: 'Login successful' });
+      return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email, role: 'super_admin' }, message: 'Login successful' });
     }
     return res.status(401).json({ message: 'Invalid admin credentials' });
   } catch (error) {
@@ -46,7 +46,7 @@ export const unifiedLogin = async (req, res) => {
           process.env.JWT_SECRET,
           { expiresIn: '7d' }
         );
-        return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email: identifier }, message: 'Login successful' });
+        return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email: identifier, role: 'super_admin' }, message: 'Login successful' });
       }
 
       const user = await getUserByEmail(identifier);

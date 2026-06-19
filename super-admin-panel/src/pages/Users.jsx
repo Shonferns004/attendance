@@ -6,7 +6,7 @@ export default function Users() {
   const [hrs, setHrs] = useState([])
   const [ngos, setNgos] = useState([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_id: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_ids: [] })
   const [err, setErr] = useState('')
   const [tab, setTab] = useState('users')
   const [filterRole, setFilterRole] = useState('')
@@ -19,8 +19,17 @@ export default function Users() {
   useEffect(load, [])
 
   const openNew = () => {
-    setForm({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_id: '' })
+    setForm({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_ids: [] })
     setShowForm(true)
+  }
+
+  const toggleNgo = (id) => {
+    setForm(prev => ({
+      ...prev,
+      ngo_ids: prev.ngo_ids.includes(id)
+        ? prev.ngo_ids.filter(n => n !== id)
+        : [...prev.ngo_ids, id]
+    }))
   }
 
   const create = async () => {
@@ -74,11 +83,24 @@ export default function Users() {
                 <option value="hr">HR</option>
               </select>
             </label>
-            <label className="field">NGO
-              <select value={form.ngo_id} onChange={e => setForm({...form, ngo_id: e.target.value})}>
-                <option value="">— None —</option>
-                {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
-              </select>
+            <label className="field">
+              <span>NGO {form.role === 'hoadmin' ? <span className="sa-muted" style={{fontWeight:400}}>(select multiple)</span> : ''}</span>
+              {form.role === 'hoadmin' ? (
+                <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:6,padding:'4px 8px'}}>
+                  {ngos.length === 0 && <p className="sa-muted" style={{padding:8}}>No NGOs available</p>}
+                  {ngos.map(n => (
+                    <label key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 4px',cursor:'pointer',fontWeight:400,fontSize:13}}>
+                      <input type="checkbox" checked={form.ngo_ids.includes(n.id)} onChange={() => toggleNgo(n.id)} />
+                      {n.name}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <select value={form.ngo_ids[0] || ''} onChange={e => setForm({...form, ngo_ids: e.target.value ? [e.target.value] : []})}>
+                  <option value="">— None —</option>
+                  {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                </select>
+              )}
             </label>
             <div className="sa-modal-actions">
               <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>
@@ -102,14 +124,14 @@ export default function Users() {
             </select>
           </div>
           <table className="sa-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>NGO</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>NGOs</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {filteredUsers.map(u => (
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td><span className="sa-badge">{u.role}</span></td>
-                  <td className="sa-muted">{u.ngo_id || '—'}</td>
+                  <td className="sa-muted" style={{maxWidth:200}}>{u.ngo_names || (u.ngo_id ? ngos.find(n => n.id === u.ngo_id)?.name || u.ngo_id : '—')}</td>
                   <td><span className={`sa-badge ${u.is_active !== false ? 'active' : 'inactive'}`}>
                     {u.is_active !== false ? 'Active' : 'Inactive'}
                   </span></td>

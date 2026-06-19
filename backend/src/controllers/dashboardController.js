@@ -14,13 +14,19 @@ export const getSuperAdminDashboard = async (req, res) => {
     ]);
 
     const activeUsers = users.filter((u) => u.is_active).length;
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const workersJoinedThisMonth = workers.filter((w) => w.created_at >= monthStart).length;
+
     const stats = {
       totalNgos: ngos.length,
       totalUsers: users.length,
       activeUsers,
       totalWorkers: workers.length,
+      activeWorkers: workers.filter((w) => w.is_active).length,
       totalHr: hrs.length,
       totalRecruiters: users.filter((u) => u.role === 'recruiter').length,
+      workersJoinedThisMonth,
     };
 
     const ngoUserCounts = await Promise.all(
@@ -41,7 +47,75 @@ export const getSuperAdminDashboard = async (req, res) => {
       if (w.department) deptWorkers[w.department] = (deptWorkers[w.department] || 0) + 1;
     });
 
-    return res.json({ stats, ngoUserCounts, roleDistribution, deptWorkers, recentActivity: [] });
+    const genderCounts = { Male: 0, Female: 0, Other: 0 };
+    workers.forEach((w) => {
+      if (w.gender && genderCounts[w.gender] !== undefined) genderCounts[w.gender]++;
+    });
+
+    const { data: attendance } = await supabase
+      .from('attendance')
+      .select('status, date');
+
+    const attendanceStatus = { present: 0, late: 0, absent: 0, leave: 0 };
+    (attendance || []).forEach((a) => {
+      if (attendanceStatus[a.status] !== undefined) attendanceStatus[a.status]++;
+    });
+
+    const { count: pendingLeaves } = await supabase
+      .from('leaves')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    // Monthly trend: last 30 days attendance counts
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    const startStr = thirtyDaysAgo.toISOString().slice(0, 10);
+    const endStr = now.toISOString().slice(0, 10);
+
+    const { data: monthData } = await supabase
+      .from('attendance')
+      .select('date, status')
+      .gte('date', startStr)
+      .lte('date', endStr);
+
+    const dateMap = {};
+    for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().slice(0, 10);
+      dateMap[ds] = { date: ds, present: 0, late: 0, absent: 0 };
+    }
+    (monthData || []).forEach((a) => {
+      if (dateMap[a.date] && dateMap[a.date][a.status] !== undefined) {
+        dateMap[a.date][a.status]++;
+      }
+    });
+    const monthlyAttendance = Object.values(dateMap);
+
+    // Total salary payable
+    const { data: salaries } = await supabase
+      .from('salary_history')
+      .select('worker_id, salary')
+      .is('to_month', null);
+
+    const salarySet = new Set();
+    let totalSalaryPayable = 0;
+    (salaries || []).forEach((s) => {
+      if (!salarySet.has(s.worker_id)) {
+        salarySet.add(s.worker_id);
+        totalSalaryPayable += parseFloat(s.salary || 0);
+      }
+    });
+
+    return res.json({
+      stats,
+      ngoUserCounts,
+      roleDistribution,
+      deptWorkers,
+      genderCounts,
+      attendanceStatus,
+      pendingLeaves: pendingLeaves || 0,
+      monthlyAttendance,
+      totalSalaryPayable,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
