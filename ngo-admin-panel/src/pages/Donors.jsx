@@ -124,8 +124,7 @@ export default function Donors({ onSelect }) {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>City</th>
-                  <th>Max Amount</th>
-                  <th>Total</th>
+                  <th>Amount</th>
                   <th>Donations</th>
                   <th>Last</th>
                   <th>Category</th>
@@ -139,7 +138,6 @@ export default function Donors({ onSelect }) {
                     <td>{d.mobile_number}</td>
                     <td>{d.city || '—'}</td>
                     <td>₹{Number(d.amount || 0).toLocaleString('en-IN')}</td>
-                    <td>₹{Number(d.total_amount || 0).toLocaleString('en-IN')}</td>
                     <td>{d.donation_count || 1}</td>
                     <td style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{d.last_donation_date ? new Date(d.last_donation_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</td>
                     <td><span className="pill pill-blue">{d.data_category || d.category || 'General'}</span></td>
