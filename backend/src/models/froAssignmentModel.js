@@ -179,3 +179,14 @@ export const completeScheduledContact = async (id) => {
   if (error) throw error;
   return data;
 };
+
+export const completeAllScheduledByAssignment = async (assignmentId) => {
+  const { data, error } = await supabase
+    .from('fro_scheduled_contacts')
+    .update({ is_completed: true, reminded: true })
+    .eq('assignment_id', assignmentId)
+    .eq('is_completed', false)
+    .select();
+  if (error) throw error;
+  return data;
+};

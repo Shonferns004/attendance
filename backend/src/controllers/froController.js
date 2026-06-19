@@ -6,6 +6,7 @@ import {
   updateAssignmentStatus,
   getDashboardStats,
   createScheduledContact,
+  completeAllScheduledByAssignment,
   getScheduledByAssignment,
   getScheduledContactsByWorker,
 } from '../models/froAssignmentModel.js';
@@ -250,6 +251,7 @@ export const createDonorLogHandler = async (req, res) => {
       const statusUpdates = { status: statusFromDetail, last_contacted_at: now };
 
       if (disposition_detail === 'scheduled' && scheduled_at) {
+        await completeAllScheduledByAssignment(parseInt(id));
         await createScheduledContact({
           assignment_id: parseInt(id),
           scheduled_at,
@@ -314,6 +316,9 @@ export const scheduleContact = async (req, res) => {
     if (!assignment) {
       return res.status(404).json({ message: 'Assignment not found' });
     }
+
+    // Clear any existing pending schedules
+    await completeAllScheduledByAssignment(parseInt(id));
 
     const contact = await createScheduledContact({
       assignment_id: parseInt(id),
