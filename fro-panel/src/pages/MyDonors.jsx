@@ -20,11 +20,6 @@ export default function MyDonors({ onSelect }) {
 
   return (
     <div>
-      <div className="card">
-        <div className="card-head">
-          <h3>My Donors</h3>
-        </div>
-      </div>
 
       {loading ? (
         <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
