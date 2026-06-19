@@ -1,7 +1,0 @@
-Manual way (if you ever need to do it yourself through Supabase dashboard):
-1. Go to Supabase Dashboard (https://app.supabase.com) → select your project
-2. Go to Storage in the left sidebar
-3. Click New Bucket
-4. Name: worker-documents
-5. Check Public bucket
-6. Click Create bucket
