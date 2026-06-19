@@ -1,4 +1,7 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import supabase from './config/supabase.js';
@@ -41,6 +44,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors("*"));
 app.use(express.json({ limit: '10mb' }));
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const froDist = path.resolve(__dirname, '../../fro-panel/dist');
+const ngoAdminDist = path.resolve(__dirname, '../../ngo-admin-panel/dist');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -72,9 +80,26 @@ app.use('/api/data-import', dataImportRoutes);
 app.use('/api/ngo-admin', ngoAdminRoutes);
 app.use('/api/fro', froRoutes);
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Attendance API is running' });
-});
+if (fs.existsSync(froDist)) {
+  app.use('/assets', express.static(path.join(froDist, 'assets')));
+  app.get(/^\/(?!api\/|admin).*$/, (req, res) => {
+    res.sendFile(path.join(froDist, 'index.html'));
+  });
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(froDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ message: 'Attendance API is running' });
+  });
+}
+
+if (fs.existsSync(ngoAdminDist)) {
+  app.use('/admin/assets', express.static(path.join(ngoAdminDist, 'assets')));
+  app.get('/admin*', (req, res) => {
+    res.sendFile(path.join(ngoAdminDist, 'index.html'));
+  });
+}
 
 async function checkLeavesTable() {
   try {
