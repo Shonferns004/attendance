@@ -15,7 +15,7 @@ export const getLeadList = async (req, res) => {
           donor_id,
           fro_worker_id,
           status,
-          donor_profiles!inner(id, name, mobile_number, city, pan_number),
+          donor_profiles!inner(id, name, mobile_number, city, pan_number, address_1, email, project_supported, donation_count, total_amount, birth_date),
           workers!inner(id, name, login_id)
         )
       `)
@@ -47,6 +47,12 @@ export const getLeadList = async (req, res) => {
       donor_mobile: r.fro_assignments?.donor_profiles?.mobile_number || '',
       donor_city: r.fro_assignments?.donor_profiles?.city || '',
       donor_pan: r.fro_assignments?.donor_profiles?.pan_number || '',
+      donor_address: r.fro_assignments?.donor_profiles?.address_1 || '',
+      donor_email: r.fro_assignments?.donor_profiles?.email || '',
+      donor_project: r.fro_assignments?.donor_profiles?.project_supported || '',
+      donor_dob: r.fro_assignments?.donor_profiles?.birth_date || '',
+      donation_count: r.fro_assignments?.donor_profiles?.donation_count || 0,
+      total_donated: r.fro_assignments?.donor_profiles?.total_amount || 0,
       agent_id: r.fro_assignments?.fro_worker_id,
       agent_name: r.fro_assignments?.workers?.name || 'Unknown',
       agent_login: r.fro_assignments?.workers?.login_id || '',

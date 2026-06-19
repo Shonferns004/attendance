@@ -48,6 +48,8 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentScreenshot, setPaymentScreenshot] = useState(null);
   const [panNumber, setPanNumber] = useState('');
+  const [addressField, setAddressField] = useState('');
+  const [dobField, setDobField] = useState('');
   const [uploading, setUploading] = useState(false);
 
   const load = useCallback(() => {
@@ -76,6 +78,8 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
       setPaymentAmount('');
       setPaymentScreenshot(null);
       setPanNumber('');
+      setAddressField('');
+      setDobField('');
     }
   };
 
@@ -137,6 +141,12 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
         if (panNumber) {
           logData.pan_number = panNumber;
         }
+        if (addressField) {
+          logData.donor_address = addressField;
+        }
+        if (dobField) {
+          logData.donor_dob = dobField;
+        }
       }
 
       await addDonorLog(assignmentId, logData);
@@ -146,6 +156,8 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
       setPaymentAmount('');
       setPaymentScreenshot(null);
       setPanNumber('');
+      setAddressField('');
+      setDobField('');
       load();
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -200,6 +212,8 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
             <div><strong>Address:</strong> {d.donor_address || '—'}</div>
             <div><strong>PAN:</strong> {d.donor_pan || '—'}</div>
             <div><strong>Project:</strong> {d.donor_project || '—'}</div>
+            <div><strong>DOB:</strong> {d.donor_dob || '—'}</div>
+            <div><strong>Donations:</strong> {d.donation_count || 0} times (₹{Number(d.total_donated || 0).toLocaleString('en-IN')})</div>
             <div><strong>Amount:</strong> ₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
             <div><strong>Status:</strong> <span className={`pill pill-${d.status === 'lead_done' || d.status === 'donation_collected' ? 'green' : d.status === 'scheduled' || d.status === 'follow_up' ? 'purple' : d.status === 'not_interested' || d.status === 'rejected' ? 'red' : d.status === 'busy' || d.status === 'ringing' || d.status === 'unreachable' || d.status === 'switched_off' || d.status === 'wrong_number' || d.status === 'invalid_number' ? 'gray' : 'blue'}`}>{d.status ? d.status.replace(/_/g, ' ') : '—'}</span></div>
             {d.next_follow_up && <div><strong>Next Follow-up:</strong> {new Date(d.next_follow_up).toLocaleDateString()}</div>}
@@ -260,6 +274,18 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>PAN Card Number</label>
                 <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="e.g. ABCDE1234F" maxLength={10} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
               </div>
+              {!d.donor_address && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Address</label>
+                  <input type="text" value={addressField} onChange={e => setAddressField(e.target.value)} placeholder="Donor address" style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              )}
+              {!d.donor_dob && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Date of Birth</label>
+                  <input type="date" value={dobField} onChange={e => setDobField(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              )}
             </>
           )}
 

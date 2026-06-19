@@ -134,6 +134,9 @@ export const getMyDonors = async (req, res) => {
         donor_email: a.donor_profiles?.email || '',
         donor_pan: a.donor_profiles?.pan_number || '',
         donor_project: a.donor_profiles?.project_supported || '',
+        donor_dob: a.donor_profiles?.birth_date || '',
+        donation_count: a.donor_profiles?.donation_count || 0,
+        total_donated: a.donor_profiles?.total_amount || 0,
         status: a.status,
         notes: a.notes,
         last_contacted_at: a.last_contacted_at,
@@ -210,7 +213,7 @@ export const getDonorLogs = async (req, res) => {
 export const createDonorLogHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url, pan_number } = req.body;
+    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url, pan_number, donor_address, donor_dob } = req.body;
 
     if (!action) {
       return res.status(400).json({ message: 'action is required' });
@@ -246,6 +249,13 @@ export const createDonorLogHandler = async (req, res) => {
     }
 
     const log = await createDonorLog(logData);
+
+    if ((donor_address || donor_dob) && assignment.donor_id) {
+      const updateFields = {};
+      if (donor_address) updateFields.address_1 = donor_address;
+      if (donor_dob) updateFields.birth_date = donor_dob;
+      await supabase.from('donor_profiles').update(updateFields).eq('id', assignment.donor_id);
+    }
 
     const now = new Date().toISOString();
 

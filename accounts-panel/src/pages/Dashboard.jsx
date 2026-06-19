@@ -5,14 +5,7 @@ export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
-
-  const [verifyId, setVerifyId] = useState(null);
-  const [verifyPan, setVerifyPan] = useState('');
-  const [verifyNotes, setVerifyNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const [rejectId, setRejectId] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [selectedLead, setSelectedLead] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -24,40 +17,6 @@ export default function Dashboard() {
   }, [statusFilter]);
 
   useEffect(load, [load]);
-
-  const handleVerify = async () => {
-    if (!verifyId) return;
-    setSubmitting(true);
-    try {
-      const body = {};
-      if (verifyPan) body.pan_number = verifyPan;
-      if (verifyNotes) body.notes = verifyNotes;
-      await apiPost(`/accounts/leads/${verifyId}/verify`, body);
-      setVerifyId(null);
-      setVerifyPan('');
-      setVerifyNotes('');
-      load();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectId || !rejectReason) return;
-    setSubmitting(true);
-    try {
-      await apiPost(`/accounts/leads/${rejectId}/reject`, { reason: rejectReason });
-      setRejectId(null);
-      setRejectReason('');
-      load();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const pending = leads.filter(l => l.accounts_status === 'pending');
   const verified = leads.filter(l => l.accounts_status === 'verified');
@@ -86,48 +45,32 @@ export default function Dashboard() {
                 <tr>
                   <th>Donor</th>
                   <th>Phone</th>
-                  <th>City</th>
-                  <th>Agent</th>
                   <th>Amount</th>
-                  <th>Screenshot</th>
-                  <th>PAN</th>
-                  <th>Submitted</th>
-                  <th>Action</th>
+                  <th>Agent</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {leads.length === 0 && (
-                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No leads found</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No leads found</td></tr>
                 )}
                 {leads.map(l => (
                   <tr key={l.log_id} style={l.accounts_status !== 'pending' ? { opacity: 0.6 } : {}}>
                     <td>{l.donor_name}</td>
                     <td>{l.donor_mobile}</td>
-                    <td>{l.donor_city || '—'}</td>
-                    <td>{l.agent_name}</td>
                     <td><strong>₹{Number(l.amount || 0).toLocaleString('en-IN')}</strong></td>
+                    <td style={{ fontSize: 12 }}>{l.agent_name}</td>
                     <td>
-                      {l.screenshot_url ? (
-                        <a href={l.screenshot_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--primary)' }}>View</a>
-                      ) : '—'}
+                      {l.accounts_status === 'pending' ? <span className="pill pill-yellow">Pending</span> :
+                       l.accounts_status === 'verified' ? <span className="pill pill-green">Verified</span> :
+                       l.accounts_status === 'rejected' ? <span className="pill pill-red" title={l.rejection_reason || ''}>Rejected</span> :
+                       <span className="pill pill-gray">{l.accounts_status || '—'}</span>}
                     </td>
-                    <td style={{ fontSize: 12 }}>{l.pan_number || '—'}</td>
-                    <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(l.created_at).toLocaleString()}</td>
+                    <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(l.created_at).toLocaleDateString()}</td>
                     <td>
-                      {l.accounts_status === 'pending' ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-primary btn-sm" onClick={() => { setVerifyId(l.log_id); setVerifyPan(l.pan_number || ''); setVerifyNotes(''); }}>
-                            Verify
-                          </button>
-                          <button className="btn btn-sm" style={{ borderColor: '#dc2626', color: '#dc2626' }} onClick={() => { setRejectId(l.log_id); setRejectReason(''); }}>
-                            Reject
-                          </button>
-                        </div>
-                      ) : l.accounts_status === 'verified' ? (
-                        <span className="pill pill-green">Verified</span>
-                      ) : (
-                        <span className="pill pill-red" title={l.rejection_reason || ''}>Rejected</span>
-                      )}
+                      <button className="btn btn-sm btn-outline" onClick={() => setSelectedLead(l)}>View</button>
                     </td>
                   </tr>
                 ))}
@@ -137,53 +80,67 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {verifyId && (
-        <div className="modal-overlay" onClick={() => setVerifyId(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+      {selectedLead && (
+        <div className="modal-overlay" onClick={() => setSelectedLead(null)}>
+          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Verify Lead</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => setVerifyId(null)}>{'\u2715'}</button>
+              <h3>Donor Details</h3>
+              <button className="btn btn-sm btn-outline" onClick={() => setSelectedLead(null)}>{'\u2715'}</button>
             </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>PAN Card Number</label>
-                <input type="text" value={verifyPan} onChange={e => setVerifyPan(e.target.value.toUpperCase())} maxLength={10} placeholder="ABCDE1234F" style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Verification Notes</label>
-                <textarea value={verifyNotes} onChange={e => setVerifyNotes(e.target.value)} rows={3} placeholder="Add verification notes..." style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical', width: '100%', boxSizing: 'border-box' }} />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn" onClick={() => setVerifyId(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleVerify} disabled={submitting}>
-                {submitting ? 'Verifying...' : 'Confirm & Verify'}
-              </button>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              <LeadDetail lead={selectedLead} onClose={() => setSelectedLead(null)} onRefresh={load} />
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {rejectId && (
-        <div className="modal-overlay" onClick={() => setRejectId(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Reject Lead</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => setRejectId(null)}>{'\u2715'}</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Rejection Reason <span style={{ color: '#dc2626' }}>*</span></label>
-                <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Explain why this lead is rejected..." style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical', width: '100%', boxSizing: 'border-box' }} />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn" onClick={() => setRejectId(null)}>Cancel</button>
-              <button className="btn" style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }} onClick={handleReject} disabled={submitting || !rejectReason}>
-                {submitting ? 'Rejecting...' : 'Confirm Reject'}
-              </button>
-            </div>
-          </div>
+function LeadDetail({ lead, onClose, onRefresh }) {
+  const l = lead;
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13, marginBottom: 20 }}>
+        <div className="detail-field"><strong>Donor Name:</strong> {l.donor_name}</div>
+        <div className="detail-field"><strong>Mobile:</strong> {l.donor_mobile}</div>
+        <div className="detail-field"><strong>City:</strong> {l.donor_city || '—'}</div>
+        <div className="detail-field"><strong>Email:</strong> {l.donor_email || '—'}</div>
+        <div className="detail-field"><strong>Address:</strong> {l.donor_address || '—'}</div>
+        <div className="detail-field"><strong>PAN:</strong> {l.pan_number || l.donor_pan || '—'}</div>
+        <div className="detail-field"><strong>DOB:</strong> {l.donor_dob || '—'}</div>
+        <div className="detail-field"><strong>Project:</strong> {l.donor_project || '—'}</div>
+        <div className="detail-field"><strong>Donations:</strong> {l.donation_count || 0} times</div>
+        <div className="detail-field"><strong>Total Donated:</strong> ₹{Number(l.total_donated || 0).toLocaleString('en-IN')}</div>
+        <div className="detail-field"><strong>Agent:</strong> {l.agent_name} ({l.agent_login})</div>
+        <div className="detail-field">
+          <strong>Submitted:</strong> {new Date(l.created_at).toLocaleString()}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <strong style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>Screenshot:</strong>
+        {l.screenshot_url ? (
+          <a href={l.screenshot_url} target="_blank" rel="noopener noreferrer">
+            <img src={l.screenshot_url} alt="Payment screenshot" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, border: '1px solid var(--line)' }} />
+          </a>
+        ) : (
+          <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>No screenshot</span>
+        )}
+      </div>
+
+      {l.notes && (
+        <div style={{ marginBottom: 16 }}>
+          <strong style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Notes:</strong>
+          <p style={{ fontSize: 13, margin: 0, color: 'var(--ink-med)' }}>{l.notes}</p>
+        </div>
+      )}
+
+      {l.rejection_reason && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+          <strong style={{ fontSize: 13, color: '#991b1b' }}>Rejection Reason:</strong>
+          <p style={{ fontSize: 13, margin: '4px 0 0', color: '#991b1b' }}>{l.rejection_reason}</p>
         </div>
       )}
     </div>
