@@ -7,6 +7,7 @@ import {
   getDonorLogs,
   createDonorLogHandler,
   getMyTarget,
+  scheduleContact,
 } from '../controllers/froController.js';
 
 const router = Router();
@@ -27,6 +28,7 @@ router.get('/donors', getMyDonors);
 router.put('/donors/:id/status', updateDonorStatus);
 router.get('/donors/:id/logs', getDonorLogs);
 router.post('/donors/:id/logs', createDonorLogHandler);
+router.post('/donors/:id/schedule', scheduleContact);
 router.get('/target', getMyTarget);
 
 export default router;

@@ -5,6 +5,9 @@ import {
   findAssignmentById,
   updateAssignmentStatus,
   getDashboardStats,
+  createScheduledContact,
+  getScheduledByAssignment,
+  getScheduledContactsByWorker,
 } from '../models/froAssignmentModel.js';
 import { getTargetByWorker } from '../models/froTargetModel.js';
 import {
@@ -30,6 +33,25 @@ function calculateAutoTarget(salary, monthsEmployed) {
   if (monthsEmployed === 2) return salary * 3;
   return null;
 }
+
+const STATUS_PRIORITY = [
+  'pending',
+  'contacted',
+  'follow_up',
+  'scheduled',
+  'busy', 'ringing', 'unreachable', 'switched_off', 'wrong_number', 'invalid_number', 'rejected',
+  'visit_donate',
+  'promise_to_pay',
+  'payment_pending',
+  'already_donated',
+  'not_interested', 'not_interested_now',
+  'language_barrier',
+  'transferred_senior',
+  'query_complaint',
+  'receipt_request',
+  'lead_done',
+  'donation_collected',
+];
 
 export const getDashboard = async (req, res) => {
   try {
@@ -80,25 +102,63 @@ export const getMyDonors = async (req, res) => {
   try {
     const workerId = req.user.id;
     const { status } = req.query;
-    const assignments = await findAssignmentsByWorker(workerId, status);
 
-    const result = assignments.map(a => ({
-      id: a.id,
-      donor_id: a.donor_id,
-      donor_mobile: a.donor_profiles?.mobile_number || '',
-      donor_name: a.donor_profiles?.name || 'Unknown',
-      donor_city: a.donor_profiles?.city || '',
-      donor_address: a.donor_profiles?.address_1 || '',
-      donor_amount: a.donor_profiles?.amount || 0,
-      donor_email: a.donor_profiles?.email || '',
-      donor_pan: a.donor_profiles?.pan_number || '',
-      donor_project: a.donor_profiles?.project_supported || '',
-      status: a.status,
-      notes: a.notes,
-      last_contacted_at: a.last_contacted_at,
-      next_follow_up: a.next_follow_up,
-      assigned_at: a.assigned_at,
-    }));
+    const assignments = await findAssignmentsByWorker(workerId, status);
+    const schedules = await getScheduledContactsByWorker(workerId);
+
+    const scheduleByAssignment = {};
+    const now = new Date();
+    for (const s of schedules) {
+      if (!scheduleByAssignment[s.assignment_id]) {
+        scheduleByAssignment[s.assignment_id] = {
+          next_scheduled_at: s.scheduled_at,
+          is_overdue: new Date(s.scheduled_at) < now,
+          schedule_id: s.id,
+          schedule_notes: s.notes,
+        };
+      }
+    }
+
+    const result = assignments.map(a => {
+      const sc = scheduleByAssignment[a.id];
+      return {
+        id: a.id,
+        donor_id: a.donor_id,
+        donor_mobile: a.donor_profiles?.mobile_number || '',
+        donor_name: a.donor_profiles?.name || 'Unknown',
+        donor_city: a.donor_profiles?.city || '',
+        donor_address: a.donor_profiles?.address_1 || '',
+        donor_amount: a.donor_profiles?.amount || 0,
+        donor_email: a.donor_profiles?.email || '',
+        donor_pan: a.donor_profiles?.pan_number || '',
+        donor_project: a.donor_profiles?.project_supported || '',
+        status: a.status,
+        notes: a.notes,
+        last_contacted_at: a.last_contacted_at,
+        next_follow_up: a.next_follow_up,
+        assigned_at: a.assigned_at,
+        next_scheduled_at: sc?.next_scheduled_at || null,
+        is_overdue: sc?.is_overdue || false,
+        schedule_id: sc?.schedule_id || null,
+        schedule_notes: sc?.schedule_notes || null,
+      };
+    });
+
+    result.sort((a, b) => {
+      if (a.is_overdue && !b.is_overdue) return -1;
+      if (!a.is_overdue && b.is_overdue) return 1;
+      if (a.is_overdue && b.is_overdue) {
+        return new Date(a.next_scheduled_at) - new Date(b.next_scheduled_at);
+      }
+      const an = a.next_scheduled_at ? new Date(a.next_scheduled_at) : null;
+      const bn = b.next_scheduled_at ? new Date(b.next_scheduled_at) : null;
+      if (an && bn) return an - bn;
+      if (an) return -1;
+      if (bn) return 1;
+      const ai = STATUS_PRIORITY.indexOf(a.status);
+      const bi = STATUS_PRIORITY.indexOf(b.status);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 
     return res.json(result);
   } catch (error) {
@@ -113,11 +173,6 @@ export const updateDonorStatus = async (req, res) => {
 
     if (!status) {
       return res.status(400).json({ message: 'status is required' });
-    }
-
-    const allowedStatuses = ['pending', 'contacted', 'not_reachable', 'donation_collected', 'not_interested', 'follow_up'];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}` });
     }
 
     const updates = {
@@ -139,7 +194,12 @@ export const getDonorLogs = async (req, res) => {
     const { id } = req.params;
     const logs = await findLogsByAssignment(parseInt(id));
     const totalCollected = await getTotalCollectedByAssignment(parseInt(id));
-    return res.json({ logs, total_collected: totalCollected });
+    const nextSchedule = await getScheduledByAssignment(parseInt(id));
+    return res.json({
+      logs,
+      total_collected: totalCollected,
+      next_schedule: nextSchedule,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -148,13 +208,13 @@ export const getDonorLogs = async (req, res) => {
 export const createDonorLogHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, notes, outcome, amount_collected } = req.body;
+    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at } = req.body;
 
     if (!action) {
       return res.status(400).json({ message: 'action is required' });
     }
 
-    const allowedActions = ['call', 'visit', 'message', 'follow_up', 'donation', 'note'];
+    const allowedActions = ['call', 'visit', 'message', 'follow_up', 'donation', 'note', 'disposition'];
     if (!allowedActions.includes(action)) {
       return res.status(400).json({ message: `Invalid action. Must be one of: ${allowedActions.join(', ')}` });
     }
@@ -170,24 +230,105 @@ export const createDonorLogHandler = async (req, res) => {
       notes: notes || null,
       outcome: outcome || null,
       amount_collected: amount_collected || null,
+      disposition_category: disposition_category || null,
+      disposition_detail: disposition_detail || null,
+      scheduled_at: scheduled_at || null,
       created_by: req.user.id,
     };
 
     const log = await createDonorLog(logData);
 
+    const now = new Date().toISOString();
+
     if (action === 'donation') {
       await updateAssignmentStatus(parseInt(id), {
         status: 'donation_collected',
-        last_contacted_at: new Date().toISOString(),
+        last_contacted_at: now,
       });
+    } else if (action === 'disposition' && disposition_detail) {
+      const statusFromDetail = dispositionDetailToStatus(disposition_detail);
+      const statusUpdates = { status: statusFromDetail, last_contacted_at: now };
+
+      if (disposition_detail === 'scheduled' && scheduled_at) {
+        await createScheduledContact({
+          assignment_id: parseInt(id),
+          scheduled_at,
+          notes: notes || null,
+          created_by: req.user.id,
+        });
+        statusUpdates.next_follow_up = scheduled_at.slice(0, 10);
+      }
+
+      if (outcome && outcome.startsWith('next_date:')) {
+        statusUpdates.next_follow_up = outcome.replace('next_date:', '').trim();
+      }
+
+      await updateAssignmentStatus(parseInt(id), statusUpdates);
     } else if (action === 'call' || action === 'visit') {
       await updateAssignmentStatus(parseInt(id), {
         status: 'contacted',
-        last_contacted_at: new Date().toISOString(),
+        last_contacted_at: now,
       });
     }
 
     return res.json({ message: 'Log entry created', data: log });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+function dispositionDetailToStatus(detail) {
+  const map = {
+    busy: 'busy',
+    ringing: 'ringing',
+    unreachable: 'unreachable',
+    switched_off: 'switched_off',
+    wrong_number: 'wrong_number',
+    invalid: 'invalid_number',
+    rejected: 'rejected',
+    lead_done: 'lead_done',
+    scheduled: 'scheduled',
+    visit_donate: 'visit_donate',
+    promise_to_pay: 'promise_to_pay',
+    payment_pending: 'payment_pending',
+    already_donated: 'already_donated',
+    not_interested_now: 'not_interested_now',
+    language_barrier: 'language_barrier',
+    transferred_senior: 'transferred_senior',
+    query_complaint: 'query_complaint',
+    receipt_request: 'receipt_request',
+  };
+  return map[detail] || 'contacted';
+}
+
+export const scheduleContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { scheduled_at, notes } = req.body;
+
+    if (!scheduled_at) {
+      return res.status(400).json({ message: 'scheduled_at is required' });
+    }
+
+    const assignment = await findAssignmentById(parseInt(id));
+    if (!assignment) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    const contact = await createScheduledContact({
+      assignment_id: parseInt(id),
+      scheduled_at,
+      notes: notes || null,
+      created_by: req.user.id,
+    });
+
+    await updateAssignmentStatus(parseInt(id), {
+      status: 'scheduled',
+      last_contacted_at: new Date().toISOString(),
+      next_follow_up: scheduled_at.slice(0, 10),
+    });
+
+    return res.json({ message: 'Contact scheduled', data: contact });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

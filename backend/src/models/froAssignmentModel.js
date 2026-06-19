@@ -116,9 +116,66 @@ export const getDashboardStats = async (workerId) => {
     .eq('fro_worker_id', workerId);
   if (error) throw error;
 
+  const keyMap = {
+    pending: 'pending', contacted: 'contacted', follow_up: 'follow_up',
+    busy: 'not_reachable', ringing: 'not_reachable', unreachable: 'not_reachable',
+    switched_off: 'not_reachable', wrong_number: 'not_reachable', invalid_number: 'not_reachable', rejected: 'not_reachable',
+    not_interested: 'not_interested', not_interested_now: 'not_interested',
+    donation_collected: 'donation_collected', lead_done: 'donation_collected',
+    scheduled: 'follow_up', visit_donate: 'contacted', promise_to_pay: 'contacted',
+    payment_pending: 'contacted', already_donated: 'contacted',
+    language_barrier: 'contacted', transferred_senior: 'contacted',
+    query_complaint: 'contacted', receipt_request: 'contacted',
+  };
   const stats = { total: data.length, pending: 0, contacted: 0, not_reachable: 0, donation_collected: 0, not_interested: 0, follow_up: 0 };
   for (const a of data) {
-    if (stats[a.status] !== undefined) stats[a.status]++;
+    const key = keyMap[a.status];
+    if (key && stats[key] !== undefined) stats[key]++;
   }
   return stats;
+};
+
+export const createScheduledContact = async (data) => {
+  const { data: result, error } = await supabase
+    .from('fro_scheduled_contacts')
+    .insert([data])
+    .select()
+    .single();
+  if (error) throw error;
+  return result;
+};
+
+export const getScheduledContactsByWorker = async (workerId) => {
+  const { data, error } = await supabase
+    .from('fro_scheduled_contacts')
+    .select('*, fro_assignments!inner(id, fro_worker_id)')
+    .eq('fro_assignments.fro_worker_id', workerId)
+    .eq('is_completed', false)
+    .order('scheduled_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+};
+
+export const getScheduledByAssignment = async (assignmentId) => {
+  const { data, error } = await supabase
+    .from('fro_scheduled_contacts')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .eq('is_completed', false)
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+export const completeScheduledContact = async (id) => {
+  const { data, error } = await supabase
+    .from('fro_scheduled_contacts')
+    .update({ is_completed: true, reminded: true })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };

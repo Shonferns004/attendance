@@ -98,7 +98,7 @@ function DashboardPage() {
           {selectedLead ? (
             <LeadDetail leadId={selectedLead.id} onBack={handleBack} />
           ) : selectedDonorAssignment ? (
-            <DonorDetail assignmentId={selectedDonorAssignment.id} onBack={handleBackDonor} />
+            <DonorDetail assignmentId={selectedDonorAssignment.id} donor={selectedDonorAssignment} onBack={handleBackDonor} />
           ) : active === 'dashboard' ? (
             <Dashboard />
           ) : active === 'leads' ? (

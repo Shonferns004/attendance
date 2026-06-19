@@ -550,3 +550,55 @@ table td {
   color: var(--ink-soft);
   font-size: 13px;
 }
+
+/* Chips for disposition picker */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover {
+  border-color: var(--sage);
+  background: #f9fafb;
+}
+.chip-selected.chip-not-connected {
+  background: #fef2f2;
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.chip-selected.chip-connected {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+/* Callout banners */
+.callout {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.callout-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+.callout-danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+/* Overdue row highlight */
+.row-overdue td {
+  font-weight: 500;
+}

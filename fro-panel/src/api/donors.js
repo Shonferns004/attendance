@@ -38,6 +38,16 @@ export async function addDonorLog(assignmentId, data) {
   return res.json();
 }
 
+export async function scheduleContact(assignmentId, data) {
+  const res = await fetch(`${API_BASE}/fro/donors/${assignmentId}/schedule`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to schedule contact');
+  return res.json();
+}
+
 export async function getMyDashboard() {
   const res = await fetch(`${API_BASE}/fro/dashboard`, { headers: headers() });
   if (!res.ok) throw new Error('Failed to fetch dashboard');
