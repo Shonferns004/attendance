@@ -10,6 +10,16 @@ export const createUser = async ({ ngo_id, name, email, password_hash, role, dep
   return data;
 };
 
+export const getUserByName = async (name) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('name', name)
+    .single();
+  if (error) return null;
+  return data;
+};
+
 export const getUserByEmail = async (email) => {
   const { data, error } = await supabase
     .from('users')

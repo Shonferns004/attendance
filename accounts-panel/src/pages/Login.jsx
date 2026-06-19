@@ -9,7 +9,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!email || !password) { setErr('Email and password are required'); return; }
+    if (!email || !password) { setErr('Email/Login ID and password are required'); return; }
     setErr(''); setBusy(true);
     try {
       await login(email, password);
@@ -29,9 +29,9 @@ export default function Login() {
           <p>Sign in with your Accounts / Admin account</p>
         </div>
         <div className="login-form">
-          <label className="field">Email
+          <label className="field">Email or Login ID
             <input value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="admin@example.com" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
+              placeholder="email or login_id" onKeyDown={e => e.key === 'Enter' && submit()} autoFocus />
           </label>
           <label className="field">Password
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
