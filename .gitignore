@@ -7,3 +7,5 @@ backend/private-key.json
 app-debug.apk
 app-release.apk
 *.apk
+*.jpeg
+*.jpg
