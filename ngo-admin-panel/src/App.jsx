@@ -3,6 +3,7 @@ import { NgoAdminProvider, useNgoAdmin } from './store';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Donors from './pages/Donors';
+import DonorDetail from './pages/DonorDetail';
 import FroWorkers from './pages/FroWorkers';
 import Assignments from './pages/Assignments';
 
@@ -36,6 +37,7 @@ function Sidebar({ active, setActive }) {
 function DashboardPage() {
   const { user, logout } = useNgoAdmin();
   const [active, setActive] = useState('dashboard');
+  const [selectedDonor, setSelectedDonor] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
@@ -49,6 +51,7 @@ function DashboardPage() {
 
   const handleNav = useCallback((id) => {
     setActive(id);
+    setSelectedDonor(null);
   }, []);
 
   const userName = user?.name || 'Admin';
@@ -82,7 +85,11 @@ function DashboardPage() {
         </header>
         <div className="content-body">
           {active === 'dashboard' && <Dashboard />}
-          {active === 'donors' && <Donors />}
+          {active === 'donors' && (selectedDonor ? (
+            <DonorDetail donor={selectedDonor} onBack={() => setSelectedDonor(null)} />
+          ) : (
+            <Donors onSelect={setSelectedDonor} />
+          ))}
           {active === 'assignments' && <Assignments />}
           {active === 'fro-workers' && <FroWorkers />}
         </div>

@@ -1,5 +1,5 @@
 import supabase from '../config/supabase.js';
-import { getAllDonorProfiles } from '../models/donorProfileModel.js';
+import { getAllDonorProfiles, getDonorByMobile } from '../models/donorProfileModel.js';
 import { getWorkerById } from '../models/workerModel.js';
 import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 import {
@@ -37,6 +37,29 @@ export const getDonors = async (req, res) => {
     }
 
     return res.json(donors);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getDonorDetail = async (req, res) => {
+  try {
+    const { mobile } = req.params;
+    const profile = await getDonorByMobile(mobile);
+    if (!profile) {
+      return res.status(404).json({ message: 'Donor not found' });
+    }
+
+    const { data: donations, error } = await supabase
+      .from('imported_data')
+      .select('*')
+      .eq('mobile_number', mobile)
+      .order('transaction_date', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return res.json({ profile, donations: donations || [] });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

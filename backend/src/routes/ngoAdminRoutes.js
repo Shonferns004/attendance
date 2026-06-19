@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateRole } from '../middleware/authMiddleware.js';
 import {
   getDonors,
+  getDonorDetail,
   getFroWorkers,
   createAssignmentHandler,
   getAssignments,
@@ -17,6 +18,7 @@ router.use(authenticateRole('hoadmin'));
 
 router.get('/dashboard', getDashboard);
 router.get('/donors', getDonors);
+router.get('/donors/:mobile', getDonorDetail);
 router.get('/fro-workers', getFroWorkers);
 router.get('/assignments', getAssignments);
 router.post('/assignments', createAssignmentHandler);

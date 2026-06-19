@@ -52,7 +52,7 @@ function AssignModal({ donors, froWorkers, onClose, onAssigned }) {
   );
 }
 
-export default function Donors() {
+export default function Donors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [froWorkers, setFroWorkers] = useState([]);
   const [search, setSearch] = useState('');
@@ -135,7 +135,7 @@ export default function Donors() {
                 {filtered.map(d => (
                   <tr key={d.id}>
                     <td className="checkbox-col"><input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)} /></td>
-                    <td>{d.name || '—'}</td>
+                    <td><a className="link" onClick={() => onSelect?.(d)} style={{ cursor: 'pointer' }}>{d.name || '—'}</a></td>
                     <td>{d.mobile_number}</td>
                     <td>{d.city || '—'}</td>
                     <td>₹{Number(d.amount || 0).toLocaleString('en-IN')}</td>
