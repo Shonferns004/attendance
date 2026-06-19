@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getMyDonors } from '../api/donors';
-
-const STATUS_ORDER = [
-  'pending', 'contacted', 'follow_up', 'scheduled',
-  'busy', 'ringing', 'unreachable', 'switched_off', 'wrong_number', 'invalid_number', 'rejected',
-  'visit_donate', 'promise_to_pay', 'payment_pending', 'already_donated',
-  'not_interested', 'not_interested_now', 'language_barrier', 'transferred_senior',
-  'query_complaint', 'receipt_request', 'lead_done', 'donation_collected',
-];
+import DonorDetail from './DonorDetail';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -66,6 +59,7 @@ export default function MyDonors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedDonor, setSelectedDonor] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -81,66 +75,82 @@ export default function MyDonors({ onSelect }) {
   };
 
   return (
-    <div className="card">
-      <div className="card-head">
-        <h3>My Donors</h3>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          {STATUS_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+    <>
+      <div className="card">
+        <div className="card-head">
+          <h3>My Donors</h3>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="card-pad" style={{ padding: 0 }}>
+          {loading ? (
+            <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
+          ) : donors.length === 0 ? (
+            <div className="empty-state" style={{ padding: 40 }}>
+              <div className="icon">{'\u{1F46B}'}</div>
+              <h3>No donors assigned</h3>
+              <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>City</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Next Action</th>
+                  <th>Assigned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donors.map(d => {
+                  const overdue = d.is_overdue;
+                  const nextAction = d.next_scheduled_at
+                    ? new Date(d.next_scheduled_at).toLocaleString()
+                    : d.next_follow_up
+                      ? new Date(d.next_follow_up).toLocaleDateString()
+                      : '—';
+                  return (
+                    <tr key={d.id}
+                      className={`clickable-row${overdue ? ' row-overdue' : ''}`}
+                      onClick={() => setSelectedDonor(d)}
+                      style={overdue ? { background: '#fef2f2', borderLeft: '3px solid #dc2626' } : {}}>
+                      <td>{d.donor_name}</td>
+                      <td>{d.donor_mobile}</td>
+                      <td>{d.donor_city || '—'}</td>
+                      <td>₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</td>
+                      <td>{statusPill(d.status)}</td>
+                      <td style={{ fontSize: 12, color: overdue ? '#dc2626' : 'var(--ink-soft)', fontWeight: overdue ? 600 : 400 }}>
+                        {overdue ? 'OVERDUE: ' : ''}{nextAction}
+                      </td>
+                      <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(d.assigned_at).toLocaleDateString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-      <div className="card-pad" style={{ padding: 0 }}>
-        {loading ? (
-          <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
-        ) : donors.length === 0 ? (
-          <div className="empty-state" style={{ padding: 40 }}>
-            <div className="icon">{'\u{1F46B}'}</div>
-            <h3>No donors assigned</h3>
-            <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
+
+      {selectedDonor && (
+        <div className="modal-overlay" onClick={() => setSelectedDonor(null)}>
+          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{selectedDonor.donor_name} — {selectedDonor.donor_mobile}</h3>
+              <button className="btn btn-sm btn-outline" onClick={() => setSelectedDonor(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              <DonorDetail assignmentId={selectedDonor.id} donor={selectedDonor} onBack={() => setSelectedDonor(null)} hideHeader />
+            </div>
           </div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>City</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Next Action</th>
-                <th>Assigned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {donors.map(d => {
-                const overdue = d.is_overdue;
-                const nextAction = d.next_scheduled_at
-                  ? new Date(d.next_scheduled_at).toLocaleString()
-                  : d.next_follow_up
-                    ? new Date(d.next_follow_up).toLocaleDateString()
-                    : '—';
-                return (
-                  <tr key={d.id}
-                    className={`clickable-row${overdue ? ' row-overdue' : ''}`}
-                    onClick={() => onSelect(d)}
-                    style={overdue ? { background: '#fef2f2', borderLeft: '3px solid #dc2626' } : {}}>
-                    <td>{d.donor_name}</td>
-                    <td>{d.donor_mobile}</td>
-                    <td>{d.donor_city || '—'}</td>
-                    <td>₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</td>
-                    <td>{statusPill(d.status)}</td>
-                    <td style={{ fontSize: 12, color: overdue ? '#dc2626' : 'var(--ink-soft)', fontWeight: overdue ? 600 : 400 }}>
-                      {overdue ? 'OVERDUE: ' : ''}{nextAction}
-                    </td>
-                    <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(d.assigned_at).toLocaleDateString()}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -36,7 +36,7 @@ function findDisposition(id) {
   return ALL_DISPOSITIONS.find(d => d.id === id);
 }
 
-export default function DonorDetail({ assignmentId, donor, onBack }) {
+export default function DonorDetail({ assignmentId, donor, onBack, hideHeader }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,10 +117,12 @@ export default function DonorDetail({ assignmentId, donor, onBack }) {
 
   return (
     <div>
-      <div className="detail-header">
-        <button className="back-btn" onClick={onBack}>{'\u{2190}'}</button>
-        <h2>Donor Details</h2>
-      </div>
+      {!hideHeader && (
+        <div className="detail-header">
+          <button className="back-btn" onClick={onBack}>{'\u{2190}'}</button>
+          <h2>Donor Details</h2>
+        </div>
+      )}
 
       {nextSchedule && !nextSchedule.is_completed && (
         <div className={`callout ${new Date(nextSchedule.scheduled_at) < new Date() ? 'callout-danger' : 'callout-info'}`}>

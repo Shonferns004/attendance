@@ -369,6 +369,10 @@ table td {
   overflow-y: auto;
 }
 
+.modal-lg {
+  max-width: 720px;
+}
+
 .modal-head {
   display: flex;
   align-items: center;
