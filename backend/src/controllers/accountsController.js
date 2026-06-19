@@ -8,7 +8,7 @@ export const getLeadList = async (req, res) => {
       .from('fro_donor_logs')
       .select(`
         id, action, disposition_category, disposition_detail, amount_collected,
-        payment_screenshot_url, accounts_status, pan_number, notes, created_at, rejection_reason,
+        payment_screenshot_url, accounts_status, pan_number, notes, created_at,
         assignment_id,
         fro_assignments!inner(
           id,
