@@ -74,12 +74,12 @@ export default function WorkerDetail({ workerId, onBack }) {
         <div className="sa-card">
           <h3 className="sa-card-title">Salary Breakdown</h3>
           <div className="sa-stat-grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))'}}>
-            <div className="sa-stat-card"><div className="sa-stat-label">Total Salary</div><div className="sa-stat-value">{formatMoney(salary.salary)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Total Paid</div><div className="sa-stat-value">{formatMoney(salary.totalPaid)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Pending</div><div className="sa-stat-value">{formatMoney(salary.totalPending)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Incentive AKI</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus?.incentiveAKI || 0)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Monthly Incentive</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus?.incentiveMonthly || 0)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Sunday Bonus</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus?.bonusAmount || 0)}</div></div>
+            <div className="sa-stat-card"><div className="sa-stat-label">Total Salary</div><div className="sa-stat-value">{formatMoney(salary.totalSalary)}</div></div>
+            <div className="sa-stat-card"><div className="sa-stat-label">Per Day</div><div className="sa-stat-value">{formatMoney(salary.perDay)}</div></div>
+            <div className="sa-stat-card"><div className="sa-stat-label">Days in Month</div><div className="sa-stat-value">{salary.daysInMonth || '—'}</div></div>
+            {salary.sundayBonus?.incentiveAKI ? <div className="sa-stat-card"><div className="sa-stat-label">Incentive AKI</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus.incentiveAKI)}</div></div> : null}
+            {salary.sundayBonus?.incentiveMonthly ? <div className="sa-stat-card"><div className="sa-stat-label">Monthly Incentive</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus.incentiveMonthly)}</div></div> : null}
+            {salary.sundayBonus?.bonusAmount ? <div className="sa-stat-card"><div className="sa-stat-label">Sunday Bonus</div><div className="sa-stat-value">{formatMoney(salary.sundayBonus.bonusAmount)}</div></div> : null}
           </div>
         </div>
       )}

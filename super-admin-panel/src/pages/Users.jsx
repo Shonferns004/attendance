@@ -6,6 +6,8 @@ export default function Users() {
   const [hrs, setHrs] = useState([])
   const [ngos, setNgos] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [editingHr, setEditingHr] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_ids: [] })
   const [err, setErr] = useState('')
   const [tab, setTab] = useState('users')
@@ -19,7 +21,35 @@ export default function Users() {
   useEffect(load, [])
 
   const openNew = () => {
+    setEditingUser(null)
+    setEditingHr(null)
     setForm({ name: '', email: '', password: '123456', role: 'hoadmin', ngo_ids: [] })
+    setShowForm(true)
+  }
+
+  const openEditUser = (u) => {
+    setEditingUser(u)
+    setEditingHr(null)
+    setForm({
+      name: u.name || '',
+      email: u.email || '',
+      password: '',
+      role: u.role || 'hoadmin',
+      ngo_ids: u.ngo_access || (u.ngo_id ? [u.ngo_id] : []),
+    })
+    setShowForm(true)
+  }
+
+  const openEditHr = (h) => {
+    setEditingHr(h)
+    setEditingUser(null)
+    setForm({
+      name: h.name || '',
+      email: h.email || '',
+      password: '',
+      role: 'hr',
+      ngo_ids: h.ngo_id ? [h.ngo_id] : [],
+    })
     setShowForm(true)
   }
 
@@ -32,15 +62,23 @@ export default function Users() {
     }))
   }
 
-  const create = async () => {
+  const save = async () => {
     setErr('')
     try {
-      if (form.role === 'hr') {
-        await api('/hrs', { method: 'POST', body: JSON.stringify(form) })
+      if (editingUser) {
+        const body = { ...form }
+        if (!body.password) delete body.password
+        await api(`/users/${editingUser.id}`, { method: 'PUT', body: JSON.stringify(body) })
+      } else if (editingHr) {
+        const body = { name: form.name, email: form.email, ngo_id: form.ngo_ids[0] || null }
+        if (form.password) body.password = form.password
+        await api(`/hrs/${editingHr.id}`, { method: 'PUT', body: JSON.stringify(body) })
+      } else if (form.role === 'hr') {
+        await api('/hrs', { method: 'POST', body: JSON.stringify({ name: form.name, email: form.email, ngo_id: form.ngo_ids[0] || null }) })
       } else {
         await api('/users', { method: 'POST', body: JSON.stringify(form) })
       }
-      setShowForm(false); load()
+      setShowForm(false); setEditingUser(null); setEditingHr(null); load()
     } catch (e) { setErr(e.message) }
   }
 
@@ -51,11 +89,25 @@ export default function Users() {
     } catch (e) { setErr(e.message) }
   }
 
+  const toggleHrActive = async (h) => {
+    try {
+      await api(`/hrs/${h.id}`, { method: 'PUT', body: JSON.stringify({ is_active: !h.is_active }) })
+      load()
+    } catch (e) { setErr(e.message) }
+  }
+
   const filteredUsers = filterRole
     ? users.filter(u => u.role === filterRole)
     : users
 
   const roles = [...new Set(users.map(u => u.role))]
+
+  const closeForm = () => {
+    setShowForm(false); setEditingUser(null); setEditingHr(null)
+  }
+
+  const isEditing = editingUser || editingHr
+  const isUser = editingUser || (!editingHr && form.role !== 'hr')
 
   return (
     <div className="sa-page">
@@ -66,26 +118,44 @@ export default function Users() {
       {err && <div className="sa-err-card">{err}</div>}
 
       {showForm && (
-        <div className="sa-modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="sa-modal-overlay" onClick={closeForm}>
           <div className="sa-modal" onClick={e => e.stopPropagation()}>
-            <h3>Create User</h3>
-            <label className="field">Name <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></label>
-            <label className="field">Email <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></label>
-            <label className="field">Password <input value={form.password} onChange={e => setForm({...form, password: e.target.value})} /></label>
-            <label className="field">Role
-              <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-                <option value="hoadmin">HO Admin</option>
-                <option value="accounts">Accounts</option>
-                <option value="leads">Leads</option>
-                <option value="recruiter">Recruiter</option>
-                <option value="telecaller">Telecaller</option>
-                <option value="team_lead">Team Lead</option>
-                <option value="hr">HR</option>
-              </select>
+            <h3>{isEditing ? 'Edit' : 'Create'} {isUser ? 'User' : 'HR'}</h3>
+
+            {editingHr && (
+              <p className="sa-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+                Leave password blank to keep current.
+              </p>
+            )}
+
+            <label className="field">Name
+              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
             </label>
+            <label className="field">Email
+              <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+            </label>
+            <label className="field">Password
+              <input value={form.password} onChange={e => setForm({...form, password: e.target.value})}
+                placeholder={isEditing ? 'Leave blank to keep current' : ''} />
+            </label>
+
+            {isUser && (
+              <label className="field">Role
+                <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+                  <option value="hoadmin">HO Admin</option>
+                  <option value="accounts">Accounts</option>
+                  <option value="leads">Leads</option>
+                  <option value="recruiter">Recruiter</option>
+                  <option value="telecaller">Telecaller</option>
+                  <option value="team_lead">Team Lead</option>
+                  <option value="hr">HR</option>
+                </select>
+              </label>
+            )}
+
             <label className="field">
-              <span>NGO {form.role === 'hoadmin' ? <span className="sa-muted" style={{fontWeight:400}}>(select multiple)</span> : ''}</span>
-              {form.role === 'hoadmin' ? (
+              <span>NGO {form.role === 'hoadmin' && !editingHr ? <span className="sa-muted" style={{fontWeight:400}}>(select multiple)</span> : ''}</span>
+              {form.role === 'hoadmin' && !editingHr ? (
                 <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:6,padding:'4px 8px'}}>
                   {ngos.length === 0 && <p className="sa-muted" style={{padding:8}}>No NGOs available</p>}
                   {ngos.map(n => (
@@ -103,8 +173,8 @@ export default function Users() {
               )}
             </label>
             <div className="sa-modal-actions">
-              <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={create}>Create</button>
+              <button className="btn" onClick={closeForm}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>{isEditing ? 'Update' : 'Create'}</button>
             </div>
           </div>
         </div>
@@ -136,6 +206,8 @@ export default function Users() {
                     {u.is_active !== false ? 'Active' : 'Inactive'}
                   </span></td>
                   <td>
+                    <button className="btn btn-sm" onClick={() => openEditUser(u)}
+                      style={{marginRight:4}}>Edit</button>
                     <button className="btn btn-sm" onClick={() => toggleActive(u)}>
                       {u.is_active !== false ? 'Deactivate' : 'Activate'}
                     </button>
@@ -151,19 +223,26 @@ export default function Users() {
       {tab === 'hrs' && (
         <div className="sa-card">
           <table className="sa-table">
-            <thead><tr><th>Name</th><th>Email</th><th>NGO</th><th>Status</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>NGO</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {hrs.map(h => (
                 <tr key={h.id}>
                   <td>{h.name}</td>
                   <td>{h.email}</td>
-                  <td className="sa-muted">{h.ngo_id || '—'}</td>
+                  <td className="sa-muted">{h.ngo_id ? ngos.find(n => n.id === h.ngo_id)?.name || h.ngo_id : '—'}</td>
                   <td><span className={`sa-badge ${h.is_active !== false ? 'active' : 'inactive'}`}>
                     {h.is_active !== false ? 'Active' : 'Inactive'}
                   </span></td>
+                  <td>
+                    <button className="btn btn-sm" onClick={() => openEditHr(h)}
+                      style={{marginRight:4}}>Edit</button>
+                    <button className="btn btn-sm" onClick={() => toggleHrActive(h)}>
+                      {h.is_active !== false ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
                 </tr>
               ))}
-              {hrs.length === 0 && <tr><td colSpan={4} className="sa-muted sa-center">No HRs</td></tr>}
+              {hrs.length === 0 && <tr><td colSpan={5} className="sa-muted sa-center">No HRs</td></tr>}
             </tbody>
           </table>
         </div>

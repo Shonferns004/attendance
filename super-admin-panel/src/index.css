@@ -513,3 +513,210 @@ code {
   font-size: 16px;
   font-weight: 700;
 }
+
+/* ── Timeline (Notices & Events) ── */
+.dash-timeline {
+  display: flex;
+  flex-direction: column;
+  max-height: 330px;
+  overflow-y: auto;
+}
+.dash-timeline-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dash-timeline-item:last-child { border-bottom: none; }
+
+.dash-tl-date {
+  flex-shrink: 0;
+  width: 52px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  padding-top: 3px;
+}
+
+.dash-tl-event {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dash-tl-day {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+.dash-tl-mon {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.dash-tl-body { flex: 1; min-width: 0; }
+.dash-tl-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.dash-tl-text { font-size: 12px; color: var(--text-soft); line-height: 1.4; }
+
+.dash-tl-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Period Selector ── */
+.dash-period-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.dash-period-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-card);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.dash-period-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.dash-period-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.dash-period-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* ── KPI Change Arrow ── */
+.dash-kpi-change {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: inline-block;
+}
+.dash-kpi-change.dash-change-up { color: #10b981; }
+.dash-kpi-change.dash-change-down { color: #ef4444; }
+.dash-kpi-change.dash-change-flat { color: #94a3b8; }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --text: #f1f5f9;
+  --text-soft: #94a3b8;
+  --text-muted: #64748b;
+  --border: #334155;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .sa-table tbody tr:hover { background: #334155; }
+[data-theme="dark"] .sa-menu-item:hover { background: #334155; color: var(--text); }
+[data-theme="dark"] .btn:hover { background: #0f172a; }
+
+/* ── Dark Mode Toggle ── */
+.dm-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.dm-toggle input { display: none; }
+.dm-slider {
+  position: absolute; inset: 0;
+  background: #cbd5e1;
+  border-radius: 20px;
+  transition: 0.2s;
+  cursor: pointer;
+}
+.dm-slider::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.dm-toggle input:checked + .dm-slider { background: var(--primary); }
+.dm-toggle input:checked + .dm-slider::before { transform: translateX(16px); }
+
+/* ── User Menu additions ── */
+.sa-user-menu-header {
+  padding: 10px 14px 6px;
+}
+.sa-user-menu-header .sa-topbar-name {
+  font-size: 14px;
+}
+.sa-user-menu-header .sa-topbar-role {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.sa-menu-divider {
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+.sa-menu-section {
+  padding: 4px 14px;
+}
+.sa-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sa-menu-label {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.sa-menu-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sa-menu-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: 0.15s;
+}
+.sa-menu-swatch.active {
+  border-color: var(--text);
+}
+.sa-menu-swatch:hover {
+  transform: scale(1.2);
+}
+
+/* ── Dashboard KPI card tweaks ── */
+.dash-kpi-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-soft);
+  font-weight: 600;
+  margin-bottom: 6px;
+}

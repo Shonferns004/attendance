@@ -1,6 +1,6 @@
 import { api } from './auth'
 
-export const getDashboard = () => api('/dashboard/super-admin')
+export const getDashboard = (period = '30d') => api(`/dashboard/super-admin?period=${period}`)
 export const getNGOs = () => api('/ngos')
 export const getUsers = () => api('/users')
 export const getHRs = () => api('/hrs')

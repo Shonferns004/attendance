@@ -6,14 +6,14 @@ export default function Events() {
   const [events, setEvents] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [edit, setEdit] = useState(null)
-  const [form, setForm] = useState({ title: '', date: '', time: '', location: '', description: '' })
+  const [form, setForm] = useState({ title: '', event_date: '', event_time: '', location: '', description: '' })
   const [err, setErr] = useState('')
 
   const load = () => { api('/events').then(setEvents).catch(e => setErr(e.message)) }
   useEffect(load, [])
 
-  const openNew = () => { setEdit(null); setForm({ title: '', date: '', time: '', location: '', description: '' }); setShowForm(true) }
-  const openEdit = (e) => { setEdit(e); setForm({ title: e.title, date: e.date ? e.date.slice(0, 10) : '', time: e.time || '', location: e.location || '', description: e.description || '' }); setShowForm(true) }
+  const openNew = () => { setEdit(null); setForm({ title: '', event_date: '', event_time: '', location: '', description: '' }); setShowForm(true) }
+  const openEdit = (e) => { setEdit(e); setForm({ title: e.title, event_date: e.event_date ? e.event_date.slice(0, 10) : '', event_time: e.event_time || '', location: e.location || '', description: e.description || '' }); setShowForm(true) }
 
   const save = async () => {
     setErr('')
@@ -45,8 +45,8 @@ export default function Events() {
           <div className="sa-modal" onClick={e => e.stopPropagation()}>
             <h3>{edit ? 'Edit Event' : 'New Event'}</h3>
             <label className="field">Title <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} /></label>
-            <label className="field">Date <DatePicker value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></label>
-            <label className="field">Time <input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})} /></label>
+            <label className="field">Date <DatePicker value={form.event_date} onChange={e => setForm({...form, event_date: e.target.value})} /></label>
+            <label className="field">Time <input type="time" value={form.event_time} onChange={e => setForm({...form, event_time: e.target.value})} /></label>
             <label className="field">Location <input value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></label>
             <label className="field">Description <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></label>
             <div className="sa-modal-actions">
@@ -64,8 +64,8 @@ export default function Events() {
             {sorted.map(ev => (
               <tr key={ev.id}>
                 <td>{ev.title}</td>
-                <td>{ev.date ? new Date(ev.date).toLocaleDateString() : '—'}</td>
-                <td>{ev.time ? ev.time.slice(0, 5) : '—'}</td>
+                <td>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('en-IN') : '—'}</td>
+                <td>{ev.event_time ? ev.event_time.slice(0, 5) : '—'}</td>
                 <td className="sa-muted">{ev.location || '—'}</td>
                 <td>
                   <button className="btn btn-sm" onClick={() => openEdit(ev)}>Edit</button>

@@ -114,27 +114,38 @@ function Sidebar({ active, setActive, collapsedGroups, toggleGroup }) {
 
 function AppContent() {
   const { user, logout } = useSA()
-  const [active, setActive] = useState('dashboard')
+  const [active, setActive] = useState(() => {
+    try { return localStorage.getItem('sa_active') || 'dashboard' } catch { return 'dashboard' }
+  })
   const [workerId, setWorkerId] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
-  const [showTheme, setShowTheme] = useState(false)
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('sa_theme') || 'blue' } catch { return 'blue' }
   })
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sa_collapsed_groups') || '[]') } catch { return [] }
   })
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('sa_dark') === 'true' } catch { return false }
+  })
   const menuRef = useRef(null)
-  const themeRef = useRef(null)
 
   const switchTheme = (id) => {
     setTheme(id)
     localStorage.setItem('sa_theme', id)
     applyTheme(id)
-    setShowTheme(false)
   }
 
   useEffect(() => { applyTheme(theme) }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    localStorage.setItem('sa_dark', dark)
+  }, [dark])
+
+  useEffect(() => {
+    localStorage.setItem('sa_active', active)
+  }, [active])
 
   const toggleGroup = (id) => {
     setCollapsedGroups(prev => {
@@ -147,11 +158,10 @@ function AppContent() {
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false)
-      if (themeRef.current && !themeRef.current.contains(e.target)) setShowTheme(false)
     }
-    if (showMenu || showTheme) document.addEventListener('mousedown', handler)
+    if (showMenu) document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showMenu, showTheme])
+  }, [showMenu])
 
   const handleViewWorker = useCallback((id) => {
     setWorkerId(id)
@@ -201,25 +211,6 @@ function AppContent() {
             <div className="sa-eyebrow">{meta?.label || 'Dashboard'}</div>
             <h2>{meta?.label || 'Dashboard'}</h2>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div className="sa-theme-btn" ref={themeRef} onClick={() => setShowTheme(!showTheme)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-              </svg>
-              {showTheme && (
-                <div className="sa-theme-popover" onClick={e => e.stopPropagation()}>
-                  {THEMES.map(t => (
-                    <div key={t.id} className={`sa-theme-option${theme === t.id ? ' active' : ''}`} onClick={() => switchTheme(t.id)}>
-                      <div className="sa-theme-swatches">
-                        {t.colors.map((c, i) => <span key={i} className="sa-theme-swatch" style={{background:c}} />)}
-                      </div>
-                      <span style={{fontSize:12}}>{t.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
           <div className="sa-topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
             <div className="sa-topbar-text">
               <div className="sa-topbar-name">{userName}</div>
@@ -227,7 +218,35 @@ function AppContent() {
             </div>
             <div className="sa-avatar">{initials}</div>
             {showMenu && (
-              <div className="sa-user-menu">
+              <div className="sa-user-menu" onClick={e => e.stopPropagation()}>
+                <div className="sa-user-menu-header">
+                  <div className="sa-topbar-name">{userName}</div>
+                  <div className="sa-topbar-role">Super Admin</div>
+                </div>
+                <div className="sa-menu-divider" />
+                <div className="sa-menu-section">
+                  <div className="sa-menu-row">
+                    <span className="sa-menu-label">{dark ? '☀️ Light Mode' : '🌙 Dark Mode'}</span>
+                    <label className="dm-toggle">
+                      <input type="checkbox" checked={dark} onChange={() => setDark(!dark)} />
+                      <span className="dm-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <div className="sa-menu-section">
+                  <div className="sa-menu-label" style={{margin:'6px 0 8px'}}>Palette</div>
+                  <div className="sa-menu-swatches">
+                    {THEMES.map(t => (
+                      <span key={t.id}
+                        className={`sa-menu-swatch${theme === t.id ? ' active' : ''}`}
+                        style={{background: t.primary}}
+                        onClick={() => switchTheme(t.id)}
+                        title={t.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="sa-menu-divider" />
                 <button className="sa-menu-item" onClick={() => { setShowMenu(false); logout() }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   Sign out

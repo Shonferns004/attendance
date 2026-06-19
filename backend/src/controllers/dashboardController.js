@@ -4,8 +4,38 @@ import { getAllHRs } from '../models/hrModel.js';
 import { getAllWorkers } from '../models/workerModel.js';
 import supabase from '../config/supabase.js';
 
+function calcDateRange(period) {
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+
+  let from, prevFrom, prevTo;
+  const dur = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : period === '1y' ? 365 : null;
+
+  if (dur) {
+    const s = new Date(now); s.setDate(s.getDate() - dur + 1);
+    from = s.toISOString().slice(0, 10);
+    const ps = new Date(s); ps.setDate(ps.getDate() - dur);
+    prevFrom = ps.toISOString().slice(0, 10);
+    const pe = new Date(s); pe.setDate(pe.getDate() - 1);
+    prevTo = pe.toISOString().slice(0, 10);
+  } else {
+    from = '1970-01-01';
+    prevFrom = '1970-01-01';
+    prevTo = '1970-01-01';
+  }
+  return { from, to: end, prevFrom, prevTo, dur, isAll: !dur };
+}
+
+function calcChange(curr, prev) {
+  if (!prev || prev === 0) return curr > 0 ? 100 : 0;
+  return Math.round(((curr - prev) / prev) * 100 * 10) / 10;
+}
+
 export const getSuperAdminDashboard = async (req, res) => {
   try {
+    const period = req.query.period || '30d';
+    const range = calcDateRange(period);
+
     const ngos = await getAllNgos();
     const [users, hrs, workers] = await Promise.all([
       getAllUsers({}),
@@ -13,100 +43,178 @@ export const getSuperAdminDashboard = async (req, res) => {
       getAllWorkers(),
     ]);
 
-    const activeUsers = users.filter((u) => u.is_active).length;
-    const now = new Date();
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const workersJoinedThisMonth = workers.filter((w) => w.created_at >= monthStart).length;
+    /* ── Period-filtered stats ── */
+    const userCreated = users.filter(u => u.created_at?.slice(0, 10) >= range.from);
+    const workerCreated = workers.filter(w => w.created_at?.slice(0, 10) >= range.from);
+    const activeUsers = userCreated.filter(u => u.is_active).length;
+
+    /* ── Previous period stats for change % ── */
+    const prevUserCreated = users.filter(u => {
+      const d = u.created_at?.slice(0, 10);
+      return d >= range.prevFrom && d <= range.prevTo;
+    }).length;
+    const prevWorkerCreated = workers.filter(w => {
+      const d = w.created_at?.slice(0, 10);
+      return d >= range.prevFrom && d <= range.prevTo;
+    }).length;
 
     const stats = {
       totalNgos: ngos.length,
-      totalUsers: users.length,
+      totalUsers: userCreated.length,
       activeUsers,
-      totalWorkers: workers.length,
-      activeWorkers: workers.filter((w) => w.is_active).length,
+      totalWorkers: workerCreated.length,
+      activeWorkers: workerCreated.filter(w => w.is_active).length,
       totalHr: hrs.length,
-      totalRecruiters: users.filter((u) => u.role === 'recruiter').length,
-      workersJoinedThisMonth,
+      totalRecruiters: userCreated.filter(u => u.role === 'recruiter').length,
+      workersJoinedThisMonth: period === 'all'
+        ? 0
+        : (() => {
+            const ms = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`;
+            return workers.filter(w => w.created_at >= ms).length;
+          })(),
     };
 
+    /* ── KPI changes ── */
+    const kpiChanges = {
+      totalNgos: 0,
+      totalUsers: calcChange(userCreated.length, prevUserCreated),
+      activeUsers: 0,
+      totalWorkers: calcChange(workerCreated.length, prevWorkerCreated),
+      totalHr: 0,
+      totalRecruiters: 0,
+    };
+
+    /* ── NGO counts ── */
     const ngoUserCounts = await Promise.all(
       ngos.map(async (ngo) => ({
         id: ngo.id, name: ngo.name, code: ngo.code,
-        users: (await getAllUsers({ ngo_id: ngo.id })).length,
-        workers: workers.filter((w) => w.ngo_id === ngo.id).length,
+        users: (await getAllUsers({ ngo_id: ngo.id })).filter(
+          u => u.created_at?.slice(0, 10) >= range.from
+        ).length,
+        workers: workers.filter(w => w.ngo_id === ngo.id && w.created_at?.slice(0, 10) >= range.from).length,
       }))
     );
 
+    /* ── Role distribution ── */
     const roleDistribution = {};
-    users.forEach((u) => {
+    userCreated.forEach(u => {
       roleDistribution[u.role] = (roleDistribution[u.role] || 0) + 1;
     });
 
+    /* ── Department worker counts ── */
     const deptWorkers = {};
-    workers.forEach((w) => {
+    workerCreated.forEach(w => {
       if (w.department) deptWorkers[w.department] = (deptWorkers[w.department] || 0) + 1;
     });
 
+    /* ── Gender counts ── */
     const genderCounts = { Male: 0, Female: 0, Other: 0 };
-    workers.forEach((w) => {
+    workerCreated.forEach(w => {
       if (w.gender && genderCounts[w.gender] !== undefined) genderCounts[w.gender]++;
     });
 
+    /* ── Attendance ── */
     const { data: attendance } = await supabase
       .from('attendance')
-      .select('status, date');
+      .select('status, date, worker_id')
+      .gte('date', range.from)
+      .lte('date', range.to);
 
     const attendanceStatus = { present: 0, late: 0, absent: 0, leave: 0 };
-    (attendance || []).forEach((a) => {
-      if (attendanceStatus[a.status] !== undefined) attendanceStatus[a.status]++;
-    });
+    const workerDept = {};
+    workerCreated.forEach(w => { workerDept[w.id] = w.department; });
 
+    const deptPivot = {};
+    (attendance || []).forEach(a => {
+      if (attendanceStatus[a.status] !== undefined) attendanceStatus[a.status]++;
+      const dept = workerDept[a.worker_id];
+      if (dept) {
+        if (!deptPivot[dept]) deptPivot[dept] = { department: dept, present: 0, late: 0, absent: 0 };
+        if (deptPivot[dept][a.status] !== undefined) deptPivot[dept][a.status]++;
+      }
+    });
+    const deptAttendance = Object.values(deptPivot);
+
+    const totalAtt = Object.values(attendanceStatus).reduce((s, v) => s + v, 0);
+    const attendancePercent = totalAtt > 0
+      ? Math.round((attendanceStatus.present / totalAtt) * 1000) / 10
+      : 0;
+
+    /* ── Previous period attendance for comparison ── */
+    const { data: prevAtt } = await supabase
+      .from('attendance')
+      .select('status')
+      .gte('date', range.prevFrom)
+      .lte('date', range.prevTo);
+    const prevAttCount = (prevAtt || []).length;
+    const prevPresent = (prevAtt || []).filter(a => a.status === 'present').length;
+    const prevAttPercent = prevAttCount > 0 ? Math.round((prevPresent / prevAttCount) * 1000) / 10 : 0;
+    kpiChanges.attendancePercent = calcChange(attendancePercent, prevAttPercent);
+
+    /* ── Pending leaves ── */
     const { count: pendingLeaves } = await supabase
       .from('leaves')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
 
-    // Monthly trend: last 30 days attendance counts
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-    const startStr = thirtyDaysAgo.toISOString().slice(0, 10);
-    const endStr = now.toISOString().slice(0, 10);
-
+    /* ── Monthly trend (based on period range) ── */
     const { data: monthData } = await supabase
       .from('attendance')
       .select('date, status')
-      .gte('date', startStr)
-      .lte('date', endStr);
+      .gte('date', range.from)
+      .lte('date', range.to);
 
     const dateMap = {};
-    for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+    const startDate = new Date(range.from);
+    const endDate = new Date(range.to);
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const ds = d.toISOString().slice(0, 10);
       dateMap[ds] = { date: ds, present: 0, late: 0, absent: 0 };
     }
-    (monthData || []).forEach((a) => {
+    (monthData || []).forEach(a => {
       if (dateMap[a.date] && dateMap[a.date][a.status] !== undefined) {
         dateMap[a.date][a.status]++;
       }
     });
     const monthlyAttendance = Object.values(dateMap);
 
-    // Total salary payable
+    /* ── Salary payable (always all-time) ── */
     const { data: salaries } = await supabase
       .from('salary_history')
       .select('worker_id, salary')
       .is('to_month', null);
-
     const salarySet = new Set();
     let totalSalaryPayable = 0;
-    (salaries || []).forEach((s) => {
+    (salaries || []).forEach(s => {
       if (!salarySet.has(s.worker_id)) {
         salarySet.add(s.worker_id);
         totalSalaryPayable += parseFloat(s.salary || 0);
       }
     });
 
+    /* ── Recent notices ── */
+    const { data: recentNotices } = await supabase
+      .from('notices')
+      .select('id, title, content, created_at')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    /* ── Upcoming events ── */
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: upcomingEvents } = await supabase
+      .from('events')
+      .select('id, title, description, event_date, event_time, location')
+      .gte('event_date', today)
+      .eq('is_active', true)
+      .order('event_date', { ascending: true })
+      .limit(5);
+
     return res.json({
       stats,
+      kpiChanges,
+      attendancePercent,
+      deptAttendance,
       ngoUserCounts,
       roleDistribution,
       deptWorkers,
@@ -115,6 +223,8 @@ export const getSuperAdminDashboard = async (req, res) => {
       pendingLeaves: pendingLeaves || 0,
       monthlyAttendance,
       totalSalaryPayable,
+      recentNotices: recentNotices || [],
+      upcomingEvents: upcomingEvents || [],
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
