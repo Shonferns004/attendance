@@ -65,10 +65,11 @@ export default function MyDonors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedDonor, setSelectedDonor] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     setLoading(true);
+    setCurrentIndex(0);
     getMyDonors(filterStatus)
       .then(setDonors)
       .catch(() => {})
@@ -80,70 +81,82 @@ export default function MyDonors({ onSelect }) {
     return <span className={`pill ${STATUS_PILL_MAP[status] || 'pill-gray'}`}>{label}</span>;
   };
 
-  if (selectedDonor) {
-    return <DonorDetail assignmentId={selectedDonor.id} donor={selectedDonor} onBack={() => setSelectedDonor(null)} />;
-  }
+  const current = donors[currentIndex];
 
   return (
-    <div className="card">
-      <div className="card-head">
-        <h3>My Donors</h3>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          {STATUS_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      <div className="card-pad">
-        {loading ? (
-          <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
-        ) : (
-          <CardView
-            items={donors}
-            emptyHeading="No donors assigned"
-            emptyText="Your assigned donors will appear here once the NGO admin assigns them."
-            renderCard={(d) => {
-              const overdue = d.is_overdue;
-              const nextAction = d.next_scheduled_at
-                ? new Date(d.next_scheduled_at).toLocaleString()
-                : d.next_follow_up
-                  ? new Date(d.next_follow_up).toLocaleDateString()
-                  : '—';
+    <div>
+      <div className="card">
+        <div className="card-head">
+          <h3>My Donors</h3>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="card-pad">
+          {loading ? (
+            <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
+          ) : donors.length === 0 ? (
+            <div className="empty-state" style={{ padding: 40 }}>
+              <div className="icon">{'\u{1F46B}'}</div>
+              <h3>No donors assigned</h3>
+              <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
+            </div>
+          ) : (
+            <CardView
+              items={donors}
+              emptyHeading="No donors assigned"
+              emptyText="Your assigned donors will appear here once the NGO admin assigns them."
+              index={currentIndex}
+              onIndexChange={setCurrentIndex}
+              renderCard={(d) => {
+                const overdue = d.is_overdue;
+                const nextAction = d.next_scheduled_at
+                  ? new Date(d.next_scheduled_at).toLocaleString()
+                  : d.next_follow_up
+                    ? new Date(d.next_follow_up).toLocaleDateString()
+                    : '—';
 
-              return (
-                <div className="donor-card" style={{ cursor: 'pointer' }} onClick={() => setSelectedDonor(d)}>
-                  <div className="donor-card-avatar">{initials(d.donor_name)}</div>
-                  <div className="donor-card-name">{d.donor_name}</div>
-                  <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
+                return (
+                  <div className="donor-card" style={{ cursor: 'default' }}>
+                    <div className="donor-card-avatar">{initials(d.donor_name)}</div>
+                    <div className="donor-card-name">{d.donor_name}</div>
+                    <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
 
-                  {overdue && <div className="donor-card-overdue">⚠ OVERDUE</div>}
+                    {overdue && <div className="donor-card-overdue">{'\u26A0'} OVERDUE</div>}
 
-                  <div className="donor-card-details">
-                    <div>
-                      <div className="label">City</div>
-                      <div className="value">{d.donor_city || '—'}</div>
-                    </div>
-                    <div>
-                      <div className="label">Amount</div>
-                      <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
-                    </div>
-                    <div>
-                      <div className="label">Status</div>
-                      <div className="value">{statusPill(d.status)}</div>
-                    </div>
-                    <div>
-                      <div className="label">Next Action</div>
-                      <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
-                        {nextAction}
+                    <div className="donor-card-details">
+                      <div>
+                        <div className="label">City</div>
+                        <div className="value">{d.donor_city || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="label">Amount</div>
+                        <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
+                      </div>
+                      <div>
+                        <div className="label">Status</div>
+                        <div className="value">{statusPill(d.status)}</div>
+                      </div>
+                      <div>
+                        <div className="label">Next Action</div>
+                        <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
+                          {nextAction}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            }}
-          />
-        )}
+                );
+              }}
+            />
+          )}
+        </div>
       </div>
+
+      {current && (
+        <DonorDetail assignmentId={current.id} donor={current} hideHeader />
+      )}
     </div>
   );
 }
