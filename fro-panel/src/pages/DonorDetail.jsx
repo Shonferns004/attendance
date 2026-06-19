@@ -43,6 +43,7 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
   const [message, setMessage] = useState(null);
 
   const [selected, setSelected] = useState(null);
+  const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -125,7 +126,7 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
 
       const logData = {
         action: 'disposition',
-        disposition_category: isConnected(selected) ? 'connected' : 'not_connected',
+        disposition_category: category,
         disposition_detail: selected,
         notes: notes || null,
       };
@@ -232,21 +233,37 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
           )}
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Disposition</label>
-            <select value={selected || ''} onChange={e => handleChipClick(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Category</label>
+            <select value={category} onChange={e => { setCategory(e.target.value); setSelected(null); }} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}>
               <option value="">— Select —</option>
-              <optgroup label="NOT CONNECTED">
+              <option value="not_connected">Not Connected</option>
+              <option value="connected">Connected</option>
+            </select>
+          </div>
+
+          {category === 'not_connected' && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Not Connected — Reason</label>
+              <select value={selected || ''} onChange={e => handleChipClick(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}>
+                <option value="">— Select —</option>
                 {NOT_CONNECTED.map(opt => (
                   <option key={opt.id} value={opt.id}>{opt.label}</option>
                 ))}
-              </optgroup>
-              <optgroup label="CONNECTED">
+              </select>
+            </div>
+          )}
+
+          {category === 'connected' && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Connected — Type</label>
+              <select value={selected || ''} onChange={e => handleChipClick(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}>
+                <option value="">— Select —</option>
                 {CONNECTED.map(opt => (
                   <option key={opt.id} value={opt.id}>{opt.label}</option>
                 ))}
-              </optgroup>
-            </select>
-          </div>
+              </select>
+            </div>
+          )}
 
           {selected === 'scheduled' && (
             <div style={{ marginBottom: 12 }}>
