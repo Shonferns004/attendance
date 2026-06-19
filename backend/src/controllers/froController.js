@@ -210,7 +210,7 @@ export const getDonorLogs = async (req, res) => {
 export const createDonorLogHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url } = req.body;
+    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url, pan_number } = req.body;
 
     if (!action) {
       return res.status(400).json({ message: 'action is required' });
@@ -236,6 +236,7 @@ export const createDonorLogHandler = async (req, res) => {
       disposition_detail: disposition_detail || null,
       scheduled_at: scheduled_at || null,
       payment_screenshot_url: payment_screenshot_url || null,
+      pan_number: pan_number || null,
       accounts_status: null,
       created_by: req.user.id,
     };

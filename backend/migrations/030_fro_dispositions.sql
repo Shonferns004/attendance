@@ -48,6 +48,9 @@ ALTER TABLE fro_donor_logs ADD CONSTRAINT fro_donor_logs_action_check
 -- 3b. Add payment tracking columns for lead_done with screenshot
 ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS payment_screenshot_url TEXT;
 ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS accounts_status TEXT DEFAULT NULL;
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS pan_number TEXT DEFAULT NULL;
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE fro_donor_logs ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES workers(id);
 
 -- 4. Create fro_scheduled_contacts table
 CREATE TABLE IF NOT EXISTS fro_scheduled_contacts (

@@ -6,11 +6,13 @@ import Donors from './pages/Donors';
 import DonorDetail from './pages/DonorDetail';
 import FroWorkers from './pages/FroWorkers';
 import Assignments from './pages/Assignments';
+import Accounts from './pages/Accounts';
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: '\u{1F4CA}' },
   { id: 'donors', label: 'Donors', icon: '\u{1F465}' },
   { id: 'assignments', label: 'Assignments', icon: '\u{1F4CB}' },
+  { id: 'accounts', label: 'Accounts', icon: '\u{1F4B0}' },
   { id: 'fro-workers', label: 'FRO Workers', icon: '\u{1F468}\u200D\u{1F4BC}' },
 ];
 
@@ -91,6 +93,7 @@ function DashboardPage() {
             <Donors onSelect={setSelectedDonor} />
           ))}
           {active === 'assignments' && <Assignments />}
+          {active === 'accounts' && <Accounts />}
           {active === 'fro-workers' && <FroWorkers />}
         </div>
       </div>

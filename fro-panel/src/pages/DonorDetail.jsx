@@ -47,6 +47,7 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
   const [scheduledAt, setScheduledAt] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentScreenshot, setPaymentScreenshot] = useState(null);
+  const [panNumber, setPanNumber] = useState('');
   const [uploading, setUploading] = useState(false);
 
   const load = useCallback(() => {
@@ -74,6 +75,7 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
     if (detail !== 'lead_done') {
       setPaymentAmount('');
       setPaymentScreenshot(null);
+      setPanNumber('');
     }
   };
 
@@ -132,6 +134,9 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
         if (screenshotUrl) {
           logData.payment_screenshot_url = screenshotUrl;
         }
+        if (panNumber) {
+          logData.pan_number = panNumber;
+        }
       }
 
       await addDonorLog(assignmentId, logData);
@@ -140,6 +145,7 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
       setNotes('');
       setPaymentAmount('');
       setPaymentScreenshot(null);
+      setPanNumber('');
       load();
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -243,6 +249,10 @@ export default function DonorDetail({ assignmentId, donor, onBack, hideHeader })
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>Payment Screenshot (optional)</label>
                 <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: 13, width: '100%' }} />
                 {paymentScreenshot && <span style={{ fontSize: 11, color: 'var(--primary)' }}>File selected</span>}
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: 'var(--ink-soft)' }}>PAN Card Number</label>
+                <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="e.g. ABCDE1234F" maxLength={10} style={{ padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
               </div>
             </>
           )}
