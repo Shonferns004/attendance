@@ -33,26 +33,29 @@ export default function Salary() {
         <div className="sa-card">
           <div className="sa-stat-grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))'}}>
             <div className="sa-stat-card"><div className="sa-stat-label">Base Salary</div><div className="sa-stat-value">{formatMoney(detail.totalSalary)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Total Paid</div><div className="sa-stat-value">{formatMoney(detail.totalPaid)}</div></div>
-            <div className="sa-stat-card"><div className="sa-stat-label">Total Pending</div><div className="sa-stat-value">{formatMoney(detail.totalPending)}</div></div>
+            <div className="sa-stat-card"><div className="sa-stat-label">Per Day</div><div className="sa-stat-value">{formatMoney(detail.perDay)}</div></div>
+            <div className="sa-stat-card"><div className="sa-stat-label">Days in Month</div><div className="sa-stat-value">{detail.daysInMonth || '—'}</div></div>
           </div>
         </div>
 
-        {detail.lastSalary && (
+        {detail.allocations?.length > 0 && (
           <div className="sa-card">
-            <h3 className="sa-card-title">Last Salary Record</h3>
-            <table className="sa-info-table">
+            <h3 className="sa-card-title">NGO Allocations</h3>
+            <table className="sa-table">
+              <thead><tr><th>NGO</th><th>Portion</th></tr></thead>
               <tbody>
-                <tr><td>Month</td><td>{detail.lastSalary.month || '—'}</td></tr>
-                <tr><td>Amount</td><td>{formatMoney(detail.lastSalary.amount)}</td></tr>
-                <tr><td>Status</td><td><span className={`sa-badge ${detail.lastSalary.status || 'pending'}`}>{detail.lastSalary.status || 'pending'}</span></td></tr>
-                <tr><td>Paid On</td><td>{detail.lastSalary.paid_at ? new Date(detail.lastSalary.paid_at).toLocaleString() : '—'}</td></tr>
+                {detail.allocations.map(a => (
+                  <tr key={a.id}>
+                    <td>{a.ngo_name || `NGO #${a.ngo_id}`}</td>
+                    <td>{formatMoney(a.salary_portion)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {detail.sundayBonus && (
+        {detail.sundayBonus?.incentiveAKI != null && (
           <div className="sa-card">
             <h3 className="sa-card-title">Incentives & Bonus</h3>
             <div className="sa-stat-grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
@@ -73,22 +76,20 @@ export default function Salary() {
 
       <div className="sa-card">
         <table className="sa-table">
-          <thead><tr><th>Worker</th><th>Department</th><th>Base Salary</th><th>Total Paid</th><th>Total Pending</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Worker</th><th>Department</th><th>Base Salary</th><th>Status</th><th></th></tr></thead>
           <tbody>
             {summary.map(s => (
               <tr key={s.id}>
                 <td>{s.name || `ID ${s.id}`}</td>
                 <td>{s.department || '—'}</td>
                 <td>{formatMoney(s.current_salary)}</td>
-                <td>{formatMoney(s.totalPaid || 0)}</td>
-                <td>{formatMoney((s.current_salary || 0) - (s.totalPaid || 0))}</td>
-                <td><span className={`sa-badge ${(s.current_salary || 0) <= (s.totalPaid || 0) ? 'active' : 'inactive'}`}>
-                  {(s.current_salary || 0) <= (s.totalPaid || 0) ? 'Paid' : 'Pending'}
+                <td><span className={`sa-badge ${s.current_salary ? 'active' : 'inactive'}`}>
+                  {s.current_salary ? 'Active' : 'No Salary'}
                 </span></td>
                 <td><button className="btn btn-sm" onClick={() => viewDetail(s.id)}>View</button></td>
               </tr>
             ))}
-            {summary.length === 0 && <tr><td colSpan={7} className="sa-muted sa-center">No salary data</td></tr>}
+            {summary.length === 0 && <tr><td colSpan={5} className="sa-muted sa-center">No salary data</td></tr>}
           </tbody>
         </table>
       </div>

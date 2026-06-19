@@ -13,6 +13,7 @@ import {
   setAllocations,
 } from '../models/workerNgoAllocationModel.js';
 import { saveWorkerEducation, getFullWorkerProfile } from '../models/onboardingModel.js';
+import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 
 const DEFAULT_PASSWORD = '123456';
 
@@ -162,6 +163,10 @@ export const getWorkers = async (req, res) => {
   try {
     const ngoId = req.user.role === 'hr' ? null : (req.user.ngo_id || req.query.ngo_id);
     const workers = await getAllWorkers(ngoId);
+    const salaries = await Promise.all(workers.map(w =>
+      getActiveSalaryByWorker(w.id).then(s => ({ id: w.id, salary: s ? parseFloat(s.salary) : null }))
+    ));
+    const salaryMap = Object.fromEntries(salaries.map(s => [s.id, s.salary]));
     const safeWorkers = workers.map((w) => ({
       id: w.id,
       name: w.name,
@@ -180,6 +185,7 @@ export const getWorkers = async (req, res) => {
       is_active: w.is_active,
       ngo_id: w.ngo_id,
       created_at: w.created_at,
+      salary: salaryMap[w.id],
     }));
     return res.json(safeWorkers);
   } catch (error) {
@@ -205,6 +211,7 @@ export const getWorker = async (req, res) => {
     if (!worker) {
       return res.status(404).json({ message: 'Worker not found' });
     }
+    const activeSalary = await getActiveSalaryByWorker(req.params.id);
     return res.json({
       id: worker.id,
       name: worker.name,
@@ -244,6 +251,7 @@ export const getWorker = async (req, res) => {
       declaration_date: worker.declaration_date,
       declaration_place: worker.declaration_place,
       previous_organizations: worker.previous_organizations,
+      salary: activeSalary ? parseFloat(activeSalary.salary) : null,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
