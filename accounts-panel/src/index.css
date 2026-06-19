@@ -243,6 +243,10 @@ tr:last-child td { border-bottom: none; }
 .pill-blue { background: #dbeafe; color: #1e40af; }
 .pill-gray { background: #f3f4f6; color: #374151; }
 .pill-purple { background: #f3e8ff; color: #6b21a8; }
+.pill-yellow { background: #fef9c3; color: #854d0e; }
+
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f9fafb; }
 
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);

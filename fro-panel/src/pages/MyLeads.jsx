@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchMyLeads } from '../api/leads';
+import CardView from '../components/CardView';
 
 const STATUS_STYLES = {
   hold: 'pill-yellow',
@@ -34,6 +35,9 @@ export default function MyLeads({ onSelect }) {
     return true;
   });
 
+  const initials = (name) =>
+    name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
   if (loading) return <div className="loading">Loading leads…</div>;
 
   return (
@@ -43,7 +47,7 @@ export default function MyLeads({ onSelect }) {
         <div className="card-pad">
           <div className="filter-bar">
             <input placeholder="Search name, phone, email…" value={search}
-              onChange={e => setSearch(e.target.value)} style={{ flex:1, minWidth:180 }} />
+              onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="">All statuses</option>
               <option value="hold">Hold</option>
@@ -54,42 +58,48 @@ export default function MyLeads({ onSelect }) {
             </select>
             <span className="count">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</span>
           </div>
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="icon">📋</div>
-              <h3>No leads found</h3>
-              <p>Leads assigned to you will appear here.</p>
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Source</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(lead => (
-                  <tr key={lead.id} className="clickable-row" onClick={() => onSelect && onSelect(lead)}>
-                    <td style={{ fontWeight:500 }}>{lead.name}</td>
-                    <td>{lead.phone || '\u2014'}</td>
-                    <td>{lead.source || 'Walk-in'}</td>
-                    <td>
+
+          <CardView
+            items={filtered}
+            emptyHeading="No leads found"
+            emptyText="Leads assigned to you will appear here."
+            renderCard={(lead) => (
+              <div className="lead-card">
+                <div className="lead-card-avatar">{initials(lead.name)}</div>
+                <div className="lead-card-name">{lead.name}</div>
+                <div className="lead-card-phone">{lead.phone || '—'}</div>
+
+                <div className="lead-card-details">
+                  <div>
+                    <div className="label">Source</div>
+                    <div className="value">{lead.source || 'Walk-in'}</div>
+                  </div>
+                  <div>
+                    <div className="label">Status</div>
+                    <div className="value">
                       <span className={`pill ${STATUS_STYLES[lead.status] || 'pill-gray'}`}>
                         {lead.status || 'hold'}
                       </span>
-                    </td>
-                    <td style={{ color:'var(--ink-soft)', fontSize:12 }}>
-                      {new Date(lead.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="label">Email</div>
+                    <div className="value">{lead.email || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="label">Created</div>
+                    <div className="value">
+                      {new Date(lead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                <button className="btn btn-primary" onClick={() => onSelect && onSelect(lead)}>
+                  View Full Details →
+                </button>
+              </div>
+            )}
+          />
         </div>
       </div>
     </div>

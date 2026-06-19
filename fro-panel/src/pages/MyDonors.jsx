@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getMyDonors } from '../api/donors';
 import DonorDetail from './DonorDetail';
+import CardView from '../components/CardView';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -57,6 +58,9 @@ const STATUS_PILL_MAP = {
   payment_rejected: 'pill-red',
 };
 
+const initials = (name) =>
+  (name || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
 export default function MyDonors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
@@ -87,55 +91,58 @@ export default function MyDonors({ onSelect }) {
             ))}
           </select>
         </div>
-        <div className="card-pad" style={{ padding: 0 }}>
+        <div className="card-pad">
           {loading ? (
             <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
-          ) : donors.length === 0 ? (
-            <div className="empty-state" style={{ padding: 40 }}>
-              <div className="icon">{'\u{1F46B}'}</div>
-              <h3>No donors assigned</h3>
-              <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
-            </div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>City</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Next Action</th>
-                  <th>Assigned</th>
-                </tr>
-              </thead>
-              <tbody>
-                {donors.map(d => {
-                  const overdue = d.is_overdue;
-                  const nextAction = d.next_scheduled_at
-                    ? new Date(d.next_scheduled_at).toLocaleString()
-                    : d.next_follow_up
-                      ? new Date(d.next_follow_up).toLocaleDateString()
-                      : '—';
-                  return (
-                    <tr key={d.id}
-                      className={`clickable-row${overdue ? ' row-overdue' : ''}`}
-                      onClick={() => setSelectedDonor(d)}
-                      style={overdue ? { background: '#fef2f2', borderLeft: '3px solid #dc2626' } : {}}>
-                      <td>{d.donor_name}</td>
-                      <td>{d.donor_mobile}</td>
-                      <td>{d.donor_city || '—'}</td>
-                      <td>₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</td>
-                      <td>{statusPill(d.status)}</td>
-                      <td style={{ fontSize: 12, color: overdue ? '#dc2626' : 'var(--ink-soft)', fontWeight: overdue ? 600 : 400 }}>
-                        {overdue ? 'OVERDUE: ' : ''}{nextAction}
-                      </td>
-                      <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(d.assigned_at).toLocaleDateString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <CardView
+              items={donors}
+              emptyHeading="No donors assigned"
+              emptyText="Your assigned donors will appear here once the NGO admin assigns them."
+              renderCard={(d) => {
+                const overdue = d.is_overdue;
+                const nextAction = d.next_scheduled_at
+                  ? new Date(d.next_scheduled_at).toLocaleString()
+                  : d.next_follow_up
+                    ? new Date(d.next_follow_up).toLocaleDateString()
+                    : '—';
+
+                return (
+                  <div className="donor-card">
+                    <div className="donor-card-avatar">{initials(d.donor_name)}</div>
+                    <div className="donor-card-name">{d.donor_name}</div>
+                    <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
+
+                    {overdue && <div className="donor-card-overdue">⚠ OVERDUE</div>}
+
+                    <div className="donor-card-details">
+                      <div>
+                        <div className="label">City</div>
+                        <div className="value">{d.donor_city || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="label">Amount</div>
+                        <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
+                      </div>
+                      <div>
+                        <div className="label">Status</div>
+                        <div className="value">{statusPill(d.status)}</div>
+                      </div>
+                      <div>
+                        <div className="label">Next Action</div>
+                        <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
+                          {nextAction}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button className="btn btn-primary" onClick={() => setSelectedDonor(d)}>
+                      View Full Details →
+                    </button>
+                  </div>
+                );
+              }}
+            />
           )}
         </div>
       </div>

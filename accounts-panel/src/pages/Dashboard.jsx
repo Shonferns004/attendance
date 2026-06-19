@@ -54,15 +54,14 @@ export default function Dashboard() {
                   <th>Agent</th>
                   <th>Status</th>
                   <th>Date</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {leads.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No leads found</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No leads found</td></tr>
                 )}
                 {leads.map(l => (
-                  <tr key={l.log_id} style={l.accounts_status !== 'pending' ? { opacity: 0.6 } : {}}>
+                  <tr key={l.log_id} className="clickable-row" onClick={() => setViewingId(l.log_id)} style={l.accounts_status !== 'pending' ? { opacity: 0.6 } : {}}>
                     <td>{l.donor_name}</td>
                     <td>{l.donor_mobile}</td>
                     <td><strong>₹{Number(l.amount || 0).toLocaleString('en-IN')}</strong></td>
@@ -74,9 +73,6 @@ export default function Dashboard() {
                        <span className="pill pill-gray">{l.accounts_status || '—'}</span>}
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(l.created_at).toLocaleDateString()}</td>
-                    <td>
-                      <button className="btn btn-sm btn-outline" onClick={() => setViewingId(l.log_id)}>View</button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
