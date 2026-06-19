@@ -124,7 +124,10 @@ export default function Donors() {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>City</th>
-                  <th>Amount</th>
+                  <th>Max Amount</th>
+                  <th>Total</th>
+                  <th>Donations</th>
+                  <th>Last</th>
                   <th>Category</th>
                 </tr>
               </thead>
@@ -136,11 +139,14 @@ export default function Donors() {
                     <td>{d.mobile_number}</td>
                     <td>{d.city || '—'}</td>
                     <td>₹{Number(d.amount || 0).toLocaleString('en-IN')}</td>
+                    <td>₹{Number(d.total_amount || 0).toLocaleString('en-IN')}</td>
+                    <td>{d.donation_count || 1}</td>
+                    <td style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{d.last_donation_date ? new Date(d.last_donation_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</td>
                     <td><span className="pill pill-blue">{d.data_category || d.category || 'General'}</span></td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No donors found</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No donors found</td></tr>
                 )}
               </tbody>
             </table>

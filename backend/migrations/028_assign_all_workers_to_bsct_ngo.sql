@@ -20,7 +20,6 @@ SELECT
   ), 0)
 FROM workers w;
 
--- Update workers.ngo_id to BSCT if it's NULL
+-- Set all workers' ngo_id to BSCT
 UPDATE workers
-SET ngo_id = (SELECT id FROM ngos WHERE name ILIKE 'BSCT' LIMIT 1)
-WHERE ngo_id IS NULL;
+SET ngo_id = (SELECT id FROM ngos WHERE name ILIKE 'BSCT' LIMIT 1);

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { insertImportedBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById } from '../models/importedDataModel.js';
-import { upsertDonorProfile, insertDonorProfile } from '../models/donorProfileModel.js';
+import { upsertDonorProfile } from '../models/donorProfileModel.js';
 import {
   parseUploadedFile,
   normalizeHeaders,
@@ -125,6 +125,9 @@ export const uploadImport = async (req, res) => {
           donors_bank_name: r.donors_bank_name || null,
           project_supported: r.project_supported || null,
           account_of: r.account_of || null,
+          amount: r.amount || 0,
+          category: r.category || '',
+          transaction_date: r.transaction_date || null,
           raw_data: r,
           import_batch_id: importBatchId,
         };
@@ -264,10 +267,11 @@ export const uploadOldDataImport = async (req, res) => {
         import_batch_id: importBatchId,
         category: r.category || '',
         amount: r.amount || 0,
+        transaction_date: r.transaction_date || null,
       };
       try {
-        await insertDonorProfile(profile);
-        profilesCreated++;
+        const created = await upsertDonorProfile(profile);
+        if (created && created.first_import_batch_id === importBatchId) profilesCreated++;
       } catch (e) {
         errors.push({ row: r, reason: e.message });
       }
