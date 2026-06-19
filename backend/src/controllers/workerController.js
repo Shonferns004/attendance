@@ -14,7 +14,6 @@ import {
 } from '../models/workerNgoAllocationModel.js';
 import { saveWorkerEducation, getFullWorkerProfile } from '../models/onboardingModel.js';
 
-const MAX_NGO_PORTION = 17000;
 const DEFAULT_PASSWORD = '123456';
 
 async function generateLoginId(name) {
@@ -40,9 +39,6 @@ function validateAllocations(allocations, salary) {
     return { valid: false, message: `Allocation portions (${totalPortion}) must sum to salary (${salary})` };
   }
   for (const a of allocations) {
-    if ((parseFloat(a.salary_portion) || 0) > MAX_NGO_PORTION) {
-      return { valid: false, message: `Each NGO portion cannot exceed ₹${MAX_NGO_PORTION.toLocaleString('en-IN')}` };
-    }
     if (!a.ngo_id) {
       return { valid: false, message: 'Each allocation must have an NGO' };
     }

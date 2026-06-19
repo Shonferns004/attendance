@@ -1,5 +1,6 @@
+import supabase from '../config/supabase.js';
 import { getAllDonorProfiles } from '../models/donorProfileModel.js';
-import { getAllWorkers, getWorkerById } from '../models/workerModel.js';
+import { getWorkerById } from '../models/workerModel.js';
 import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 import {
   createAssignment,
@@ -10,6 +11,16 @@ import {
 } from '../models/froAssignmentModel.js';
 import { upsertTarget, getTargetsByNgo, getTargetByWorker } from '../models/froTargetModel.js';
 import { getTotalCollectedByWorker } from '../models/froDonorLogModel.js';
+
+async function getFroWorkersByNgo(ngoId) {
+  const { data, error } = await supabase
+    .from('workers')
+    .select('*')
+    .eq('ngo_id', ngoId)
+    .ilike('department', 'fro');
+  if (error) throw error;
+  return data || [];
+}
 
 export const getDonors = async (req, res) => {
   try {
@@ -34,11 +45,7 @@ export const getDonors = async (req, res) => {
 export const getFroWorkers = async (req, res) => {
   try {
     const ngoId = req.user.ngo_id;
-    const workers = await getAllWorkers(ngoId);
-
-    const froWorkers = workers.filter(w =>
-      w.department && w.department.toLowerCase().trim() === 'fro'
-    );
+    const froWorkers = await getFroWorkersByNgo(ngoId);
 
     const result = await Promise.all(froWorkers.map(async (w) => {
       const salary = await getActiveSalaryByWorker(w.id);
@@ -121,10 +128,8 @@ export const distributeEqually = async (req, res) => {
   try {
     const ngoId = req.user.ngo_id;
 
-    const workers = await getAllWorkers(ngoId);
-    const froWorkers = workers.filter(w =>
-      w.department && w.department.toLowerCase().trim() === 'fro' && w.is_active !== false
-    );
+    const allFroWorkers = await getFroWorkersByNgo(ngoId);
+    const froWorkers = allFroWorkers.filter(w => w.is_active !== false);
 
     if (froWorkers.length === 0) {
       return res.status(400).json({ message: 'No active FRO workers found for this NGO' });
@@ -226,10 +231,7 @@ export const getTargets = async (req, res) => {
     const { month } = req.query;
     const targetMonth = month || new Date().toISOString().slice(0, 7) + '-01';
 
-    const workers = await getAllWorkers(ngoId);
-    const froWorkers = workers.filter(w =>
-      w.department && w.department.toLowerCase().trim() === 'fro'
-    );
+    const froWorkers = await getFroWorkersByNgo(ngoId);
 
     const manualTargets = await getTargetsByNgo(ngoId, targetMonth);
     const manualMap = {};
@@ -279,10 +281,7 @@ export const getDashboard = async (req, res) => {
   try {
     const ngoId = req.user.ngo_id;
 
-    const workers = await getAllWorkers(ngoId);
-    const froWorkers = workers.filter(w =>
-      w.department && w.department.toLowerCase().trim() === 'fro'
-    );
+    const froWorkers = await getFroWorkersByNgo(ngoId);
 
     const { getAllDonorProfiles } = await import('../models/donorProfileModel.js');
     const totalDonors = await getAllDonorProfiles(100000);
