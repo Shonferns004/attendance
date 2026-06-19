@@ -1,87 +1,23 @@
 import { useState, useEffect } from 'react';
 import { getMyDonors } from '../api/donors';
 import DonorDetail from './DonorDetail';
-import CardView from '../components/CardView';
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'busy', label: 'Busy' },
-  { value: 'ringing', label: 'Ringing' },
-  { value: 'unreachable', label: 'Unreachable' },
-  { value: 'switched_off', label: 'Switched Off' },
-  { value: 'wrong_number', label: 'Wrong Number' },
-  { value: 'invalid_number', label: 'Invalid' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'lead_done', label: 'Lead Done' },
-  { value: 'visit_donate', label: 'Visit & Donate' },
-  { value: 'promise_to_pay', label: 'Promise to Pay' },
-  { value: 'payment_pending', label: 'Payment Pending' },
-  { value: 'already_donated', label: 'Already Donated' },
-  { value: 'not_interested', label: 'Not Interested' },
-  { value: 'not_interested_now', label: 'Not Interested Now' },
-  { value: 'language_barrier', label: 'Language Barrier' },
-  { value: 'transferred_senior', label: 'Transferred to Senior' },
-  { value: 'query_complaint', label: 'Query/Complaint' },
-  { value: 'receipt_request', label: 'Receipt Request' },
-  { value: 'donation_collected', label: 'Donation Collected' },
-  { value: 'payment_rejected', label: 'Payment Rejected' },
-];
-
-const STATUS_PILL_MAP = {
-  pending: 'pill-yellow',
-  contacted: 'pill-blue',
-  scheduled: 'pill-purple',
-  follow_up: 'pill-purple',
-  busy: 'pill-gray',
-  ringing: 'pill-gray',
-  unreachable: 'pill-gray',
-  switched_off: 'pill-gray',
-  wrong_number: 'pill-gray',
-  invalid_number: 'pill-gray',
-  rejected: 'pill-red',
-  lead_done: 'pill-green',
-  visit_donate: 'pill-green',
-  donation_collected: 'pill-green',
-  promise_to_pay: 'pill-blue',
-  payment_pending: 'pill-yellow',
-  already_donated: 'pill-gray',
-  not_interested: 'pill-red',
-  not_interested_now: 'pill-red',
-  language_barrier: 'pill-gray',
-  transferred_senior: 'pill-blue',
-  query_complaint: 'pill-yellow',
-  receipt_request: 'pill-blue',
-  payment_rejected: 'pill-red',
-};
-
-const initials = (name) =>
-  (name || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function MyDonors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
     setLoading(true);
-    setCurrentIndex(0);
+    setIndex(0);
     getMyDonors(filterStatus)
       .then(setDonors)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [filterStatus]);
 
-  const statusPill = (status) => {
-    const label = status ? status.replace(/_/g, ' ') : 'unknown';
-    return <span className={`pill ${STATUS_PILL_MAP[status] || 'pill-gray'}`}>{label}</span>;
-  };
-
-  const current = donors[currentIndex];
+  const current = donors[index];
 
   return (
     <div>
@@ -89,73 +25,58 @@ export default function MyDonors({ onSelect }) {
         <div className="card-head">
           <h3>My Donors</h3>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="contacted">Contacted</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="busy">Busy</option>
+            <option value="ringing">Ringing</option>
+            <option value="unreachable">Unreachable</option>
+            <option value="switched_off">Switched Off</option>
+            <option value="wrong_number">Wrong Number</option>
+            <option value="invalid_number">Invalid</option>
+            <option value="rejected">Rejected</option>
+            <option value="lead_done">Lead Done</option>
+            <option value="visit_donate">Visit & Donate</option>
+            <option value="promise_to_pay">Promise to Pay</option>
+            <option value="payment_pending">Payment Pending</option>
+            <option value="already_donated">Already Donated</option>
+            <option value="not_interested">Not Interested</option>
+            <option value="not_interested_now">Not Interested Now</option>
+            <option value="language_barrier">Language Barrier</option>
+            <option value="transferred_senior">Transferred to Senior</option>
+            <option value="query_complaint">Query/Complaint</option>
+            <option value="receipt_request">Receipt Request</option>
+            <option value="donation_collected">Donation Collected</option>
+            <option value="payment_rejected">Payment Rejected</option>
           </select>
-        </div>
-        <div className="card-pad">
-          {loading ? (
-            <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
-          ) : donors.length === 0 ? (
-            <div className="empty-state" style={{ padding: 40 }}>
-              <div className="icon">{'\u{1F46B}'}</div>
-              <h3>No donors assigned</h3>
-              <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
-            </div>
-          ) : (
-            <CardView
-              items={donors}
-              emptyHeading="No donors assigned"
-              emptyText="Your assigned donors will appear here once the NGO admin assigns them."
-              index={currentIndex}
-              onIndexChange={setCurrentIndex}
-              renderCard={(d) => {
-                const overdue = d.is_overdue;
-                const nextAction = d.next_scheduled_at
-                  ? new Date(d.next_scheduled_at).toLocaleString()
-                  : d.next_follow_up
-                    ? new Date(d.next_follow_up).toLocaleDateString()
-                    : '—';
-
-                return (
-                  <div className="donor-card" style={{ cursor: 'default' }}>
-                    <div className="donor-card-avatar">{initials(d.donor_name)}</div>
-                    <div className="donor-card-name">{d.donor_name}</div>
-                    <div className="donor-card-phone">{d.donor_mobile || '—'}</div>
-
-                    {overdue && <div className="donor-card-overdue">{'\u26A0'} OVERDUE</div>}
-
-                    <div className="donor-card-details">
-                      <div>
-                        <div className="label">City</div>
-                        <div className="value">{d.donor_city || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="label">Amount</div>
-                        <div className="value">₹{Number(d.donor_amount || 0).toLocaleString('en-IN')}</div>
-                      </div>
-                      <div>
-                        <div className="label">Status</div>
-                        <div className="value">{statusPill(d.status)}</div>
-                      </div>
-                      <div>
-                        <div className="label">Next Action</div>
-                        <div className="value" style={overdue ? { color: '#dc2626', fontWeight: 600 } : {}}>
-                          {nextAction}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }}
-            />
-          )}
         </div>
       </div>
 
-      {current && (
-        <DonorDetail assignmentId={current.id} donor={current} hideHeader />
+      {loading ? (
+        <div className="loading" style={{ padding: 40 }}>Loading donors...</div>
+      ) : donors.length === 0 ? (
+        <div className="empty-state" style={{ padding: 40 }}>
+          <div className="icon">{'\u{1F46B}'}</div>
+          <h3>No donors assigned</h3>
+          <p>Your assigned donors will appear here once the NGO admin assigns them.</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <button className="btn btn-sm" disabled={index === 0} onClick={() => setIndex(i => i - 1)}
+              style={{ background: index === 0 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>
+              {'\u2190'} Prev
+            </button>
+            <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{index + 1} of {donors.length}</span>
+            <button className="btn btn-sm" disabled={index === donors.length - 1} onClick={() => setIndex(i => i + 1)}
+              style={{ background: index === donors.length - 1 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>
+              Next {'\u2192'}
+            </button>
+          </div>
+          <DonorDetail assignmentId={current.id} donor={current} />
+        </>
       )}
     </div>
   );

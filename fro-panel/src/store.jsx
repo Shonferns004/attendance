@@ -10,7 +10,7 @@ export function TelecallerProvider({ children }) {
   useEffect(() => {
     const t = getToken();
     const u = getUser();
-    if (t && u && (u.role === 'telecaller' || (u.role === 'worker' && u.department === 'FRO'))) {
+    if (t && u && (u._authRole === 'telecaller' || (u._authRole === 'worker' && u.department === 'FRO'))) {
       setToken(t);
       setUser(u);
     } else {
