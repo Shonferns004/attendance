@@ -44,6 +44,8 @@ export const upsertDonorProfile = async (profile) => {
     if (profile.project_supported) updates.project_supported = profile.project_supported;
     if (profile.account_of) updates.account_of = profile.account_of;
     if (profile.category) updates.category = profile.category;
+    if (profile.station) updates.station = profile.station;
+    if (profile.ngo) updates.ngo = profile.ngo;
     if (profile.transaction_date) updates.last_donation_date = profile.transaction_date;
 
     const { data, error } = await supabase
@@ -79,6 +81,8 @@ export const upsertDonorProfile = async (profile) => {
       project_supported: profile.project_supported || null,
       account_of: profile.account_of || null,
       category: profile.category || '',
+      station: profile.station || null,
+      ngo: profile.ngo || null,
       amount: profile.amount || 0,
       total_amount: profile.amount || 0,
       donation_count: 1,
@@ -117,6 +121,8 @@ export const insertDonorProfile = async (profile) => {
     raw_data: profile.raw_data || null,
     first_import_batch_id: profile.import_batch_id || null,
     category: profile.category || '',
+    station: profile.station || null,
+    ngo: profile.ngo || null,
     amount: profile.amount || 0,
   };
   const { data, error } = await supabase
@@ -132,6 +138,17 @@ export const getAllDonorProfiles = async (limit = 500) => {
   const { data, error } = await supabase
     .from('donor_profiles')
     .select('*')
+    .order('first_imported_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
+};
+
+export const getDonorProfilesByNgo = async (ngoList, limit = 1000) => {
+  const { data, error } = await supabase
+    .from('donor_profiles')
+    .select('*')
+    .in('ngo', ngoList)
     .order('first_imported_at', { ascending: false })
     .limit(limit);
   if (error) throw error;

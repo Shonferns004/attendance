@@ -1,7 +1,8 @@
 import supabase from '../config/supabase.js';
-import { getAllDonorProfiles, getDonorByMobile } from '../models/donorProfileModel.js';
+import { getAllDonorProfiles, getDonorByMobile, getDonorProfilesByNgo } from '../models/donorProfileModel.js';
 import { getWorkerById } from '../models/workerModel.js';
 import { getActiveSalaryByWorker } from '../models/salaryModel.js';
+import { getUserNgoAccess } from '../models/userNgoAccessModel.js';
 import {
   createAssignment,
   batchCreateAssignments,
@@ -25,7 +26,18 @@ async function getFroWorkersByNgo(ngoId) {
 export const getDonors = async (req, res) => {
   try {
     const { search, limit } = req.query;
-    let donors = await getAllDonorProfiles(parseInt(limit) || 1000);
+    const access = await getUserNgoAccess(req.user.id);
+    const ngoNames = access.map(a => a.ngo_name).filter(Boolean);
+
+    let donors;
+    if (ngoNames.length > 0) {
+      donors = await getDonorProfilesByNgo(ngoNames, parseInt(limit) || 1000);
+    } else if (req.user.ngo_id) {
+      const { data: ngo } = await supabase.from('ngos').select('name').eq('id', req.user.ngo_id).single();
+      donors = ngo ? await getDonorProfilesByNgo([ngo.name], parseInt(limit) || 1000) : [];
+    } else {
+      donors = [];
+    }
 
     if (search) {
       const q = search.toLowerCase();

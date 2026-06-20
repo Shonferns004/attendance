@@ -24,13 +24,19 @@ export async function api(path, options = {}) {
   const headers = { ...options.headers }
   if (!isFormData) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || `Request failed: ${res.status}`)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), options.timeout || 300000)
+  try {
+    const res = await fetch(`${BASE}${path}`, { ...options, headers, signal: controller.signal })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }))
+      throw new Error(err.message || `Request failed: ${res.status}`)
+    }
+    if (options.raw) return res
+    return res.json()
+  } finally {
+    clearTimeout(timeout)
   }
-  if (options.raw) return res
-  return res.json()
 }
 
 export async function login(email, password) {

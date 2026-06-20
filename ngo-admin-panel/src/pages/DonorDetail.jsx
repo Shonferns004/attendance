@@ -35,6 +35,8 @@ export default function DonorDetail({ donor, onBack }) {
             <div><strong>Name:</strong> {p.name || '—'}</div>
             <div><strong>Phone:</strong> {p.mobile_number}</div>
             <div><strong>City:</strong> {p.city || '—'}</div>
+            <div><strong>Station:</strong> {p.station || '—'}</div>
+            <div><strong>NGO:</strong> {p.ngo || '—'}</div>
             <div><strong>Email:</strong> {p.email || '—'}</div>
             <div><strong>Address:</strong> {p.address_1 || '—'}{p.address_2 ? `, ${p.address_2}` : ''}</div>
             <div><strong>PAN:</strong> {p.pan_number || '—'}</div>
