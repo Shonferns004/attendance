@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:geolocator/geolocator.dart';
@@ -11,15 +11,34 @@ class ScannerPage extends StatefulWidget {
   State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> {
+class _ScannerPageState extends State<ScannerPage>
+    with SingleTickerProviderStateMixin {
+  final MobileScannerController _controller = MobileScannerController();
   bool _detected = false;
-  bool _hasError = false;
-  int _scannerKey = 0;
-  int _retryCount = 0;
-  static const int _maxRetries = 3;
+  late final AnimationController _scanAnim;
+  late final Animation<double> _scanLine;
 
-  void _onDetect(BarcodeCapture capture) {
-    if (_detected || _hasError || capture.barcodes.isEmpty) return;
+  @override
+  void initState() {
+    super.initState();
+    _scanAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _scanLine = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _scanAnim, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scanAnim.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    if (_detected || capture.barcodes.isEmpty) return;
     _detected = true;
 
     final raw = capture.barcodes.first.rawValue ?? '';
@@ -28,29 +47,25 @@ class _ScannerPageState extends State<ScannerPage> {
       map = Map<String, dynamic>.from(jsonDecode(raw));
     } catch (_) {
       if (mounted) {
-        _detected = false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid QR code format')),
         );
       }
+      _detected = false;
       return;
     }
 
     final code = map['code']?.toString();
     if (code == null) {
       if (mounted) {
-        _detected = false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid QR code data')),
         );
       }
+      _detected = false;
       return;
     }
 
-    _getLocationAndReturn(code);
-  }
-
-  Future<void> _getLocationAndReturn(String code) async {
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
@@ -65,6 +80,7 @@ class _ScannerPageState extends State<ScannerPage> {
     } catch (e) {
       if (mounted) {
         _detected = false;
+        _controller.start();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('GPS error: $e')),
         );
@@ -72,67 +88,110 @@ class _ScannerPageState extends State<ScannerPage> {
     }
   }
 
-  void _onScannerError(Object error) {
-    if (!mounted || _retryCount >= _maxRetries) return;
-    setState(() {
-      _hasError = true;
-      _retryCount++;
-    });
-    Timer(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() {
-        _scannerKey++;
-        _hasError = false;
-      });
-    });
-  }
-
-  void _retryManual() {
-    setState(() {
-      _retryCount = 0;
-      _scannerKey++;
-      _hasError = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('Scan QR Code'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: _onDetect,
+            placeholderBuilder: (context, child) => const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 16),
+                  Text('Starting camera...', style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
+            errorBuilder: (context, error, child) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Camera error: ${error.errorCode.name}')),
+                  );
+                }
+              });
+              return const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.camera_alt_outlined, color: Colors.white54, size: 56),
+                    SizedBox(height: 16),
+                    Text('Camera unavailable', style: TextStyle(color: Colors.white70)),
+                  ],
+                ),
+              );
+            },
+          ),
+          Positioned.fill(child: _ScanOverlay(scanLine: _scanLine)),
+          Positioned(
+            top: 48,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: _hasError ? _buildErrorUi() : _buildScanner(),
     );
   }
+}
 
-  Widget _buildScanner() {
-    return MobileScanner(
-      key: ValueKey('scanner_$_scannerKey'),
-      onDetect: _onDetect,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _onScannerError(error);
-        });
-        return const Center(
+class _ScanOverlay extends StatelessWidget {
+  final Animation<double> scanLine;
+
+  const _ScanOverlay({required this.scanLine});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        if (width <= 0 || height <= 0) return const SizedBox();
+
+        final scanSize = width * 0.7;
+        final left = (width - scanSize) / 2;
+        final top = (height - scanSize) / 2;
+        final scanRect = Rect.fromLTWH(left, top, scanSize, scanSize);
+
+        return AnimatedBuilder(
+          animation: scanLine,
+          builder: (_, child) => CustomPaint(
+            painter: _OverlayPainter(
+              scanRect: scanRect,
+              scanLineValue: scanLine.value,
+            ),
+            child: child,
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 32, height: 32,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Starting camera...',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+              const Spacer(),
+              Padding(
+                padding: EdgeInsets.only(bottom: height * 0.18),
+                child: Text(
+                  'Align QR code within the frame',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
             ],
           ),
@@ -140,52 +199,52 @@ class _ScannerPageState extends State<ScannerPage> {
       },
     );
   }
+}
 
-  Widget _buildErrorUi() {
-    final isFinal = _retryCount >= _maxRetries;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isFinal ? Icons.camera_alt_outlined : Icons.refresh,
-              color: Colors.white54, size: 56,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              isFinal
-                  ? 'Could not open camera.\nTap Retry or go back.'
-                  : 'Camera error — retrying...',
-              style: const TextStyle(color: Colors.white70, fontSize: 15),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('Back'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white12,
-                    foregroundColor: Colors.white70,
-                  ),
-                ),
-                if (isFinal) const SizedBox(width: 16),
-                if (isFinal)
-                  ElevatedButton.icon(
-                    onPressed: _retryManual,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Retry'),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+class _OverlayPainter extends CustomPainter {
+  final Rect scanRect;
+  final double scanLineValue;
+
+  _OverlayPainter({required this.scanRect, this.scanLineValue = 0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final overlayPaint = Paint()..color = Colors.black.withValues(alpha: 0.55);
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRRect(RRect.fromRectAndRadius(scanRect, const Radius.circular(12)));
+    canvas.drawPath(path, overlayPaint);
+
+    final lineY = scanRect.top + scanRect.height * scanLineValue;
+    final linePaint = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: 0.6)
+      ..strokeWidth = 2.0;
+    canvas.drawLine(
+      Offset(scanRect.left + 4, lineY),
+      Offset(scanRect.right - 4, lineY),
+      linePaint,
     );
+
+    final cornerPaint = Paint()
+      ..color = const Color(0xFF00E676)
+      ..strokeWidth = 3.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    const cornerLen = 22.0;
+    final r = scanRect;
+
+    canvas.drawLine(r.topLeft, Offset(r.left + cornerLen, r.top), cornerPaint);
+    canvas.drawLine(r.topLeft, Offset(r.left, r.top + cornerLen), cornerPaint);
+    canvas.drawLine(r.topRight, Offset(r.right - cornerLen, r.top), cornerPaint);
+    canvas.drawLine(r.topRight, Offset(r.right, r.top + cornerLen), cornerPaint);
+    canvas.drawLine(r.bottomLeft, Offset(r.left + cornerLen, r.bottom), cornerPaint);
+    canvas.drawLine(r.bottomLeft, Offset(r.left, r.bottom - cornerLen), cornerPaint);
+    canvas.drawLine(r.bottomRight, Offset(r.right - cornerLen, r.bottom), cornerPaint);
+    canvas.drawLine(r.bottomRight, Offset(r.right, r.bottom - cornerLen), cornerPaint);
   }
+
+  @override
+  bool shouldRepaint(covariant _OverlayPainter oldDelegate) =>
+      scanRect != oldDelegate.scanRect || scanLineValue != oldDelegate.scanLineValue;
 }

@@ -67,8 +67,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _accountHolderCtrl = TextEditingController(text: w['account_holder_name'] ?? '');
     _ifscCtrl = TextEditingController(text: w['ifsc_code'] ?? '');
     _accountNoCtrl = TextEditingController(text: w['account_number'] ?? '');
-    if (w['gender'] != null) _gender = w['gender'];
-    if (w['marital_status'] != null) _maritalStatus = w['marital_status'];
+    if (w['gender'] != null && w['gender'].toString().isNotEmpty) _gender = w['gender'];
+    if (w['marital_status'] != null && w['marital_status'].toString().isNotEmpty) _maritalStatus = w['marital_status'];
     if (w['dob'] != null) _dob = DateTime.tryParse(w['dob'].toString());
     final education = w['education'];
     if (education is List) {
@@ -380,7 +380,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        initialValue: items.contains(value) ? value : null,
         items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
         onChanged: onChanged,
         decoration: InputDecoration(

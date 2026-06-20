@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SkeletonLoader extends StatefulWidget {
   final Widget child;
@@ -97,6 +96,20 @@ class HomeSkeleton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class SplashSkeleton extends StatelessWidget {
+  const SplashSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFFFFFFF),
+      body: Center(
+        child: SkeletonBlock(width: 120, height: 120, borderRadius: 12),
       ),
     );
   }

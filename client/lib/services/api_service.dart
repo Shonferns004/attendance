@@ -144,6 +144,17 @@ class ApiService {
     return body;
   }
 
+  static Future<Map<String, dynamic>> applyAdvance(String amount, String reason) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/advances/apply'),
+      headers: await _headers(),
+      body: jsonEncode({'amount': amount, 'reason': reason}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 201) throw Exception(body['message'] ?? 'Failed to apply advance');
+    return body;
+  }
+
   static Future<Map<String, dynamic>?> getCachedProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('cache_profile');

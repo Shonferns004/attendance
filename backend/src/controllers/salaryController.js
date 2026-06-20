@@ -381,9 +381,9 @@ export const getMySalaryBreakdown = async (req, res) => {
     // Late deduction
     let lateDeductionDays = 0;
 
-    if (totalLateMinutes > 540) {
-      lateDeductionDays = Math.round((totalLateMinutes / 540) * 2) / 2;
-    } else if (totalLateMinutes > 270) {
+    if (totalLateMinutes > 480) {
+      lateDeductionDays = Math.round((totalLateMinutes / 480) * 2) / 2;
+    } else if (totalLateMinutes > 240) {
       lateDeductionDays = 1;
     } else if (totalLateMinutes > 180) {
       lateDeductionDays = 0.5;

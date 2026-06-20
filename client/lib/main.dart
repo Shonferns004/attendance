@@ -294,7 +294,7 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _checkAuth() async {
     try {
-      final token = await ApiService.getToken();
+      final token = await ApiService.getToken().timeout(const Duration(seconds: 2));
       if (token != null && firebaseInitialized) {
         await NotificationService().init();
       }
@@ -302,7 +302,7 @@ class _AuthGateState extends State<AuthGate> {
         // Always query server; use local cache only as fallback
         final prefs = await SharedPreferences.getInstance();
         try {
-          final status = await ApiService.checkOnboardingStatus();
+          final status = await ApiService.checkOnboardingStatus().timeout(const Duration(seconds: 2));
           final serverCompleted = status['onboarding_completed'] == true;
           if (serverCompleted) {
             await prefs.setBool('has_seen_onboarding', true);

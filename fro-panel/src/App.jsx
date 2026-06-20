@@ -3,10 +3,8 @@ import { TelecallerProvider, useTelecaller } from './store';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import MyLeads from './pages/MyLeads';
-import LeadDetail from './pages/LeadDetail';
 import CallLogs from './pages/CallLogs';
 import MyDonors from './pages/MyDonors';
-import DonorDetail from './pages/DonorDetail';
 import MyTarget from './pages/MyTarget';
 
 const NAV = [
@@ -40,8 +38,6 @@ function Sidebar({ active, setActive }) {
 function DashboardPage() {
   const { user, logout } = useTelecaller();
   const [active, setActive] = useState('dashboard');
-  const [selectedLead, setSelectedLead] = useState(null);
-  const [selectedDonorAssignment, setSelectedDonorAssignment] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
@@ -53,20 +49,13 @@ function DashboardPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showMenu]);
 
-  const handleBack = useCallback(() => setSelectedLead(null), []);
-  const handleSelectLead = useCallback((lead) => setSelectedLead(lead), []);
-  const handleBackDonor = useCallback(() => setSelectedDonorAssignment(null), []);
-  const handleSelectDonor = useCallback((assignment) => setSelectedDonorAssignment(assignment), []);
   const handleNav = useCallback((id) => {
     setActive(id);
-    setSelectedLead(null);
-    setSelectedDonorAssignment(null);
   }, []);
 
   const userName = user?.name || 'User';
   const userRole = 'FRO Worker';
   const initials = userName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-
   const meta = NAV.find(n => n.id === active);
 
   return (
@@ -76,7 +65,7 @@ function DashboardPage() {
         <header className="topbar">
           <div>
             <div className="eyebrow">{meta?.label || 'Dashboard'}</div>
-            <h2>{selectedLead ? selectedLead.name : selectedDonorAssignment?.donor_name || (meta?.label || 'Dashboard')}</h2>
+            <h2>{meta?.label || 'Dashboard'}</h2>
           </div>
           <div className="topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
             <div className="topbar-user-text">
@@ -95,16 +84,12 @@ function DashboardPage() {
           </div>
         </header>
         <div className="content-body">
-          {selectedLead ? (
-            <LeadDetail leadId={selectedLead.id} onBack={handleBack} />
-          ) : selectedDonorAssignment ? (
-            <DonorDetail assignmentId={selectedDonorAssignment.id} donor={selectedDonorAssignment} onBack={handleBackDonor} />
-          ) : active === 'dashboard' ? (
+          {active === 'dashboard' ? (
             <Dashboard />
           ) : active === 'leads' ? (
-            <MyLeads onSelect={handleSelectLead} />
+            <MyLeads />
           ) : active === 'my-donors' ? (
-            <MyDonors onSelect={handleSelectDonor} />
+            <MyDonors />
           ) : active === 'call-logs' ? (
             <CallLogs />
           ) : active === 'my-target' ? (

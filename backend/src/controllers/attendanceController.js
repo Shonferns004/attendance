@@ -80,15 +80,6 @@ export const punchIn = async (req, res) => {
       ? (h - effectiveStart.hour) * 60 + m - effectiveStart.minute
       : 0;
 
-    if (lateMinutes > 0) {
-      const usedLate = await getMonthlyLateMinutes(req.user.id);
-      if (usedLate + lateMinutes > MAX_LATE_MINUTES) {
-        return res.status(403).json({
-          message: `Late limit exceeded. Used ${usedLate}/${MAX_LATE_MINUTES} min this month.`,
-        });
-      }
-    }
-
     const status = lateMinutes > 0 ? 'late' : 'present';
 
     if (existing) {

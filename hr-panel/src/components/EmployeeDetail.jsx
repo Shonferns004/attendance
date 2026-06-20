@@ -275,9 +275,9 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   let lateDeductionDays = 0;
   let totalDue;
 
-  if (totalLateMinutes > 540) {
-    lateDeductionDays = Math.round((totalLateMinutes / 540) * 2) / 2;
-  } else if (totalLateMinutes > 270) {
+  if (totalLateMinutes > 480) {
+    lateDeductionDays = Math.round((totalLateMinutes / 480) * 2) / 2;
+  } else if (totalLateMinutes > 240) {
     lateDeductionDays = 1;
   } else if (totalLateMinutes > 180) {
     lateDeductionDays = 0.5;
@@ -345,8 +345,8 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
     }
     const pLateMins = pAtt.filter(a => !pJoined || a.date >= pJoinCutoff).reduce((s, a) => s + (a.late_minutes || 0), 0);
     let pLateDays = 0;
-    if (pLateMins > 540) pLateDays = Math.round((pLateMins / 540) * 2) / 2;
-    else if (pLateMins > 270) pLateDays = 1;
+    if (pLateMins > 480) pLateDays = Math.round((pLateMins / 480) * 2) / 2;
+    else if (pLateMins > 240) pLateDays = 1;
     else if (pLateMins > 180) pLateDays = 0.5;
     const pPaid = Math.max(0, pAvailable - pDeducted.size);
     const pJoining = (pJoined && monthsEmployed <= 3) ? 1.5 : 0;
@@ -554,12 +554,12 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
 
                 {(() => {
                   const mLate = monthAttendance.reduce((s, a) => s + (a.late_minutes || 0), 0);
-                  const activeIdx = mLate > 540 ? 3 : mLate > 270 ? 2 : mLate > 180 ? 1 : 0;
+                  const activeIdx = mLate > 480 ? 3 : mLate > 240 ? 2 : mLate > 180 ? 1 : 0;
                   const tiers = [
                     { label:'None', sub:'≤180 min', color:'var(--sage)' },
-                    { label:'Half', sub:'181–270 min', color:'var(--gold)' },
-                    { label:'1 Day', sub:'271–540 min', color:'#e67e22' },
-                    { label:'Proportional', sub:'>540 min', color:'var(--danger)' },
+                    { label:'Half', sub:'181–240 min', color:'var(--gold)' },
+                    { label:'1 Day', sub:'241–480 min', color:'#e67e22' },
+                    { label:'Proportional', sub:'>480 min', color:'var(--danger)' },
                   ];
                   return (
                     <div style={{ marginBottom:16, padding:'12px 16px', background:'var(--bg)', borderRadius:'var(--radius-sm)' }}>
@@ -972,14 +972,14 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
 
                       {/* Late minutes badge */}
                       <div style={{ marginBottom:14 }}>
-                        {totalLateMinutes > 540 ? (
+                        {totalLateMinutes > 480 ? (
                           <div style={{ padding:'10px 14px', border:'1px solid #d9534f', borderRadius:8, background:'#fff5f5', fontSize:12 }}>
                             <div style={{ fontWeight:600, color:'#d9534f' }}>⚠ {totalLateMinutes} min late ({Math.round(totalLateMinutes / 60 * 10) / 10} hrs) → {lateDeductionDays} day{lateDeductionDays !== 1 ? 's' : ''} deducted (proportional)</div>
                             <div style={{ color:'var(--ink-soft)', marginTop:4 }}>
-                              Every 9 hours (540 min) of lateness = 1 day deducted.
+                              Every 8 hours (480 min) of lateness = 1 day deducted.
                             </div>
                           </div>
-                        ) : totalLateMinutes > 270 ? (
+                        ) : totalLateMinutes > 240 ? (
                           <div style={{ padding:'8px 14px', border:'1px solid #e67e22', borderRadius:8, background:'#fff8f0', fontSize:12 }}>
                             <strong style={{ color:'#e67e22' }}>{totalLateMinutes} min late → 1 day deducted</strong>
                           </div>

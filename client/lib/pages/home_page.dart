@@ -5,10 +5,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../widgets/skeleton_loader.dart';
-import '../widgets/progress_circle.dart';
 
 import 'scanner_page.dart';
 import 'leave_page.dart';
+import 'attendance_list_page.dart';
+import 'advance_page.dart';
 
 class HomePage extends StatefulWidget {
   final int tabChangeVersion;
@@ -686,7 +687,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
-                                      _isPunchedIn ? Icons.logout : Icons.qr_code_scanner,
+                                      _isPunchedIn ? Icons.exit_to_app : Icons.qr_code_scanner,
                                       size: 48,
                                       color: Colors.white,
                                     ),
@@ -781,103 +782,156 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFffffff),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFc3c6ce)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceListPage())),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFffffff),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFc3c6ce)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${(_attendanceRate * 100).toStringAsFixed(0)}%',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f),
-                                      ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 36, height: 36,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF2a6a4b).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(Icons.event_available, size: 20, color: const Color(0xFF2a6a4b)),
+                                        ),
+                                        const Spacer(),
+                                        Icon(Icons.chevron_right, size: 18, color: const Color(0xFFc3c6ce)),
+                                      ],
                                     ),
-                                    const Spacer(),
-                                    ProgressCircle(
-                                      size: 40, thickness: 3,
-                                      value: _attendanceRate,
-                                      color: const Color(0xFF2a6a4b),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${(_attendanceRate * 100).toStringAsFixed(0)}%',
+                                          style: GoogleFonts.hankenGrotesk(
+                                            fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF171c1f),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Text(
+                                            'Attendance',
+                                            style: TextStyle(
+                                              fontSize: 11, fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF74777e),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: LinearProgressIndicator(
+                                        value: _attendanceRate,
+                                        backgroundColor: const Color(0xFFe0e4ea),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2a6a4b)),
+                                        minHeight: 4,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Attendance',
-                                  style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
-                                    color: const Color(0xFF43474d),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFffffff),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFc3c6ce)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceListPage())),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFffffff),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFc3c6ce)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 24, fontWeight: FontWeight.w700, color: _lateTierColor,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 36, height: 36,
+                                          decoration: BoxDecoration(
+                                            color: _lateTierColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(Icons.access_time, size: 20, color: _lateTierColor),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: _lateTierColor.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(3),
+                                          ),
+                                          child: Text(
+                                            _lateTierLabel,
+                                            style: TextStyle(
+                                              fontSize: 9, fontWeight: FontWeight.w700,
+                                              color: _lateTierColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const Spacer(),
-                                    ProgressCircle(
-                                      size: 40, thickness: 3,
-                                      value: (_lateUsed / _lateProgressMax).clamp(0.0, 1.0),
-                                      color: _lateTierColor,
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${_lateUsed ~/ 60}:${(_lateUsed % 60).toString().padLeft(2, '0')}h',
+                                          style: GoogleFonts.hankenGrotesk(
+                                            fontSize: 28, fontWeight: FontWeight.w800, color: _lateTierColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Text(
+                                            'Late batch',
+                                            style: TextStyle(
+                                              fontSize: 11, fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF74777e),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: LinearProgressIndicator(
+                                        value: (_lateUsed / _lateProgressMax).clamp(0.0, 1.0),
+                                        backgroundColor: const Color(0xFFe0e4ea),
+                                        valueColor: AlwaysStoppedAnimation<Color>(_lateTierColor),
+                                        minHeight: 4,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Late balance',
-                                  style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
-                                    color: const Color(0xFF43474d),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _lateTierColor.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child: Text(
-                                    _lateTierLabel,
-                                    style: TextStyle(
-                                      fontSize: 10, fontWeight: FontWeight.w700,
-                                      color: _lateTierColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -926,9 +980,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
                             ],
                            ),
-                         ),
-                       ),
-                     const SizedBox(height: 12),
+                          ),
+                        ),
+                      const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -936,33 +990,52 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: const Color(0xFFc3c6ce)),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48, height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFaff1ca),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Icon(Icons.history_edu, size: 22, color: Color(0xFF2a6a4b)),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('My Journal', style: GoogleFonts.hankenGrotesk(
-                                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
-                                )),
-                                Text('Past flow records', style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF43474d),
-                                )),
-                              ],
+                      child: InkWell(
+                        onTap: () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => DraggableScrollableSheet(
+                            initialChildSize: 0.6,
+                            minChildSize: 0.4,
+                            maxChildSize: 0.85,
+                            builder: (_, scrollController) => Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFffffff),
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                              ),
+                              child: AdvancePage(scrollController: scrollController),
                             ),
                           ),
-                          Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48, height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFaff1ca),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.account_balance_wallet, size: 22, color: Color(0xFF2a6a4b)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Apply for Advance', style: GoogleFonts.hankenGrotesk(
+                                    fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                                  )),
+                                  Text('Request salary advance', style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF43474d),
+                                  )),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
+                          ],
+                        ),
                       ),
                     ),
                   ],
