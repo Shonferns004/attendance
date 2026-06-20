@@ -38,7 +38,7 @@ const COLUMN_MAP = {
   'address1': 'address_1',
   address2: 'address_2',
   'address2': 'address_2',
-  station: null,
+  station: 'station',
   eastwest: null,
   city: 'city',
   pincode: 'pin_code',
@@ -53,8 +53,8 @@ const COLUMN_MAP = {
   datacategory: 'category',
   category: 'category',
   data_category: 'category',
-  ngocode: 'category',
-  ngo: 'category',
+  ngocode: 'ngo',
+  ngo: 'ngo',
   team: 'team',
   fsename: null,
   mop: 'mop',
@@ -82,6 +82,95 @@ const COLUMN_MAP = {
   whatsupandroidno: 'whatsapp_no',
   'whatsapp': 'whatsapp_no',
   'whatsappno': 'whatsapp_no',
+}
+
+function buildColumnMap(headers) {
+  const map = {};
+  const fieldsUsed = {};
+  for (let i = 0; i < headers.length; i++) {
+    const key = (headers[i]?.toString() || '').toLowerCase().replace(/[\s_\-./]+/g, '').trim();
+    let field = COLUMN_MAP[key] || null;
+    if (field) {
+      if (fieldsUsed[field] !== undefined && field !== 'station') {
+        field = null;
+      } else {
+        fieldsUsed[field] = i;
+      }
+    }
+    map[i] = field;
+  }
+  return map;
+}
+
+export function getSheetNames(buffer) {
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  return workbook.SheetNames;
+}
+
+export function parseImportFile(buffer, options = {}) {
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const sheetNames = options.sheets
+    ? workbook.SheetNames.filter(s => options.sheets.includes(s))
+    : workbook.SheetNames;
+
+  if (sheetNames.length === 0) return { rows: [], fullSheet: false };
+
+  const firstArrays = XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames[0]], { header: 1, defval: '' });
+  const isFull = firstArrays.length >= 2 && isFullSheetArray(firstArrays[0]);
+
+  const allRows = [];
+
+  for (const sheetName of sheetNames) {
+    if (isFull) {
+      const arrays = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+      if (arrays.length < 2) continue;
+
+      const headers = arrays[0];
+      const columnMap = buildColumnMap(headers);
+      const dataRows = arrays.slice(1);
+
+      for (const row of dataRows) {
+        const obj = {};
+        for (let i = 0; i < row.length; i++) {
+          const field = columnMap[i];
+          if (field) {
+            obj[field] = row[i];
+          }
+        }
+        if (obj.mobile_number) {
+          if (!obj.name) obj.name = obj.bank_donor_name || null;
+          if (!obj.category) obj.category = obj.data_category || '';
+          obj.amount = parseFloat(obj.amount) || 0;
+          obj.ngo = sheetName;
+          allRows.push(obj);
+        }
+      }
+    } else {
+      const objects = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+      for (const row of objects) {
+        const norm = normalizeHeaders(row);
+        const data = extractQuickRowData(norm);
+        if (data) {
+          data.ngo = sheetName;
+          allRows.push(data);
+        }
+      }
+    }
+  }
+
+  return { rows: allRows, fullSheet: isFull };
+}
+
+function isFullSheetArray(headers) {
+  const norms = headers.map(h => (h?.toString() || '').toLowerCase().replace(/[\s_\-./]+/g, '').trim());
+  const indicators = ['panno', 'address1', 'city', 'mailid', 'birthdate', 'pan', 'address'];
+  let hits = 0;
+  for (const key of norms) {
+    if (indicators.includes(key) || key.includes('pan') || key.includes('address') || key.includes('birth') || key.includes('mail')) {
+      hits++;
+    }
+  }
+  return hits >= 3;
 }
 
 function mapValue(val) {

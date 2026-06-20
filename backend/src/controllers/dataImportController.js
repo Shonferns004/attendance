@@ -2,49 +2,38 @@ import { v4 as uuidv4 } from 'uuid';
 import { insertImportedBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById } from '../models/importedDataModel.js';
 import { upsertDonorProfile } from '../models/donorProfileModel.js';
 import {
-  parseUploadedFile,
-  normalizeHeaders,
-  extractFullRowData,
-  extractQuickRowData,
-  isFullSheet,
+  parseImportFile,
+  getSheetNames,
   dedupRows,
   normalizeDate,
 } from '../services/fileParser.js';
+
+export const inspectImport = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'File is required' });
+    }
+    const sheets = getSheetNames(req.file.buffer);
+    return res.json({ sheets });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 
 export const uploadImport = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'File is required' });
     }
-    const { date, data_source_id } = req.body;
+    const { date, data_source_id, sheets } = req.body;
     if (!date || !data_source_id) {
       return res.status(400).json({ message: 'Date and data source are required' });
     }
 
-    const rows = parseUploadedFile(req.file.buffer);
-    if (rows.length === 0) {
-      return res.status(400).json({ message: 'File is empty or has no data rows' });
-    }
-
-    const fullSheet = isFullSheet(rows);
-
-    const extracted = [];
-    const errors = [];
-    for (let i = 0; i < rows.length; i++) {
-      const norm = normalizeHeaders(rows[i]);
-      const data = fullSheet ? extractFullRowData(norm) : extractQuickRowData(norm);
-      if (data) {
-        extracted.push(data);
-      } else {
-        errors.push({ row: i + 2, data: rows[i], reason: 'Missing mobile number' });
-      }
-    }
-
+    const sheetFilter = sheets ? (Array.isArray(sheets) ? sheets : sheets.split(',').map(s => s.trim())) : undefined;
+    const { rows: extracted, fullSheet } = parseImportFile(req.file.buffer, { sheets: sheetFilter });
     if (extracted.length === 0) {
-      return res.status(400).json({
-        message: 'No valid rows found. Ensure file has Name and Mobile Number columns.',
-        errors,
-      });
+      return res.status(400).json({ message: 'File is empty or has no data rows' });
     }
 
     if (fullSheet) {
@@ -95,6 +84,8 @@ export const uploadImport = async (req, res) => {
           project_supported: r.project_supported || null,
           account_of: r.account_of || null,
           branch: r.branch || null,
+          station: r.station || null,
+          ngo: r.ngo || null,
         });
       }
       return row;
@@ -103,36 +94,51 @@ export const uploadImport = async (req, res) => {
     const inserted = await insertImportedBatch(dbRows);
 
     let profilesCreated = 0;
+    const errors = [];
     if (fullSheet) {
-      for (const r of deduped) {
-        const profile = {
-          mobile_number: r.mobile_number,
-          name: r.name || null,
-          bank_donor_name: r.bank_donor_name || null,
-          agent_donor_name: r.agent_donor_name || null,
-          mobile_2: r.mobile_2 || null,
-          address_1: r.address_1 || null,
-          address_2: r.address_2 || null,
-          city: r.city || null,
-          pin_code: r.pin_code || null,
-          pan_number: r.pan_number || null,
-          email: r.email || null,
-          birth_date: r.birth_date || null,
-          data_category: r.data_category || null,
-          team: r.team || null,
-          agent_name: r.agent_name || null,
-          mop: r.mop || null,
-          donors_bank_name: r.donors_bank_name || null,
-          project_supported: r.project_supported || null,
-          account_of: r.account_of || null,
-          amount: r.amount || 0,
-          category: r.category || '',
-          transaction_date: r.transaction_date || null,
-          raw_data: r,
-          import_batch_id: importBatchId,
-        };
-        const created = await upsertDonorProfile(profile);
-        if (created && created.first_import_batch_id === importBatchId) profilesCreated++;
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < deduped.length; i += BATCH_SIZE) {
+        const batch = deduped.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(row => {
+            const profile = {
+              mobile_number: row.mobile_number,
+              name: row.name || null,
+              bank_donor_name: row.bank_donor_name || null,
+              agent_donor_name: row.agent_donor_name || null,
+              mobile_2: row.mobile_2 || null,
+              address_1: row.address_1 || null,
+              address_2: row.address_2 || null,
+              city: row.city || null,
+              pin_code: row.pin_code || null,
+              pan_number: row.pan_number || null,
+              email: row.email || null,
+              birth_date: row.birth_date || null,
+              data_category: row.data_category || null,
+              team: row.team || null,
+              agent_name: row.agent_name || null,
+              mop: row.mop || null,
+              donors_bank_name: row.donors_bank_name || null,
+              project_supported: row.project_supported || null,
+              account_of: row.account_of || null,
+              amount: row.amount || 0,
+              category: row.category || '',
+              transaction_date: row.transaction_date || null,
+              station: row.station || null,
+              ngo: row.ngo || null,
+              raw_data: row,
+              import_batch_id: importBatchId,
+            };
+            return upsertDonorProfile(profile);
+          })
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            if (r.value && r.value.first_import_batch_id === importBatchId) profilesCreated++;
+          } else {
+            errors.push(r.reason?.message || 'Unknown error');
+          }
+        }
       }
     }
 
@@ -140,7 +146,7 @@ export const uploadImport = async (req, res) => {
       message: 'Data imported successfully',
       type: fullSheet ? 'full' : 'quick',
       batch_id: importBatchId,
-      total_in_file: rows.length,
+      total_in_file: extracted.length,
       valid_rows: extracted.length,
       duplicates_removed: duplicatesRemoved,
       imported: inserted.length,
@@ -157,35 +163,15 @@ export const uploadOldDataImport = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: 'File is required' });
     }
-    const { date, data_source_id } = req.body;
+    const { date, data_source_id, sheets } = req.body;
     if (!date || !data_source_id) {
       return res.status(400).json({ message: 'Date and data source are required' });
     }
 
-    const rows = parseUploadedFile(req.file.buffer);
-    if (rows.length === 0) {
-      return res.status(400).json({ message: 'File is empty or has no data rows' });
-    }
-
-    const fullSheet = isFullSheet(rows);
-
-    const extracted = [];
-    const errors = [];
-    for (let i = 0; i < rows.length; i++) {
-      const norm = normalizeHeaders(rows[i]);
-      const data = fullSheet ? extractFullRowData(norm) : extractQuickRowData(norm);
-      if (data) {
-        extracted.push(data);
-      } else {
-        errors.push({ row: i + 2, data: rows[i], reason: 'Missing mobile number' });
-      }
-    }
-
+    const sheetFilter = sheets ? (Array.isArray(sheets) ? sheets : sheets.split(',').map(s => s.trim())) : undefined;
+    const { rows: extracted, fullSheet } = parseImportFile(req.file.buffer, { sheets: sheetFilter });
     if (extracted.length === 0) {
-      return res.status(400).json({
-        message: 'No valid rows found. Ensure file has Name and Mobile Number columns.',
-        errors,
-      });
+      return res.status(400).json({ message: 'File is empty or has no data rows' });
     }
 
     if (fullSheet) {
@@ -234,6 +220,8 @@ export const uploadOldDataImport = async (req, res) => {
           project_supported: r.project_supported || null,
           account_of: r.account_of || null,
           branch: r.branch || null,
+          station: r.station || null,
+          ngo: r.ngo || null,
         });
       }
       return row;
@@ -242,38 +230,49 @@ export const uploadOldDataImport = async (req, res) => {
     const inserted = await insertImportedBatch(dbRows);
 
     let profilesCreated = 0;
-    for (const r of extracted) {
-      const profile = {
-        mobile_number: r.mobile_number,
-        name: r.name || null,
-        bank_donor_name: r.bank_donor_name || null,
-        agent_donor_name: r.agent_donor_name || null,
-        mobile_2: r.mobile_2 || null,
-        address_1: r.address_1 || null,
-        address_2: r.address_2 || null,
-        city: r.city || null,
-        pin_code: r.pin_code || null,
-        pan_number: r.pan_number || null,
-        email: r.email || null,
-        birth_date: r.birth_date || null,
-        data_category: r.data_category || null,
-        team: r.team || null,
-        agent_name: r.agent_name || null,
-        mop: r.mop || null,
-        donors_bank_name: r.donors_bank_name || null,
-        project_supported: r.project_supported || null,
-        account_of: r.account_of || null,
-        raw_data: r,
-        import_batch_id: importBatchId,
-        category: r.category || '',
-        amount: r.amount || 0,
-        transaction_date: r.transaction_date || null,
-      };
-      try {
-        const created = await upsertDonorProfile(profile);
-        if (created && created.first_import_batch_id === importBatchId) profilesCreated++;
-      } catch (e) {
-        errors.push({ row: r, reason: e.message });
+    const errors = [];
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < extracted.length; i += BATCH_SIZE) {
+      const batch = extracted.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(row => {
+          const profile = {
+            mobile_number: row.mobile_number,
+            name: row.name || null,
+            bank_donor_name: row.bank_donor_name || null,
+            agent_donor_name: row.agent_donor_name || null,
+            mobile_2: row.mobile_2 || null,
+            address_1: row.address_1 || null,
+            address_2: row.address_2 || null,
+            city: row.city || null,
+            pin_code: row.pin_code || null,
+            pan_number: row.pan_number || null,
+            email: row.email || null,
+            birth_date: row.birth_date || null,
+            data_category: row.data_category || null,
+            team: row.team || null,
+            agent_name: row.agent_name || null,
+            mop: row.mop || null,
+            donors_bank_name: row.donors_bank_name || null,
+            project_supported: row.project_supported || null,
+            account_of: row.account_of || null,
+            raw_data: row,
+            import_batch_id: importBatchId,
+            category: row.category || '',
+            amount: row.amount || 0,
+            transaction_date: row.transaction_date || null,
+            station: row.station || null,
+            ngo: row.ngo || null,
+          };
+          return upsertDonorProfile(profile);
+        })
+      );
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          if (r.value && r.value.first_import_batch_id === importBatchId) profilesCreated++;
+        } else {
+          errors.push({ row: 'batch item', reason: r.reason?.message || 'Unknown error' });
+        }
       }
     }
 
@@ -281,7 +280,7 @@ export const uploadOldDataImport = async (req, res) => {
       message: 'Old data imported successfully',
       type: fullSheet ? 'full' : 'quick',
       batch_id: importBatchId,
-      total_in_file: rows.length,
+      total_in_file: extracted.length,
       valid_rows: extracted.length,
       imported: inserted.length,
       profiles_created: profilesCreated,

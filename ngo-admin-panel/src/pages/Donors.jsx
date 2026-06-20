@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiGet, apiPost } from '../api/auth';
 
 function AssignModal({ donors, froWorkers, onClose, onAssigned }) {
@@ -56,6 +56,7 @@ export default function Donors({ onSelect }) {
   const [donors, setDonors] = useState([]);
   const [froWorkers, setFroWorkers] = useState([]);
   const [search, setSearch] = useState('');
+  const [stationFilter, setStationFilter] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [showAssign, setShowAssign] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -73,12 +74,21 @@ export default function Donors({ onSelect }) {
 
   useEffect(load, []);
 
+  const stations = useMemo(() => {
+    const s = new Set();
+    donors.forEach(d => { if (d.station) s.add(d.station); });
+    return [...s].sort();
+  }, [donors]);
+
   const filtered = donors.filter(d => {
+    if (stationFilter && d.station !== stationFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (d.name && d.name.toLowerCase().includes(q)) ||
            (d.mobile_number && d.mobile_number.includes(q)) ||
-           (d.city && d.city.toLowerCase().includes(q));
+           (d.city && d.city.toLowerCase().includes(q)) ||
+           (d.station && d.station.toLowerCase().includes(q)) ||
+           (d.ngo && d.ngo.toLowerCase().includes(q));
   });
 
   const toggleAll = () => {
@@ -112,6 +122,10 @@ export default function Donors({ onSelect }) {
         <div className="card-pad">
           <div className="filter-bar">
             <input placeholder="Search name, phone, city..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 280 }} />
+            <select value={stationFilter} onChange={e => { setStationFilter(e.target.value); setSelected(new Set()); }} style={{ fontSize: 13, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--line, #e5e7eb)' }}>
+              <option value="">All Stations</option>
+              {stations.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
             <span className="count">{filtered.length} donors</span>
           </div>
           {loading ? (
@@ -124,6 +138,8 @@ export default function Donors({ onSelect }) {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>City</th>
+                  <th>Station</th>
+                  <th>NGO</th>
                   <th>Amount</th>
                   <th>Donations</th>
                   <th>Last</th>
@@ -137,6 +153,8 @@ export default function Donors({ onSelect }) {
                     <td><a className="link" onClick={() => onSelect?.(d)} style={{ cursor: 'pointer' }}>{d.name || '—'}</a></td>
                     <td>{d.mobile_number}</td>
                     <td>{d.city || '—'}</td>
+                    <td>{d.station || '—'}</td>
+                    <td>{d.ngo || '—'}</td>
                     <td>₹{Number(d.amount || 0).toLocaleString('en-IN')}</td>
                     <td>{d.donation_count || 1}</td>
                     <td style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{d.last_donation_date ? new Date(d.last_donation_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</td>
@@ -144,7 +162,7 @@ export default function Donors({ onSelect }) {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No donors found</td></tr>
+                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 20, color: 'var(--ink-soft)' }}>No donors found</td></tr>
                 )}
               </tbody>
             </table>

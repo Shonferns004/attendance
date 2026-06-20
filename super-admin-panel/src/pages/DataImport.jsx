@@ -15,6 +15,9 @@ export default function DataImport() {
   const [file, setFile] = useState(null)
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState(null)
+  const [sheets, setSheets] = useState([])
+  const [selectedSheets, setSelectedSheets] = useState({})
+  const [inspecting, setInspecting] = useState(false)
 
   const [oldFile, setOldFile] = useState(null)
   const [oldDate, setOldDate] = useState(() => {
@@ -23,6 +26,8 @@ export default function DataImport() {
   const [oldDataSourceId, setOldDataSourceId] = useState('')
   const [oldImporting, setOldImporting] = useState(false)
   const [oldResult, setOldResult] = useState(null)
+  const [oldSheets, setOldSheets] = useState([])
+  const [oldSelectedSheets, setOldSelectedSheets] = useState({})
 
   useEffect(() => {
     api('/data-sources').then(setDataSources).catch(e => setErr(e.message))
@@ -33,9 +38,34 @@ export default function DataImport() {
     api('/data-import/batches').then(setBatches).catch(() => {})
   }
 
+  const inspectFile = async (file, setSheetsFn, setSelectedSheetsFn) => {
+    if (!file) return
+    setInspecting(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api('/data-import/inspect', { method: 'POST', body: fd })
+      setSheetsFn(res.sheets)
+      const all = {}
+      res.sheets.forEach(s => { all[s] = true })
+      setSelectedSheetsFn(all)
+    } catch {
+      setSheetsFn([])
+      setSelectedSheetsFn({})
+    } finally {
+      setInspecting(false)
+    }
+  }
+
   const handleFileChange = (e) => {
-    setFile(e.target.files[0])
+    const f = e.target.files[0]
+    setFile(f)
     setResult(null)
+    inspectFile(f, setSheets, setSelectedSheets)
+  }
+
+  const toggleSheet = (name) => {
+    setSelectedSheets(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
   const handleImport = async () => {
@@ -48,6 +78,10 @@ export default function DataImport() {
       fd.append('file', file)
       fd.append('date', date)
       fd.append('data_source_id', dataSourceId)
+      const selected = Object.entries(selectedSheets).filter(([, v]) => v).map(([k]) => k)
+      if (selected.length > 0 && selected.length < sheets.length) {
+        selected.forEach(s => fd.append('sheets', s))
+      }
       const res = await api('/data-import/upload', { method: 'POST', body: fd })
       setResult(res)
       loadBatches()
@@ -87,6 +121,17 @@ export default function DataImport() {
     } catch (e) { setErr(e.message) }
   }
 
+  const handleOldFileChange = (e) => {
+    const f = e.target.files[0]
+    setOldFile(f)
+    setOldResult(null)
+    inspectFile(f, setOldSheets, setOldSelectedSheets)
+  }
+
+  const toggleOldSheet = (name) => {
+    setOldSelectedSheets(prev => ({ ...prev, [name]: !prev[name] }))
+  }
+
   const handleOldImport = async () => {
     if (!oldFile || !oldDate || !oldDataSourceId) return
     setOldImporting(true)
@@ -97,6 +142,10 @@ export default function DataImport() {
       fd.append('file', oldFile)
       fd.append('date', oldDate)
       fd.append('data_source_id', oldDataSourceId)
+      const selected = Object.entries(oldSelectedSheets).filter(([, v]) => v).map(([k]) => k)
+      if (selected.length > 0 && selected.length < oldSheets.length) {
+        selected.forEach(s => fd.append('sheets', s))
+      }
       const res = await api('/data-import/upload-old', { method: 'POST', body: fd })
       setOldResult(res)
     } catch (e) {
@@ -187,6 +236,20 @@ export default function DataImport() {
               <label className="field">Excel / CSV File
                 <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} />
               </label>
+              {inspecting && <p className="sa-muted" style={{fontSize:12}}>Inspecting file...</p>}
+              {sheets.length > 0 && (
+                <div style={{display:'flex',flexWrap:'wrap',gap:8, alignItems:'center'}}>
+                  <span style={{fontSize:12,color:'var(--ink-soft)',fontWeight:500}}>Sheets:</span>
+                  {sheets.map(s => (
+                    <label key={s} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,
+                      background: selectedSheets[s] ? 'var(--primary-light, #eef2ff)' : '#f5f5f5',
+                      padding:'4px 10px', borderRadius:'var(--radius-sm, 6px)', border:'1px solid var(--line, #e5e7eb)'}}>
+                      <input type="checkbox" checked={!!selectedSheets[s]} onChange={() => toggleSheet(s)} />
+                      {s}
+                    </label>
+                  ))}
+                </div>
+              )}
               <div className="sa-filters" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={handleImport} disabled={importing || !file || !dataSourceId}>
                   {importing ? 'Importing…' : 'Upload & Import'}
@@ -276,8 +339,22 @@ export default function DataImport() {
                 </select>
               </label>
               <label className="field">Excel / CSV File
-                <input type="file" accept=".xlsx,.xls,.csv" onChange={e => { setOldFile(e.target.files[0]); setOldResult(null) }} />
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={handleOldFileChange} />
               </label>
+              {inspecting && <p className="sa-muted" style={{fontSize:12}}>Inspecting file...</p>}
+              {oldSheets.length > 0 && (
+                <div style={{display:'flex',flexWrap:'wrap',gap:8, alignItems:'center'}}>
+                  <span style={{fontSize:12,color:'var(--ink-soft)',fontWeight:500}}>Sheets:</span>
+                  {oldSheets.map(s => (
+                    <label key={s} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,
+                      background: oldSelectedSheets[s] ? 'var(--primary-light, #eef2ff)' : '#f5f5f5',
+                      padding:'4px 10px', borderRadius:'var(--radius-sm, 6px)', border:'1px solid var(--line, #e5e7eb)'}}>
+                      <input type="checkbox" checked={!!oldSelectedSheets[s]} onChange={() => toggleOldSheet(s)} />
+                      {s}
+                    </label>
+                  ))}
+                </div>
+              )}
               <div className="sa-filters" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={handleOldImport} disabled={oldImporting || !oldFile || !oldDataSourceId}>
                   {oldImporting ? 'Importing…' : 'Upload & Import'}
