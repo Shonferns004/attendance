@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -273,6 +274,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _updateWorked();
       });
       if (mounted) {
+        HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Punched in successfully'),
@@ -308,6 +310,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _updateWorked();
       });
       if (mounted) {
+        HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Punched out successfully'),

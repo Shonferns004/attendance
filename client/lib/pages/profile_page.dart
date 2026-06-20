@@ -10,7 +10,6 @@ import '../widgets/consistency_bar.dart';
 import '../widgets/menu_item.dart';
 import '../widgets/skeleton_loader.dart';
 import 'edit_profile_page.dart';
-import 'print_form_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -813,7 +812,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.settings,
                 label: 'Settings',
                 iconColor: const Color(0xFF43474d),
-                onTap: () {},
+                onTap: _openSettingsSheet,
               ),
               const Divider(height: 1, color: Color(0xFFc3c6ce)),
               MenuItem(
@@ -824,27 +823,169 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const Divider(height: 1, color: Color(0xFFc3c6ce)),
               MenuItem(
-                icon: Icons.description,
-                label: 'My Form & Policies',
-                iconColor: const Color(0xFF00152a),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PrintFormPage()),
-                  );
-                },
-              ),
-              const Divider(height: 1, color: Color(0xFFc3c6ce)),
-              MenuItem(
                 icon: Icons.logout,
                 label: 'Logout',
                 isDestructive: true,
-                onTap: widget.onLogout,
+                onTap: _confirmLogout,
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        title: Text('Logout',
+          style: GoogleFonts.hankenGrotesk(
+            fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+          ),
+        ),
+        content: Text('Are you sure you want to logout?',
+          style: TextStyle(fontSize: 14, color: const Color(0xFF43474d)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+              style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFF43474d)),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onLogout?.call();
+            },
+            child: Text('Logout',
+              style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFFba1a1a)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.4,
+        maxChildSize: 0.7,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFffffff),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Settings',
+                    style: GoogleFonts.hankenGrotesk(
+                      fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFf0f4f8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.close, size: 18, color: Color(0xFF43474d)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text('Theme',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _themeOption(Icons.light_mode, 'Light', ThemeMode.light),
+              _themeOption(Icons.dark_mode, 'Dark', ThemeMode.dark),
+              _themeOption(Icons.settings_brightness, 'System', ThemeMode.system),
+              const SizedBox(height: 24),
+              Text('Language',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFf0f4f8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.language, size: 20, color: const Color(0xFF43474d)),
+                    const SizedBox(width: 12),
+                    Text('English',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f)),
+                    ),
+                    const Spacer(),
+                    Text('(default)',
+                      style: TextStyle(fontSize: 12, color: const Color(0xFF74777e)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _themeOption(IconData icon, String label, ThemeMode mode) {
+    final active = mode == themeModeNotifier.value;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: () {
+          UfsAttendApp.setThemeMode(context, mode);
+          Navigator.pop(context);
+          _openSettingsSheet();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFf0f4f8),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: active ? const Color(0xFF00152a) : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF43474d)),
+              const SizedBox(width: 12),
+              Text(label,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f)),
+              ),
+              const Spacer(),
+              if (active)
+                Icon(Icons.check_circle, size: 20, color: const Color(0xFF2a6a4b)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
