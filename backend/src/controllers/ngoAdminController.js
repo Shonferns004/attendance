@@ -23,6 +23,14 @@ async function getFroWorkersByNgo(ngoId) {
   return data || [];
 }
 
+async function getUserNgoIds(user) {
+  const access = await getUserNgoAccess(user.id);
+  const ids = access.map(a => a.ngo_id).filter(Boolean);
+  if (ids.length > 0) return ids;
+  if (user.ngo_id) return [user.ngo_id];
+  return [];
+}
+
 export const getDonors = async (req, res) => {
   try {
     const { search, limit } = req.query;
@@ -79,8 +87,14 @@ export const getDonorDetail = async (req, res) => {
 
 export const getFroWorkers = async (req, res) => {
   try {
-    const ngoId = req.user.ngo_id;
-    const froWorkers = await getFroWorkersByNgo(ngoId);
+    const ngoIds = await getUserNgoIds(req.user);
+    const allWorkers = [];
+    for (const ngoId of ngoIds) {
+      const workers = await getFroWorkersByNgo(ngoId);
+      allWorkers.push(...workers);
+    }
+    const seen = new Set();
+    const froWorkers = allWorkers.filter(w => { const k = w.id; if (seen.has(k)) return false; seen.add(k); return true; });
 
     const result = await Promise.all(froWorkers.map(async (w) => {
       const salary = await getActiveSalaryByWorker(w.id);
@@ -108,13 +122,17 @@ export const getFroWorkers = async (req, res) => {
 export const createAssignmentHandler = async (req, res) => {
   try {
     const { donor_ids, fro_worker_id } = req.body;
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
+    const ngoId = ngoIds[0];
 
     if (!donor_ids || !Array.isArray(donor_ids) || donor_ids.length === 0) {
       return res.status(400).json({ message: 'donor_ids array is required' });
     }
     if (!fro_worker_id) {
       return res.status(400).json({ message: 'fro_worker_id is required' });
+    }
+    if (!ngoId) {
+      return res.status(400).json({ message: 'No NGO assigned to your account' });
     }
 
     const assignments = donor_ids.map(id => ({
@@ -133,11 +151,17 @@ export const createAssignmentHandler = async (req, res) => {
 
 export const getAssignments = async (req, res) => {
   try {
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
     const { status, worker_id } = req.query;
-    const assignments = await findAssignmentsByNgo(ngoId, { status, worker_id });
+    const allAssignments = [];
+    for (const ngoId of ngoIds) {
+      const assignments = await findAssignmentsByNgo(ngoId, { status, worker_id });
+      allAssignments.push(...assignments);
+    }
+    const seen = new Set();
+    const unique = allAssignments.filter(a => { const k = a.id; if (seen.has(k)) return false; seen.add(k); return true; });
 
-    const result = assignments.map(a => ({
+    const result = unique.map(a => ({
       id: a.id,
       donor_id: a.donor_id,
       donor_mobile: a.donor_profiles?.mobile_number || '',
@@ -161,52 +185,58 @@ export const getAssignments = async (req, res) => {
 
 export const distributeEqually = async (req, res) => {
   try {
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
+    let totalAssigned = 0;
+    const messages = [];
 
-    const allFroWorkers = await getFroWorkersByNgo(ngoId);
-    const froWorkers = allFroWorkers.filter(w => w.is_active !== false);
+    for (const ngoId of ngoIds) {
+      const allFroWorkers = await getFroWorkersByNgo(ngoId);
+      const froWorkers = allFroWorkers.filter(w => w.is_active !== false);
 
-    if (froWorkers.length === 0) {
-      return res.status(400).json({ message: 'No active FRO workers found for this NGO' });
-    }
+      if (froWorkers.length === 0) continue;
 
-    const unassignedIds = await getUnassignedDonorIds(ngoId);
+      const unassignedIds = await getUnassignedDonorIds(ngoId);
 
-    if (unassignedIds.length === 0) {
-      return res.json({ message: 'All donors are already assigned', count: 0 });
-    }
+      if (unassignedIds.length === 0) continue;
 
-    const shuffled = [...unassignedIds].sort(() => Math.random() - 0.5);
-    const base = Math.floor(shuffled.length / froWorkers.length);
-    const remainder = shuffled.length % froWorkers.length;
+      const shuffled = [...unassignedIds].sort(() => Math.random() - 0.5);
+      const base = Math.floor(shuffled.length / froWorkers.length);
+      const remainder = shuffled.length % froWorkers.length;
 
-    const existingCounts = await getAssignmentCountByWorker(ngoId);
+      const existingCounts = await getAssignmentCountByWorker(ngoId);
 
-    const sortedWorkers = [...froWorkers].sort((a, b) =>
-      (existingCounts[a.id] || 0) - (existingCounts[b.id] || 0)
-    );
+      const sortedWorkers = [...froWorkers].sort((a, b) =>
+        (existingCounts[a.id] || 0) - (existingCounts[b.id] || 0)
+      );
 
-    const allAssignments = [];
-    let idx = 0;
-    for (let i = 0; i < sortedWorkers.length; i++) {
-      const count = base + (i < remainder ? 1 : 0);
-      for (let j = 0; j < count; j++) {
-        allAssignments.push({
-          donor_id: shuffled[idx++],
-          fro_worker_id: sortedWorkers[i].id,
-          ngo_id: ngoId,
-          assigned_by: req.user.id,
-        });
+      const allAssignments = [];
+      let idx = 0;
+      for (let i = 0; i < sortedWorkers.length; i++) {
+        const count = base + (i < remainder ? 1 : 0);
+        for (let j = 0; j < count; j++) {
+          allAssignments.push({
+            donor_id: shuffled[idx++],
+            fro_worker_id: sortedWorkers[i].id,
+            ngo_id: ngoId,
+            assigned_by: req.user.id,
+          });
+        }
+      }
+
+      if (allAssignments.length > 0) {
+        await batchCreateAssignments(allAssignments);
+        totalAssigned += allAssignments.length;
+        messages.push(`${allAssignments.length} donors distributed among ${froWorkers.length} workers`);
       }
     }
 
-    if (allAssignments.length > 0) {
-      await batchCreateAssignments(allAssignments);
+    if (totalAssigned === 0) {
+      return res.json({ message: 'No unassigned donors found for your NGOs', count: 0 });
     }
 
     return res.json({
-      message: `${allAssignments.length} donors distributed equally among ${froWorkers.length} FRO workers`,
-      count: allAssignments.length,
+      message: messages.join('; '),
+      count: totalAssigned,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -216,10 +246,14 @@ export const distributeEqually = async (req, res) => {
 export const setTarget = async (req, res) => {
   try {
     const { fro_worker_id, month, target_amount } = req.body;
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
+    const ngoId = ngoIds[0];
 
     if (!fro_worker_id || !month || target_amount === undefined) {
       return res.status(400).json({ message: 'fro_worker_id, month, and target_amount are required' });
+    }
+    if (!ngoId) {
+      return res.status(400).json({ message: 'No NGO assigned to your account' });
     }
 
     const worker = await getWorkerById(fro_worker_id);
@@ -262,15 +296,25 @@ export const setTarget = async (req, res) => {
 
 export const getTargets = async (req, res) => {
   try {
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
     const { month } = req.query;
     const targetMonth = month || new Date().toISOString().slice(0, 7) + '-01';
 
-    const froWorkers = await getFroWorkersByNgo(ngoId);
+    const allWorkers = [];
+    for (const ngoId of ngoIds) {
+      const workers = await getFroWorkersByNgo(ngoId);
+      allWorkers.push(...workers);
+    }
+    const seen = new Set();
+    const froWorkers = allWorkers.filter(w => { const k = w.id; if (seen.has(k)) return false; seen.add(k); return true; });
 
-    const manualTargets = await getTargetsByNgo(ngoId, targetMonth);
+    const allManualTargets = [];
+    for (const ngoId of ngoIds) {
+      const targets = await getTargetsByNgo(ngoId, targetMonth);
+      allManualTargets.push(...targets);
+    }
     const manualMap = {};
-    for (const t of manualTargets) {
+    for (const t of allManualTargets) {
       manualMap[t.fro_worker_id] = parseFloat(t.target_amount);
     }
 
@@ -314,16 +358,26 @@ export const getTargets = async (req, res) => {
 
 export const getDashboard = async (req, res) => {
   try {
-    const ngoId = req.user.ngo_id;
+    const ngoIds = await getUserNgoIds(req.user);
 
-    const froWorkers = await getFroWorkersByNgo(ngoId);
+    const allWorkers = [];
+    for (const ngoId of ngoIds) {
+      const workers = await getFroWorkersByNgo(ngoId);
+      allWorkers.push(...workers);
+    }
+    const seen = new Set();
+    const froWorkers = allWorkers.filter(w => { const k = w.id; if (seen.has(k)) return false; seen.add(k); return true; });
 
     const { getAllDonorProfiles } = await import('../models/donorProfileModel.js');
     const totalDonors = await getAllDonorProfiles(100000);
 
-    const assignments = await findAssignmentsByNgo(ngoId);
-    const assignedCount = assignments.length;
-    const collectedDonations = assignments.filter(a => a.status === 'donation_collected');
+    const allAssignments = [];
+    for (const ngoId of ngoIds) {
+      const assignments = await findAssignmentsByNgo(ngoId);
+      allAssignments.push(...assignments);
+    }
+    const assignedCount = allAssignments.length;
+    const collectedDonations = allAssignments.filter(a => a.status === 'donation_collected');
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
