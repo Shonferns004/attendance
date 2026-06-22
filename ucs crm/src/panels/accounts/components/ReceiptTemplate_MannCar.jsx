@@ -53,6 +53,7 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
         fontFamily: 'Arial, sans-serif',
         fontSize: '16px',
         lineHeight: '1.6',
+        textAlign: 'left',
       }}
     >
       {/* Top Title */}
@@ -89,6 +90,7 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
 
         <div style={{ width: '42%', textAlign: 'right' }}>
           <img
+            crossOrigin="anonymous"
             src={MancareLogo}
             alt="Mann Care Foundation"
             style={{
@@ -203,6 +205,7 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
         }}
       >
         <img
+          crossOrigin="anonymous"
           src={signature || defaultSignature}
           alt="Authorised Signatory"
           style={{

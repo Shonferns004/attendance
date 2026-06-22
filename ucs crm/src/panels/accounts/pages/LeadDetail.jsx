@@ -287,6 +287,15 @@ export default function LeadDetail({ logId, onBack }) {
         }
         .modal-header h3 { margin: 0; font-size: 16px; }
         .modal-body { overflow: auto; max-height: calc(90vh - 70px); }
+        @media print {
+          body * { visibility: hidden; }
+          .modal, .modal * { visibility: visible; }
+          .modal { position: absolute; top: 0; left: 0; transform: none; max-width: 100%; width: 100%; box-shadow: none; border-radius: 0; }
+          .modal-overlay { display: none; }
+          .modal-header { display: none; }
+          .modal-body { padding: 0 !important; max-height: none; overflow: visible; display: flex; justify-content: center; }
+          .modal-body > div { margin: 0 auto; }
+        }
       `}</style>
     </div>
   );

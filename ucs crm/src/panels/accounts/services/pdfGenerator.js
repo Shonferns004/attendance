@@ -166,13 +166,34 @@ export function formatReceiptDate(dateStr) {
   return raw
 }
 
+async function preloadImages(el) {
+  const imgs = el.querySelectorAll('img')
+  const promises = []
+  imgs.forEach(img => {
+    if (img.complete && img.naturalWidth) return
+    img.crossOrigin = 'anonymous'
+    promises.push(new Promise(resolve => {
+      img.onload = resolve
+      img.onerror = resolve
+      if (!img.src || img.src === '') resolve()
+    }))
+  })
+  return Promise.all(promises)
+}
+
 export async function generateReceiptPDF(element) {
+  await document.fonts?.ready
+  await preloadImages(element)
+  await new Promise(r => setTimeout(r, 300))
   const canvas = await html2canvas(element, {
-    scale: 1,
+    scale: 2,
     useCORS: true,
+    allowTaint: false,
     logging: false,
     width: 1000,
     onclone: (doc) => {
+      const imgs = doc.querySelectorAll('img')
+      imgs.forEach(img => { img.crossOrigin = 'anonymous' })
       let el = doc.querySelector('[data-receipt-batch]')
       if (!el) el = doc.querySelector('[data-receipt]')
       if (el) {
@@ -191,7 +212,7 @@ export async function generateReceiptPDF(element) {
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
-  const margin = 3
+  const margin = 5
   const maxW = pdfW - 2 * margin
   const maxH = pdfH - 2 * margin
   const ratio = Math.min(maxW / canvas.width, maxH / canvas.height)
@@ -199,7 +220,7 @@ export async function generateReceiptPDF(element) {
   const imgH = canvas.height * ratio
   const x = (pdfW - imgW) / 2
   const y = (pdfH - imgH) / 2
-  pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', x, y, imgW, imgH)
+  pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH)
   return pdf
 }
 

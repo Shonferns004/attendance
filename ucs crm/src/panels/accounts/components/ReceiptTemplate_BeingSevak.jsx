@@ -59,7 +59,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
         {/* Header */}
         <div style={{ width: '100%', display: 'table', borderBottom: `2px solid ${ACCENT}`, paddingBottom: '12px', marginBottom: '10px' }}>
           <div style={{ display: 'table-cell', width: '90px', verticalAlign: 'top' }}>
-            <img src={beingSevakLogo} alt="Trust Logo" style={{ width: '80px', height: 'auto', display: 'block', marginTop: '11px', marginLeft: '10px' }} />
+            <img crossOrigin="anonymous" src={beingSevakLogo} alt="Trust Logo" style={{ width: '80px', height: 'auto', display: 'block', marginTop: '11px', marginLeft: '10px' }} />
           </div>
           <div style={{ display: 'table-cell', textAlign: 'center', verticalAlign: 'middle', padding: '0 10px' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: ACCENT, marginBottom: '5px', lineHeight: '1.2' }}>
@@ -143,7 +143,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
         {/* Header */}
         <div style={{ width: '100%', display: 'table', borderBottom: `2px solid ${ACCENT}`, paddingBottom: '12px', marginBottom: '10px' }}>
           <div style={{ display: 'table-cell', width: '90px', verticalAlign: 'top' }}>
-            <img src={beingSevakLogo} alt="Trust Logo" style={{ width: '80px', height: 'auto', display: 'block', marginTop: '11px', marginLeft: '10px' }} />
+            <img crossOrigin="anonymous" src={beingSevakLogo} alt="Trust Logo" style={{ width: '80px', height: 'auto', display: 'block', marginTop: '11px', marginLeft: '10px' }} />
           </div>
           <div style={{ display: 'table-cell', textAlign: 'center', verticalAlign: 'middle', padding: '0 10px' }}>
             <div style={{ fontSize: '11px', color: '#555', fontWeight: 400, marginTop: '-18px' }}>Subject to Mumbai Jurisdiction</div>
@@ -448,7 +448,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
             <div style={{ fontSize: '15px', color: '#555', textAlign: 'center', marginTop : '5px' }}>****This is system generated auto receipt****</div>
           </div>
           <div style={{ width: '180px', border: `2px solid ${ACCENT}`, borderRadius: '8px', textAlign: 'center', padding: '10px', background: '#f9fdff' }}>
-            <img src={signature || beingSevakStamp} alt="Seal" style={{ width: '85px', marginLeft: '34px' }} />
+            <img crossOrigin="anonymous" src={signature || beingSevakStamp} alt="Seal" style={{ width: '85px', marginLeft: '34px' }} />
             <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 700, }}>
               Authorised Sign.<br /><strong style={{ color: '#222' }}>Being Sevak Charitable Trust</strong>
             </div>
