@@ -146,7 +146,13 @@ export default function StationManagement() {
                     <td>
                       <select
                         value={s.fro_worker_id || ''}
-                        onChange={e => handleAssign(s.station, e.target.value)}
+                        onChange={e => {
+                          if (!e.target.value) {
+                            if (s.assignment_id) handleRemove(s.assignment_id);
+                            return;
+                          }
+                          handleAssign(s.station, e.target.value);
+                        }}
                         style={{ fontSize: 13, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--line, #e5e7eb)', maxWidth: 200 }}
                       >
                         <option value="">-- Not assigned --</option>
