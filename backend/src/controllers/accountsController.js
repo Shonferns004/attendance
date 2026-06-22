@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+import { createReceipt, findReceiptByLogId, getLastReceiptNo } from '../models/receiptModel.js';
 
 export const getLeadList = async (req, res) => {
   try {
@@ -281,6 +282,85 @@ export const rejectLead = async (req, res) => {
     }
 
     return res.json({ message: 'Lead rejected' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── Receipts ──────────────────────────────────────────────
+
+function generateReceiptNo(projectId, lastNo) {
+  const prefix = projectId.toUpperCase().slice(0, 4);
+  let num = 1;
+  if (lastNo) {
+    const match = lastNo.match(/(\d+)$/);
+    if (match) num = parseInt(match[1], 10) + 1;
+  }
+  return `${prefix}/${String(num).padStart(5, '0')}/${new Date().getFullYear()}`;
+}
+
+export const generateReceipt = async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const { pan_number, address, mode, purpose } = req.body;
+
+    const existing = await findReceiptByLogId(logId);
+    if (existing) {
+      return res.json({ receipt: existing, message: 'Receipt already exists' });
+    }
+
+    const { data: log, error: logError } = await supabase
+      .from('fro_donor_logs')
+      .select(`
+        id, amount_collected, pan_number, notes,
+        fro_assignments!inner(
+          donor_id,
+          fro_worker_id,
+          donor_profiles!inner(id, name, mobile_number, city, address_1, email, pan_number, project_supported),
+          workers!inner(id, name, login_id)
+        )
+      `)
+      .eq('id', logId)
+      .single();
+
+    if (logError || !log) {
+      return res.status(404).json({ message: 'Log entry not found' });
+    }
+
+    const donorProfile = log.fro_assignments?.donor_profiles;
+    const project = donorProfile?.project_supported || 'bsct';
+    const donorName = donorProfile?.name || 'Unknown';
+
+    const lastNo = await getLastReceiptNo(project);
+    const receiptNo = generateReceiptNo(project, lastNo);
+
+    const receipt = await createReceipt({
+      log_id: logId,
+      receipt_no: receiptNo,
+      project_id: project,
+      donor_name: donorName,
+      amount: log.amount_collected || 0,
+      pan_number: pan_number || log.pan_number || donorProfile?.pan_number || null,
+      address: address || donorProfile?.address_1 || null,
+      mode: mode || null,
+      purpose: purpose || 'General Donation',
+      generated_by: req.user.id,
+    });
+
+    return res.status(201).json({ receipt, message: 'Receipt generated' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getReceipt = async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const receipt = await findReceiptByLogId(logId);
+    if (!receipt) {
+      return res.status(404).json({ message: 'Receipt not found' });
+    }
+    return res.json(receipt);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

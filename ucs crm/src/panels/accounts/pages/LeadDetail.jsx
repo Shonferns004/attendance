@@ -1,10 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiGet, apiPost } from '../api/auth';
+import { getReceipt, generateReceipt as apiGenerateReceipt } from '../api/receipts';
+import { generateReceiptPDF } from '../services/pdfGenerator';
+import { PROJECTS } from '../data/projects';
+import ReceiptTemplate_MannCar from '../components/ReceiptTemplate_MannCar';
+import ReceiptTemplate_Ashray from '../components/ReceiptTemplate_Ashray';
+import ReceiptTemplate_BeingSevak from '../components/ReceiptTemplate_BeingSevak';
+
+const TEMPLATES = {
+  manncar: ReceiptTemplate_MannCar,
+  ashray: ReceiptTemplate_Ashray,
+  beingsevak: ReceiptTemplate_BeingSevak,
+};
+
+function getTemplateId(projectId) {
+  return PROJECTS[projectId]?.template || 'beingsevak';
+}
 
 export default function LeadDetail({ logId, onBack }) {
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [panInput, setPanInput] = useState('');
+  const [modeInput, setModeInput] = useState('');
+  const receiptRef = useRef(null);
 
   const load = () => {
     setLoading(true);
@@ -15,7 +37,21 @@ export default function LeadDetail({ logId, onBack }) {
       .finally(() => setLoading(false));
   };
 
+  const loadReceipt = () => {
+    setReceiptLoading(true);
+    getReceipt(logId)
+      .then(r => setReceipt(r || null))
+      .catch(() => setReceipt(null))
+      .finally(() => setReceiptLoading(false));
+  };
+
   useEffect(load, [logId]);
+
+  useEffect(() => {
+    if (lead && lead.accounts_status === 'verified') {
+      loadReceipt();
+    }
+  }, [lead?.accounts_status]);
 
   const handleVerify = async () => {
     if (!lead || !window.confirm('Verify this lead and mark amount as collected?')) return;
@@ -45,17 +81,48 @@ export default function LeadDetail({ logId, onBack }) {
     }
   };
 
+  const handleGenerateReceipt = async () => {
+    if (!lead) return;
+    setReceiptLoading(true);
+    try {
+      const body = {};
+      if (panInput.trim()) body.pan_number = panInput.trim();
+      if (modeInput.trim()) body.mode = modeInput.trim();
+      const res = await apiGenerateReceipt(logId, body);
+      setReceipt(res.receipt);
+      setShowModal(true);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!receiptRef.current) return;
+    try {
+      const pdf = await generateReceiptPDF(receiptRef.current);
+      pdf.save(`receipt_${(receipt?.receipt_no || 'download').replace(/[/\\]/g, '_')}.pdf`);
+    } catch (err) {
+      alert('Failed to generate PDF: ' + err.message);
+    }
+  };
+
   if (loading) return <div className="loading">Loading...</div>;
   if (!lead) return <div className="empty-state"><p>Lead not found</p><button className="btn" onClick={onBack}>Back</button></div>;
 
   const l = lead;
+  const projectId = (l.donor_project || '').toLowerCase();
+  const templateId = getTemplateId(projectId);
+  const ReceiptComp = TEMPLATES[templateId];
+  const canGenerate = l.accounts_status === 'verified';
 
   return (
     <div>
       <div className="detail-header">
         <button className="back-btn" onClick={onBack}>{'\u{2190}'}</button>
         <h2>Lead Details</h2>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
           {l.accounts_status === 'pending' && (
             <>
               <button className="btn btn-primary btn-sm" onClick={handleVerify} disabled={submitting}>
@@ -66,7 +133,16 @@ export default function LeadDetail({ logId, onBack }) {
               </button>
             </>
           )}
-          {l.accounts_status === 'verified' && <span className="pill pill-green">Verified</span>}
+          {l.accounts_status === 'verified' && (
+            <>
+              <span className="pill pill-green">Verified</span>
+              {receipt && (
+                <button className="btn btn-sm btn-primary" onClick={() => setShowModal(true)}>
+                  View Receipt
+                </button>
+              )}
+            </>
+          )}
           {l.accounts_status === 'rejected' && <span className="pill pill-red" title={l.rejection_reason || ''}>Rejected</span>}
         </div>
       </div>
@@ -109,6 +185,27 @@ export default function LeadDetail({ logId, onBack }) {
         </div>
       </div>
 
+      {canGenerate && !receipt && (
+        <div className="card">
+          <div className="card-head"><h3>Generate Receipt</h3></div>
+          <div className="card-pad">
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', fontSize: 13 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 3, fontWeight: 600 }}>PAN (optional)</label>
+                <input className="input" style={{ width: 160 }} value={panInput} onChange={e => setPanInput(e.target.value)} placeholder={l.pan_number || l.donor_pan || 'Enter PAN'} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 3, fontWeight: 600 }}>Mode (optional)</label>
+                <input className="input" style={{ width: 160 }} value={modeInput} onChange={e => setModeInput(e.target.value)} placeholder="e.g. UPI, Cash" />
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={handleGenerateReceipt} disabled={receiptLoading}>
+                {receiptLoading ? 'Generating...' : 'Generate Receipt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {l.notes && (
         <div className="card">
           <div className="card-head"><h3>Notes</h3></div>
@@ -126,6 +223,53 @@ export default function LeadDetail({ logId, onBack }) {
           </div>
         </div>
       )}
+
+      {showModal && receipt && ReceiptComp && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowModal(false)} />
+          <div className="modal" style={{ maxWidth: 800, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="modal-header">
+              <h3>Receipt Preview</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleDownload}>Download PDF</button>
+                <button className="btn btn-sm" onClick={() => setShowModal(false)}>Close</button>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: 20 }}>
+              <div ref={receiptRef}>
+                <ReceiptComp
+                  data={{
+                    donor_name: receipt.donor_name,
+                    amount: receipt.amount,
+                    pan_number: receipt.pan_number,
+                    address: receipt.address,
+                    mode: receipt.mode,
+                    purpose: receipt.purpose,
+                    date: receipt.receipt_date,
+                  }}
+                  receiptNo={receipt.receipt_no}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <style>{`
+        .modal-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+        }
+        .modal {
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: #fff; border-radius: 12px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 14px 20px; border-bottom: 1px solid #e5e7eb;
+        }
+        .modal-header h3 { margin: 0; font-size: 16px; }
+        .modal-body { overflow: auto; max-height: calc(90vh - 70px); }
+      `}</style>
     </div>
   );
 }
