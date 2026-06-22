@@ -7,10 +7,12 @@ import FroWorkers from './pages/FroWorkers'
 import Assignments from './pages/Assignments'
 import Accounts from './pages/Accounts'
 import StationManagement from './pages/StationManagement'
+import NewData from './pages/NewData'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: '\u{1F4CA}' },
   { id: 'donors', label: 'Donors', icon: '\u{1F465}' },
+  { id: 'new-data', label: 'New Data', icon: '\u{1F4E5}' },
   { id: 'assignments', label: 'Assignments', icon: '\u{1F4CB}' },
   { id: 'accounts', label: 'Accounts', icon: '\u{1F4B0}' },
   { id: 'fro-workers', label: 'FRO Workers', icon: '\u{1F468}\u200D\u{1F4BC}' },
@@ -96,6 +98,7 @@ export default function NgoAdminPanel() {
           {active === 'assignments' && <Assignments />}
           {active === 'accounts' && <Accounts />}
           {active === 'fro-workers' && <FroWorkers />}
+          {active === 'new-data' && <NewData />}
           {active === 'station-mgmt' && <StationManagement />}
         </div>
       </div>

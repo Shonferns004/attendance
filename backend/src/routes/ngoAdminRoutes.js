@@ -16,6 +16,8 @@ import {
   saveStationAssignment,
   removeStationAssignment,
   distributeByStation,
+  getNewData,
+  distributeNewData,
 } from '../controllers/ngoAdminController.js';
 
 const router = Router();
@@ -38,5 +40,8 @@ router.get('/stations', getStations);
 router.post('/station-assignments', saveStationAssignment);
 router.delete('/station-assignments/:id', removeStationAssignment);
 router.post('/station-assignments/distribute', distributeByStation);
+
+router.get('/new-data', getNewData);
+router.post('/new-data/distribute', distributeNewData);
 
 export default router;
