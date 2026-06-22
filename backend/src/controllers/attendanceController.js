@@ -218,9 +218,7 @@ export const updateAttendanceRecord = async (req, res) => {
       const existing = await getAttendanceById(id);
       if (existing) {
         updates.late_minutes = await calculateLateMinutes(punch_in_time, existing.worker_id);
-        if (status === undefined) {
-          updates.status = updates.late_minutes > 0 ? 'late' : 'present';
-        }
+        updates.status = updates.late_minutes > 0 ? 'late' : 'present';
       }
     }
 
