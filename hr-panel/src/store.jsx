@@ -372,6 +372,36 @@ export function HRProvider({ children }) {
     return await api('/incentive/monthly-summary');
   }, [api]);
 
+  // ─── QR Codes ─────────────────────────────────────────
+
+  const generateQR = useCallback(async (label, latitude, longitude, radius_meters) => {
+    return await api('/qr/generate', {
+      method: 'POST',
+      body: JSON.stringify({ label, latitude, longitude, radius_meters }),
+    });
+  }, [api]);
+
+  const fetchQRCodes = useCallback(async () => {
+    return await api('/qr');
+  }, [api]);
+
+  const removeQRCode = useCallback(async (id) => {
+    return await api('/qr/' + id, { method: 'DELETE' });
+  }, [api]);
+
+  // ─── Settings ──────────────────────────────────────────
+
+  const fetchSettings = useCallback(async () => {
+    return await api('/settings');
+  }, [api]);
+
+  const updateSettings = useCallback(async (settings) => {
+    return await api('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }, [api]);
+
   return (
     <HRContext.Provider value={{
       DEPTS, ngos, workers, attendance, leaves, templates, notifs, holidays, feed,
@@ -389,6 +419,8 @@ export function HRProvider({ children }) {
       generateAllTargets, fetchCurrentMonthTargets,
       setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchMonthlyIncentiveSummary,
       fetchWorkerAllocations, setWorkerAllocations, fetchWorkerSalaryAllocations,
+      generateQR, fetchQRCodes, removeQRCode,
+      fetchSettings, updateSettings,
     }}>
       {children}
     </HRContext.Provider>

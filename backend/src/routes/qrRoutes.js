@@ -4,9 +4,9 @@ import { authenticateRole, authenticateWorker } from '../middleware/authMiddlewa
 
 const router = Router();
 
-router.post('/generate', authenticateRole('super_admin', 'hoadmin'), generateQR);
-router.get('/', authenticateRole('super_admin', 'hoadmin'), listQRCodes);
+router.post('/generate', authenticateRole('super_admin', 'hoadmin', 'hr'), generateQR);
+router.get('/', authenticateRole('super_admin', 'hoadmin', 'hr'), listQRCodes);
 router.post('/validate', authenticateWorker, validateQRAndLocation);
-router.delete('/:id', authenticateRole('super_admin', 'hoadmin'), removeQRCode);
+router.delete('/:id', authenticateRole('super_admin', 'hoadmin', 'hr'), removeQRCode);
 
 export default router;

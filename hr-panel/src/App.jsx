@@ -11,20 +11,22 @@ import Letters from './components/Letters';
 import Notify from './components/Notify';
 import Holidays from './components/Holidays';
 import Recruiters from './components/Recruiters';
+import GenerateQR from './components/GenerateQR';
 import SettingsPage from './components/Settings';
 
 const NAV = [
-  { id:'overview',   label:'Overview',    icon:Grid,    eyebrow:'Dashboard',   sub:'Your team at a glance' },
-  { id:'employees',  label:'Employees',   icon:Users,   eyebrow:'People',      sub:'Add and manage employees' },
-  { id:'attendance', label:'Attendance',  icon:Clock,   eyebrow:'Daily',       sub:'Mark who is in today' },
-  { id:'leaves',     label:'Leaves',      icon:Plane,   eyebrow:'Time off',    sub:'Requests and approvals' },
-  { id:'letters',    label:'Letters',     icon:FileTxt, eyebrow:'Documents',   sub:'Generate HR letters' },
-  { id:'recruiters', label:'Recruiters',  icon:Users,   eyebrow:'Pipeline',    sub:'Track leads and hires' },
-  { id:'notify',     label:'Notifications',icon:Bell,   eyebrow:'Comms',       sub:'Send a message to the team' },
-  { id:'holidays',   label:'Holidays',    icon:Cal,     eyebrow:'Calendar',    sub:'Plan the holiday chart' },
+  { id:'overview',   label:'Overview',    icon:Grid,    eyebrow:'Dashboard',   sub:'Your team at a glance',     roles:['super_admin','hoadmin','hr','recruiter','accounts'] },
+  { id:'employees',  label:'Employees',   icon:Users,   eyebrow:'People',      sub:'Add and manage employees',  roles:['super_admin','hoadmin','hr'] },
+  { id:'attendance', label:'Attendance',  icon:Clock,   eyebrow:'Daily',       sub:'Mark who is in today',      roles:['super_admin','hoadmin','hr'] },
+  { id:'leaves',     label:'Leaves',      icon:Plane,   eyebrow:'Time off',    sub:'Requests and approvals',     roles:['super_admin','hoadmin','hr'] },
+  { id:'letters',    label:'Letters',     icon:FileTxt, eyebrow:'Documents',   sub:'Generate HR letters',       roles:['super_admin','hoadmin','hr'] },
+  { id:'recruiters', label:'Recruiters',  icon:Users,   eyebrow:'Pipeline',    sub:'Track leads and hires',     roles:['super_admin','recruiter'] },
+  { id:'notify',     label:'Notifications',icon:Bell,   eyebrow:'Comms',       sub:'Send a message to the team', roles:['super_admin','hoadmin','hr'] },
+  { id:'holidays',   label:'Holidays',    icon:Cal,     eyebrow:'Calendar',    sub:'Plan the holiday chart',    roles:['super_admin','hoadmin','hr'] },
+  { id:'qr',         label:'QR Codes',    icon:Grid,    eyebrow:'Attendance',  sub:'Generate and manage QR codes', roles:['super_admin','hoadmin','hr'] },
 ];
 
-const PANELS = { overview:Overview, employees:Workers, attendance:Attendance, leaves:Leaves, letters:Letters, recruiters:Recruiters, notify:Notify, holidays:Holidays };
+const PANELS = { overview:Overview, employees:Workers, attendance:Attendance, leaves:Leaves, letters:Letters, recruiters:Recruiters, notify:Notify, holidays:Holidays, qr:GenerateQR };
 
 function LoginScreen() {
   const { login } = useHR();

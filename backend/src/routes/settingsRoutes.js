@@ -4,7 +4,7 @@ import { authenticateRole } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.get('/', authenticateRole('super_admin', 'hoadmin'), getSettings);
-router.put('/', authenticateRole('super_admin', 'hoadmin'), updateSettings);
+router.get('/', authenticateRole('super_admin', 'hoadmin', 'hr'), getSettings);
+router.put('/', authenticateRole('super_admin', 'hoadmin', 'hr'), updateSettings);
 
 export default router;

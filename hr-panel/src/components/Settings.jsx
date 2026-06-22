@@ -1,41 +1,74 @@
+import { useState, useEffect } from 'react';
 import { useHR } from '../store';
 
-const SHIFT_KEY = 'hr_default_shift';
+export default function Settings({ onClose }) {
+  const { fetchSettings, updateSettings } = useHR();
+  const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('19:00');
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-export default function Settings() {
-  const { themes, themeName, setTheme } = useHR();
-  const shiftVal = localStorage.getItem(SHIFT_KEY) || '09:00';
+  useEffect(() => {
+    fetchSettings().then(s => {
+      if (s.office_start_time) setStartTime(s.office_start_time);
+      if (s.office_end_time) setEndTime(s.office_end_time);
+    }).catch(() => {});
+  }, [fetchSettings]);
 
-  const handleShiftChange = (e) => {
-    localStorage.setItem(SHIFT_KEY, e.target.value);
-    window.dispatchEvent(new Event('storage'));
+  const calcHours = (s, e) => {
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    const mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) return '0h 0m';
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
+
+  const handleSave = async () => {
+    setBusy(true); setSaved(false);
+    try {
+      await updateSettings({ office_start_time: startTime, office_end_time: endTime });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) { alert(err.message); }
+    finally { setBusy(false); }
   };
 
   return (
     <div>
-      <div className="card" style={{ padding: '24px 28px' }}>
-        <div className="card-title" style={{ marginBottom: 20 }}>Theme</div>
-        <div className="set-themes">
-          {Object.keys(themes).map(t => (
-            <button key={t} className={`set-theme-item ${t === themeName ? 'active' : ''}`}
-              onClick={() => setTheme(t)}>
-              <span className="set-theme-swatch" style={{
-                background: themes[t].sage,
-                boxShadow: t === themeName ? `0 0 0 2px var(--paper), 0 0 0 4px ${themes[t].sage}` : 'none'
-              }} />
-              <span className="set-theme-name">{themes[t].name}</span>
-              {t === themeName && <span className="set-theme-check">&#10003;</span>}
-            </button>
-          ))}
+      <div className="card" style={{ padding: '24px 28px', marginBottom: 16 }}>
+        <div className="card-title" style={{ marginBottom: 20 }}>Shift Timing</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 16 }}>
+          These timings are used to calculate late minutes when workers punch in, and for notification reminders.
+        </p>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <label className="field" style={{ flex: 1, minWidth: 180 }}>
+            Office Start Time
+            <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+          </label>
+          <label className="field" style={{ flex: 1, minWidth: 180 }}>
+            Office End Time
+            <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 16, alignItems: 'center' }}>
+          <button className="btn btn-primary" onClick={handleSave} disabled={busy}>
+            {busy ? 'Saving...' : saved ? 'Saved!' : 'Save'}
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            Total hours: <strong>{calcHours(startTime, endTime)}</strong>
+          </span>
         </div>
       </div>
 
-      <div className="card" style={{ padding: '24px 28px', marginTop: 16 }}>
-        <div className="card-title" style={{ marginBottom: 20 }}>Attendance</div>
-        <label className="field set-field">Default Shift Start Time
-          <input type="time" value={shiftVal} onChange={handleShiftChange} />
-        </label>
-        <p className="set-hint">Used as the reference time for late calculations across all employees.</p>
+      <div className="card" style={{ padding: '24px 28px' }}>
+        <div className="card-title" style={{ marginBottom: 12 }}>Info</div>
+        <ul style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8, paddingLeft: 18 }}>
+          <li>Late minutes are calculated from the office start time on punch-in.</li>
+          <li>Workers have a grace period of <strong>180 minutes</strong> of late time per month.</li>
+          <li>After 180 minutes: 0.5 day deduction. After 240 minutes: 1 day. After 480 minutes: proportional.</li>
+          <li>Punch-in reminders are sent 20 minutes and 10 minutes before office start time.</li>
+          <li>Punch-out reminders are sent 5 minutes and 10 minutes after office end time.</li>
+        </ul>
       </div>
     </div>
   );

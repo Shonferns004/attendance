@@ -10,3 +10,6 @@ app-release.apk
 *.jpeg
 *.jpg
 feereceiptapp/
+*.aab
+main.txt
+client/assets/*.properties
