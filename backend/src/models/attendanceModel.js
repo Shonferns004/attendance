@@ -31,6 +31,16 @@ export const createAttendance = async (record) => {
   return data;
 };
 
+export const getAttendanceById = async (id) => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+};
+
 export const updateAttendance = async (id, updates) => {
   const { data, error } = await supabase
     .from('attendance')

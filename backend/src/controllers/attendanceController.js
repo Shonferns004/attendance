@@ -1,6 +1,7 @@
 import {
   getTodayAttendance,
   createAttendance,
+  getAttendanceById,
   updateAttendance,
   getMonthlyLateMinutes,
   getAttendanceHistory,
@@ -40,6 +41,23 @@ async function getOfficeEnd() {
   const [h, m] = val.split(':').map(Number);
   return { hour: h || 19, minute: m || 0 };
 }
+async function calculateLateMinutes(punchInTime, workerId) {
+  const ist = getIstTime(new Date(punchInTime));
+  const h = ist.getUTCHours();
+  const m = ist.getUTCMinutes();
+
+  let effectiveStart = await getOfficeStart();
+  const todayHalfDay = await getApprovedHalfDayLeave(workerId, istDateStr(new Date(punchInTime)));
+  if (todayHalfDay && todayHalfDay.half_start_time) {
+    const [hd, hm] = todayHalfDay.half_start_time.split(':').map(Number);
+    effectiveStart = { hour: hd, minute: hm };
+  }
+
+  return (h > effectiveStart.hour || (h === effectiveStart.hour && m > effectiveStart.minute))
+    ? (h - effectiveStart.hour) * 60 + m - effectiveStart.minute
+    : 0;
+}
+
 export const punchIn = async (req, res) => {
   try {
     const { code, latitude, longitude } = req.body;
@@ -65,21 +83,7 @@ export const punchIn = async (req, res) => {
     }
 
     const now = new Date();
-    const ist = getIstTime(now);
-    const h = ist.getUTCHours();
-    const m = ist.getUTCMinutes();
-
-    let effectiveStart = await getOfficeStart();
-    const todayHalfDay = await getApprovedHalfDayLeave(req.user.id, istDateStr(now));
-    if (todayHalfDay && todayHalfDay.half_start_time) {
-      const [hd, hm] = todayHalfDay.half_start_time.split(':').map(Number);
-      effectiveStart = { hour: hd, minute: hm };
-    }
-
-    const lateMinutes = (h > effectiveStart.hour || (h === effectiveStart.hour && m > effectiveStart.minute))
-      ? (h - effectiveStart.hour) * 60 + m - effectiveStart.minute
-      : 0;
-
+    const lateMinutes = await calculateLateMinutes(now, req.user.id);
     const status = lateMinutes > 0 ? 'late' : 'present';
 
     if (existing) {
@@ -209,6 +213,16 @@ export const updateAttendanceRecord = async (req, res) => {
     if (status !== undefined) updates.status = status;
     if (late_minutes !== undefined) updates.late_minutes = late_minutes;
     if (date !== undefined) updates.date = date;
+
+    if (punch_in_time !== undefined) {
+      const existing = await getAttendanceById(id);
+      if (existing) {
+        updates.late_minutes = await calculateLateMinutes(punch_in_time, existing.worker_id);
+        if (status === undefined) {
+          updates.status = updates.late_minutes > 0 ? 'late' : 'present';
+        }
+      }
+    }
 
     const result = await updateAttendance(id, updates);
     return res.json({ message: 'Attendance updated', attendance: result });
