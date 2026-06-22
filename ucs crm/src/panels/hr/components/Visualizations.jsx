@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useHR } from '../store';
 import { Users, Check, Plane, Bell } from '../icons';
+import { fetchWorkers, fetchAttendance, fetchLeaves, fetchHolidays } from '../store';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
@@ -105,15 +105,20 @@ function MiniStacked({ data, h = 8 }) {
 
 /* ─── Main component ─── */
 export default function Visualizations() {
-  const { workers, attendance, leaves, holidays, fetchWorkers, fetchAttendance, fetchLeaves, fetchHolidays } = useHR();
+  const [workers, setWorkers] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [salSum, setSalSum] = useState([]);
 
   useEffect(() => {
-    if (!workers.length) fetchWorkers().catch(() => {});
-    if (!attendance.length) fetchAttendance().catch(() => {});
-    fetchLeaves().catch(() => {});
-    fetchHolidays().catch(() => {});
-    fetch(API_BASE + '/salary/workers-summary', { headers: { Authorization: `Bearer ${localStorage.getItem('hr_token')}` } })
+    const token = localStorage.getItem('ucs_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetchWorkers().then(setWorkers).catch(() => {});
+    fetchAttendance().then(setAttendance).catch(() => {});
+    fetchLeaves().then(setLeaves).catch(() => {});
+    fetchHolidays().then(setHolidays).catch(() => {});
+    fetch(API_BASE + '/salary/workers-summary', { headers })
       .then(r => r.json()).then(setSalSum).catch(() => {});
   }, []);
 
