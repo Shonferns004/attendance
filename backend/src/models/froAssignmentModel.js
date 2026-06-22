@@ -75,14 +75,29 @@ export const updateAssignmentStatus = async (id, updates) => {
   return data;
 };
 
-export const getUnassignedDonorIds = async (ngoId) => {
-  const { data: allDonors, error: dErr } = await supabase
-    .from('donor_profiles')
-    .select('id');
+export const getUnassignedDonorIds = async (ngoId, ngoName) => {
+  let donorMobiles;
+
+  if (ngoName) {
+    const { data: mobiles, error: mErr } = await supabase
+      .from('imported_data')
+      .select('mobile_number')
+      .eq('ngo', ngoName)
+      .not('mobile_number', 'is', null);
+    if (mErr) throw mErr;
+    donorMobiles = [...new Set(mobiles.map(r => r.mobile_number))];
+    if (donorMobiles.length === 0) return [];
+  }
+
+  const query = supabase.from('donor_profiles').select('id');
+  if (donorMobiles) {
+    query.in('mobile_number', donorMobiles);
+  }
+
+  const { data: allDonors, error: dErr } = await query;
   if (dErr) throw dErr;
 
   const allIds = allDonors.map(d => d.id);
-
   if (allIds.length === 0) return [];
 
   const { data: assigned, error: aErr } = await supabase

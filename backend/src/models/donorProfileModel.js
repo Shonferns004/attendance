@@ -154,3 +154,26 @@ export const getDonorProfilesByNgo = async (ngoList, limit = 1000) => {
   if (error) throw error;
   return data;
 };
+
+export const getDonorProfilesByImportNgo = async (ngoList, limit = 1000) => {
+  const { data: mobiles, error: mErr } = await supabase
+    .from('imported_data')
+    .select('mobile_number')
+    .in('ngo', ngoList)
+    .not('mobile_number', 'is', null);
+
+  if (mErr) throw mErr;
+
+  const uniqueMobiles = [...new Set(mobiles.map(r => r.mobile_number))];
+  if (uniqueMobiles.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('donor_profiles')
+    .select('*')
+    .in('mobile_number', uniqueMobiles)
+    .order('first_imported_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+};
