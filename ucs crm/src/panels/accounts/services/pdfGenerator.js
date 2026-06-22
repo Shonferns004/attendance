@@ -166,49 +166,26 @@ export function formatReceiptDate(dateStr) {
   return raw
 }
 
-async function preloadImages(el) {
-  const imgs = el.querySelectorAll('img')
-  const promises = []
-  imgs.forEach(img => {
-    if (img.complete && img.naturalWidth) return
-    img.crossOrigin = 'anonymous'
-    promises.push(new Promise(resolve => {
-      img.onload = resolve
-      img.onerror = resolve
-      if (!img.src || img.src === '') resolve()
-    }))
-  })
-  return Promise.all(promises)
+function waitForImages(el) {
+  const imgs = [...el.querySelectorAll('img')].filter(img => !img.complete || !img.naturalWidth)
+  return Promise.all(imgs.map(img => new Promise(r => { img.onload = r; img.onerror = r })))
 }
 
 export async function generateReceiptPDF(element) {
+  const clone = element.cloneNode(true)
+  clone.style.cssText = 'position:fixed;left:0;top:0;width:1000px;z-index:-9999;opacity:0;pointer-events:none;overflow:visible;'
+  document.body.appendChild(clone)
   await document.fonts?.ready
-  await preloadImages(element)
-  await new Promise(r => setTimeout(r, 300))
-  const canvas = await html2canvas(element, {
+  await waitForImages(clone)
+  await new Promise(r => setTimeout(r, 400))
+  const canvas = await html2canvas(clone, {
     scale: 2,
     useCORS: true,
-    allowTaint: false,
+    allowTaint: true,
     logging: false,
     width: 1000,
-    onclone: (doc) => {
-      const imgs = doc.querySelectorAll('img')
-      imgs.forEach(img => { img.crossOrigin = 'anonymous' })
-      let el = doc.querySelector('[data-receipt-batch]')
-      if (!el) el = doc.querySelector('[data-receipt]')
-      if (el) {
-        let p = el.parentElement
-        while (p) {
-          if (p.style.display === 'none') {
-            p.style.display = 'block'
-            p.style.position = 'absolute'
-            p.style.left = '-9999px'
-          }
-          p = p.parentElement
-        }
-      }
-    },
   })
+  document.body.removeChild(clone)
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
