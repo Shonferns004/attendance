@@ -57,8 +57,10 @@ function extractTime(iso) {
 
 function reconstructIso(originalIso, newTime) {
   if (!originalIso || !newTime) return originalIso;
-  const datePart = originalIso.substring(0, 10);
-  return `${datePart}T${newTime}:00.000Z`;
+  const [h, m] = newTime.split(':').map(Number);
+  const ist = new Date(new Date(originalIso).getTime() + IST_OFFSET);
+  ist.setUTCHours(h, m, 0, 0);
+  return new Date(ist.getTime() - IST_OFFSET).toISOString();
 }
 
 function Badge({ status }) {
