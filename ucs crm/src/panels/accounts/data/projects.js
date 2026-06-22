@@ -1,28 +1,25 @@
 export const PROJECTS = {
-  maan: {
-    id: 'maan',
+  manncar: {
+    id: 'manncar',
     label: 'Mann Care Foundation',
-    shortLabel: 'MannCare',
+    shortLabel: 'Manncar',
     template: 'manncar',
   },
-  aflf: {
-    id: 'aflf',
+  ashray: {
+    id: 'ashray',
     label: 'Ashray For Life Foundation',
     shortLabel: 'Ashray',
     template: 'ashray',
   },
-  bsct: {
-    id: 'bsct',
+  beingsevak: {
+    id: 'beingsevak',
     label: 'Being Sevak Foundation',
     shortLabel: 'BeingSevak',
     template: 'beingsevak',
   },
 }
 
-export const PROJECT_OPTIONS = [
-  { value: '', label: '— Select NGO —' },
-  ...Object.values(PROJECTS).map(p => ({
-    value: p.id,
-    label: p.label,
-  })),
-]
+export const PROJECT_OPTIONS = Object.values(PROJECTS).map((p) => ({
+  value: p.id,
+  label: p.label,
+}))

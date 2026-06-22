@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { apiGet, apiPost } from '../api/auth';
 import { getReceipt, generateReceipt as apiGenerateReceipt } from '../api/receipts';
 import { generateReceiptPDF } from '../services/pdfGenerator';
-import { PROJECTS } from '../data/projects';
 import ReceiptTemplate_MannCar from '../components/ReceiptTemplate_MannCar';
 import ReceiptTemplate_Ashray from '../components/ReceiptTemplate_Ashray';
 import ReceiptTemplate_BeingSevak from '../components/ReceiptTemplate_BeingSevak';
@@ -13,8 +12,33 @@ const TEMPLATES = {
   beingsevak: ReceiptTemplate_BeingSevak,
 };
 
+const DB_TO_TEMPLATE = {
+  maan: 'manncar',
+  aflf: 'ashray',
+  bsct: 'beingsevak',
+};
+
 function getTemplateId(projectId) {
-  return PROJECTS[projectId]?.template || 'beingsevak';
+  return DB_TO_TEMPLATE[projectId] || 'beingsevak';
+}
+
+function buildDonor(receipt) {
+  return {
+    'Receipt No.': receipt.receipt_no || '',
+    'Receipt Date': receipt.receipt_date || '',
+    'Donor Name': receipt.donor_name || '',
+    'Address 1': receipt.address || '',
+    'PAN No.': receipt.pan_number || '',
+    'Email ID': '',
+    'Amount': receipt.amount || 0,
+    'Mode of Payment (MOP)': receipt.mode || '',
+    'Payment ID No.': '',
+    'Donor Bank Name': '',
+    'Account Of': 'Corpus',
+    'City': '',
+    'State': '',
+    'Pincode': '',
+  };
 }
 
 export default function LeadDetail({ logId, onBack }) {
@@ -116,6 +140,7 @@ export default function LeadDetail({ logId, onBack }) {
   const templateId = getTemplateId(projectId);
   const ReceiptComp = TEMPLATES[templateId];
   const canGenerate = l.accounts_status === 'verified';
+  const donor = receipt ? buildDonor(receipt) : null;
 
   return (
     <div>
@@ -224,7 +249,7 @@ export default function LeadDetail({ logId, onBack }) {
         </div>
       )}
 
-      {showModal && receipt && ReceiptComp && (
+      {showModal && receipt && donor && ReceiptComp && (
         <>
           <div className="modal-overlay" onClick={() => setShowModal(false)} />
           <div className="modal" style={{ maxWidth: 800, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
@@ -236,18 +261,11 @@ export default function LeadDetail({ logId, onBack }) {
               </div>
             </div>
             <div className="modal-body" style={{ padding: 20 }}>
-              <div ref={receiptRef}>
+              <div ref={receiptRef} data-receipt>
                 <ReceiptComp
-                  data={{
-                    donor_name: receipt.donor_name,
-                    amount: receipt.amount,
-                    pan_number: receipt.pan_number,
-                    address: receipt.address,
-                    mode: receipt.mode,
-                    purpose: receipt.purpose,
-                    date: receipt.receipt_date,
-                  }}
-                  receiptNo={receipt.receipt_no}
+                  donor={donor}
+                  index={0}
+                  project={templateId}
                 />
               </div>
             </div>

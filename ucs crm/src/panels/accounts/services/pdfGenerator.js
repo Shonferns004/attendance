@@ -1,11 +1,12 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 
 export function formatIndianCurrency(amount) {
   const num = Number(amount)
   if (isNaN(num)) return '₹0'
+
   const str = Math.round(num).toString()
   const lastThree = str.slice(-3)
   const rest = str.slice(0, -3)
@@ -39,15 +40,18 @@ function convertBelow1000(n) {
 export function amountInWords(amount) {
   const num = Math.round(Number(amount))
   if (isNaN(num) || num === 0) return 'Zero'
+
   let res = ''
   const crore = Math.floor(num / 10000000)
   const lakh = Math.floor((num % 10000000) / 100000)
   const thousand = Math.floor((num % 100000) / 1000)
   const remainder = num % 1000
+
   if (crore > 0) res += convertBelow1000(crore) + ' Crore '
   if (lakh > 0) res += convertBelow1000(lakh) + ' Lakh '
   if (thousand > 0) res += convertBelow1000(thousand) + ' Thousand '
   if (remainder > 0) res += convertBelow1000(remainder)
+
   return res.trim() + ''
 }
 
@@ -83,6 +87,7 @@ function parseAndFormat(raw) {
       return formatDateFromParts(day, month, year)
     }
   }
+
   parts = raw.match(/^(\d{1,2})[/-]([A-Za-z]{3})[/-](\d{2,4})$/)
   if (parts) {
     let [, d, m, y] = parts
@@ -94,6 +99,22 @@ function parseAndFormat(raw) {
       return formatDateFromParts(day, month, year)
     }
   }
+
+  parts = raw.match(/^(\d{1,2})[ ](\d{1,2}|[A-Za-z]{3,})[ ](\d{2,4})$/)
+  if (parts) {
+    let [, d, m, y] = parts
+    if (y.length === 2) y = '20' + y
+    const day = parseInt(d, 10)
+    const monthNum = parseInt(m, 10)
+    if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12 && day >= 1 && day <= 31) {
+      return formatDateFromParts(day, monthNum, year)
+    }
+    const monthName = parseMonthName(m)
+    if (monthName >= 1 && monthName <= 12 && day >= 1 && day <= 31) {
+      return formatDateFromParts(day, monthName, year)
+    }
+  }
+
   return null
 }
 
@@ -112,21 +133,36 @@ function formatInIndianTimezone(d) {
 
 export function formatReceiptDate(dateStr) {
   if (!dateStr || String(dateStr).trim() === '') return getFormattedDate()
-  if (dateStr instanceof Date) return formatInIndianTimezone(dateStr)
+
+  if (dateStr instanceof Date) {
+    return formatInIndianTimezone(dateStr)
+  }
+
   if (typeof dateStr === 'number') {
     const d = new Date((dateStr - 25569) * 86400000)
-    if (!isNaN(d.getTime())) return formatInIndianTimezone(d)
+    if (!isNaN(d.getTime())) {
+      return formatInIndianTimezone(d)
+    }
   }
+
   const raw = String(dateStr).trim()
+
   const numeric = raw.replace(/[, ]/g, '')
   if (/^\d{5}$/.test(numeric)) {
     const d = new Date((parseInt(numeric, 10) - 25569) * 86400000)
-    if (!isNaN(d.getTime())) return formatInIndianTimezone(d)
+    if (!isNaN(d.getTime())) {
+      return formatInIndianTimezone(d)
+    }
   }
+
   const result = parseAndFormat(raw)
   if (result) return result
+
   const d = new Date(raw)
-  if (!isNaN(d.getTime())) return formatInIndianTimezone(d)
+  if (!isNaN(d.getTime())) {
+    return formatInIndianTimezone(d)
+  }
+
   return raw
 }
 
@@ -169,4 +205,49 @@ export async function generateReceiptPDF(element) {
 
 function sanitizeFileName(name) {
   return String(name).replace(/[<>:"/\\|?*]/g, '_').trim() || 'Unknown'
+}
+
+function getFilePrefix(project) {
+  if (!project) return ''
+  const map = {
+    ashray: 'Ashray',
+    beingsevak: 'BeingSevak',
+    manncar: 'MannCare',
+  }
+  return (map[project] || project) + '_'
+}
+
+function getZipName(project) {
+  if (!project) return 'Donation_Receipts.zip'
+  const map = {
+    ashray: 'Ashray',
+    beingsevak: 'BeingSevak',
+    manncar: 'MannCare',
+  }
+  return (map[project] || project) + '_Donation_Receipts.zip'
+}
+
+export async function downloadSinglePDF(element, donor, project = '') {
+  const receiptNo = donor['Receipt No.'] || 'N/A'
+  const donorName = sanitizeFileName(donor['Donor Name'])
+  const prefix = getFilePrefix(project)
+  const pdf = await generateReceiptPDF(element)
+  pdf.save(`${prefix}Receipt_${receiptNo}_${donorName}.pdf`)
+}
+
+export async function downloadAllPDFs(elements, project = '') {
+  const zip = new JSZip()
+  const folder = zip.folder('Donation_Receipts')
+
+  for (let i = 0; i < elements.length; i++) {
+    const { element, donor } = elements[i]
+    const pdf = await generateReceiptPDF(element)
+    const receiptNo = donor['Receipt No.'] || `ROW${i + 1}`
+    const donorName = sanitizeFileName(donor['Donor Name'])
+    const prefix = getFilePrefix(project)
+    folder.file(`${prefix}Receipt_${receiptNo}_${donorName}.pdf`, pdf.output('arraybuffer'))
+  }
+
+  const content = await zip.generateAsync({ type: 'blob' })
+  saveAs(content, getZipName(project))
 }
