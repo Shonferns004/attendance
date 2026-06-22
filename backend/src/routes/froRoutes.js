@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRole } from '../middleware/authMiddleware.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 import {
   getDashboard,
   getMyDonors,
@@ -13,7 +13,7 @@ import {
 
 const router = Router();
 
-router.use(authenticateRole('worker'));
+router.use(authenticate);
 
 const requireFro = (req, res, next) => {
   if (!req.user.department || req.user.department.toLowerCase().trim() !== 'fro') {

@@ -8,6 +8,7 @@ const ALLOWED_ROLES = {
   accounts: 'accounts',
   recruiter: 'recruiter',
   telecaller: 'telecaller',
+  fro: 'fro',
   worker: 'worker',
 }
 

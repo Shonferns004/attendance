@@ -32,4 +32,4 @@ export const authenticate = (req, res, next) => {
 };
 
 export const authenticateAdmin = authenticateRole('super_admin');
-export const authenticateWorker = authenticateRole('worker');
+export const authenticateWorker = authenticateRole('worker', 'fro');

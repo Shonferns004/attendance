@@ -17,6 +17,13 @@ const ROLE_PANELS = {
   recruiter: { panel: RecruiterPanel, cls: 'panel-recruiter' },
 }
 
+const DEPT_PANELS = {
+  HR: { panel: HRPanel, cls: 'panel-hr' },
+  'HR-Recruiter': { panel: RecruiterPanel, cls: 'panel-recruiter' },
+  FRO: { panel: FROPanel, cls: 'panel-fro' },
+  Admin: { panel: AccountsPanel, cls: 'panel-accounts' },
+}
+
 function AccessDenied() {
   return (
     <div className="login-page">
@@ -43,7 +50,7 @@ function AppContent() {
 
   if (!user) return <Login />
 
-  const mapping = ROLE_PANELS[user.role]
+  const mapping = ROLE_PANELS[user.role] || DEPT_PANELS[user.department]
   if (!mapping) return <AccessDenied />
 
   const Panel = mapping.panel
