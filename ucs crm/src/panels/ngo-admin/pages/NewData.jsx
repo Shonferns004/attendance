@@ -67,12 +67,12 @@ export default function NewData() {
               </thead>
               <tbody>
                 {donors.map((d, i) => (
-                  <tr key={d.id || i}>
+                  <tr key={d.mobile_number || i}>
                     <td><strong>{d.name || '\u2014'}</strong></td>
                     <td><code>{d.mobile_number}</code></td>
                     <td><span className="pill">{d.category || '\u2014'}</span></td>
                     <td>{'\u20B9'}{Number(d.amount || 0).toLocaleString()}</td>
-                    <td className="muted">{d.first_imported_at ? new Date(d.first_imported_at).toLocaleDateString() : '\u2014'}</td>
+                    <td className="muted">{d.created_at ? new Date(d.created_at).toLocaleDateString() : '\u2014'}</td>
                   </tr>
                 ))}
               </tbody>
