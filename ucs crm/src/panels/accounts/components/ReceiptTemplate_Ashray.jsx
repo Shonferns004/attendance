@@ -212,7 +212,7 @@ export default function ReceiptTemplate_Ashray({ donor, index, signature, projec
               borderBottom: `2px solid ${secondary}`,
             }}
           >
-            {amountInWords(amount)} {''}Rupees and No. Paise Only
+            {amountInWords(amount)}
           </div>
         </div>
 

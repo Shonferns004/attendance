@@ -110,7 +110,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
                 paddingBottom: '5px'
               }}
             >
-              {' '} {amountInWords(Math.floor(amount))} Rupees and No. Paise Only  {' '}
+              {' '}{amountInWords(amount)}{' '}
             </strong>
 
             for a noble cause &amp; making a difference.
@@ -305,7 +305,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
                 }}
                 colSpan="3"
               >
-                 {amountInWords(Math.floor(amount))} Rupees and No. Paise Only
+                 {amountInWords(amount)}
               </td>
             </tr>
 

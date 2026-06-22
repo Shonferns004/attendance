@@ -38,21 +38,34 @@ function convertBelow1000(n) {
 }
 
 export function amountInWords(amount) {
-  const num = Math.round(Number(amount))
-  if (isNaN(num) || num === 0) return 'Zero'
+  const num = Number(amount)
+  if (isNaN(num) || num === 0) return 'Zero Rupees and No. Paise Only'
+
+  const rupees = Math.floor(num)
+  const paise = Math.round((num - rupees) * 100)
 
   let res = ''
-  const crore = Math.floor(num / 10000000)
-  const lakh = Math.floor((num % 10000000) / 100000)
-  const thousand = Math.floor((num % 100000) / 1000)
-  const remainder = num % 1000
+  if (rupees > 0) {
+    const crore = Math.floor(rupees / 10000000)
+    const lakh = Math.floor((rupees % 10000000) / 100000)
+    const thousand = Math.floor((rupees % 100000) / 1000)
+    const remainder = rupees % 1000
 
-  if (crore > 0) res += convertBelow1000(crore) + ' Crore '
-  if (lakh > 0) res += convertBelow1000(lakh) + ' Lakh '
-  if (thousand > 0) res += convertBelow1000(thousand) + ' Thousand '
-  if (remainder > 0) res += convertBelow1000(remainder)
+    if (crore > 0) res += convertBelow1000(crore) + ' Crore '
+    if (lakh > 0) res += convertBelow1000(lakh) + ' Lakh '
+    if (thousand > 0) res += convertBelow1000(thousand) + ' Thousand '
+    if (remainder > 0) res += convertBelow1000(remainder)
 
-  return res.trim() + ''
+    res += ' Rupees'
+  }
+
+  if (paise > 0) {
+    res += ' and ' + convertBelow1000(paise) + ' Paise Only'
+  } else {
+    res += ' and No. Paise Only'
+  }
+
+  return res.trim()
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',

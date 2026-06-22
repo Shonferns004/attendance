@@ -162,8 +162,7 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
           </tr>
           <tr>
             <td style={{ border: '1px solid #666', padding: '15px' }}>Total Contribution Received (Words)</td>
-            <td style={{ border: '1px solid #666', padding: '15px' }}>{amountInWords(amount)}{' '}Rupees and No.
-              Paise Only</td>
+            <td style={{ border: '1px solid #666', padding: '15px' }}>{amountInWords(amount)}</td>
           </tr>
         </tbody>
       </table>
