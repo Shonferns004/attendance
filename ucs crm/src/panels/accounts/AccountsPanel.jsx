@@ -2,10 +2,12 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUcs } from '../../store'
 import Dashboard from './pages/Dashboard'
 import SuspensePage from './pages/SuspensePage'
+import ReceiptHistory from './pages/ReceiptHistory'
 
 const NAV = [
   { id: 'leads', label: 'Lead Verification', icon: '\u{1F4B0}' },
   { id: 'suspense', label: 'Suspense', icon: '\u{2753}' },
+  { id: 'receipts', label: 'Receipt History', icon: '\u{1F4C4}' },
 ]
 
 function Sidebar({ active, setActive }) {
@@ -73,7 +75,7 @@ export default function AccountsPanel() {
           </div>
         </header>
         <div className="content-body">
-          {active === 'leads' ? <Dashboard /> : <SuspensePage />}
+          {active === 'leads' ? <Dashboard /> : active === 'suspense' ? <SuspensePage /> : <ReceiptHistory />}
         </div>
       </div>
     </div>

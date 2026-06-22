@@ -1,5 +1,5 @@
 import supabase from '../config/supabase.js';
-import { createReceipt, findReceiptByLogId, getLastReceiptNo } from '../models/receiptModel.js';
+import { createReceipt, findReceiptByLogId, getLastReceiptNo, listAllReceipts } from '../models/receiptModel.js';
 
 export const getLeadList = async (req, res) => {
   try {
@@ -361,6 +361,15 @@ export const getReceipt = async (req, res) => {
       return res.status(404).json({ message: 'Receipt not found' });
     }
     return res.json(receipt);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getReceiptList = async (req, res) => {
+  try {
+    const receipts = await listAllReceipts(200);
+    return res.json(receipts);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

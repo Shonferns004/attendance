@@ -7,3 +7,7 @@ export function getReceipt(logId) {
 export function generateReceipt(logId, data = {}) {
   return apiPost(`/accounts/leads/${logId}/receipt`, data)
 }
+
+export function listReceipts() {
+  return apiGet('/accounts/receipts')
+}

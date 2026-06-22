@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateRole } from '../middleware/authMiddleware.js';
-import { getLeadList, verifyLead, rejectLead, getSuspenseList, createSuspense, addSuspenseNote, assignSuspense, generateReceipt, getReceipt } from '../controllers/accountsController.js';
+import { getLeadList, verifyLead, rejectLead, getSuspenseList, createSuspense, addSuspenseNote, assignSuspense, generateReceipt, getReceipt, getReceiptList } from '../controllers/accountsController.js';
 
 const router = Router();
 
@@ -17,5 +17,6 @@ router.post('/suspense/:id/assign', assignSuspense);
 
 router.post('/leads/:logId/receipt', generateReceipt);
 router.get('/leads/:logId/receipt', getReceipt);
+router.get('/receipts', getReceiptList);
 
 export default router;
