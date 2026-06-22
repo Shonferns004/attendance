@@ -197,22 +197,29 @@ function imgToDataUrl(src) {
 export async function generateReceiptPDF(element) {
   const target = element.firstElementChild || element
   const clone = target.cloneNode(true)
+  clone.style.width = ''
+  clone.style.maxWidth = ''
+  clone.style.margin = '0'
+  clone.style.position = 'fixed'
+  clone.style.left = '-9999px'
+  clone.style.top = '0'
+  clone.style.zIndex = '9999'
+  clone.style.pointerEvents = 'none'
+  clone.style.overflow = 'visible'
   const imgs = [...clone.querySelectorAll('img')]
   await Promise.all(imgs.map(async (img) => {
     try {
       img.src = await imgToDataUrl(img.src)
     } catch (_) {}
   }))
-  clone.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:9999;pointer-events:none;overflow:visible;'
   document.body.appendChild(clone)
   await document.fonts?.ready
   await new Promise(r => setTimeout(r, 500))
   const canvas = await html2canvas(clone, {
-    scale: 2,
+    scale: 3,
     useCORS: false,
     allowTaint: false,
-    logging: true,
-    windowWidth: 1200,
+    windowWidth: 600,
     windowHeight: 2000,
   })
   document.body.removeChild(clone)
@@ -220,15 +227,22 @@ export async function generateReceiptPDF(element) {
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
-  const margin = 20
+  const margin = 10
   const maxW = pdfW - 2 * margin
-  const maxH = pdfH - 2 * margin
-  const ratio = Math.min(maxW / canvas.width, maxH / canvas.height)
-  const imgW = canvas.width * ratio
+  const ratio = maxW / canvas.width
+  const imgW = maxW
   const imgH = canvas.height * ratio
-  const x = (pdfW - imgW) / 2
+  const x = margin
   const y = margin
-  pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH)
+  if (imgH > pdfH - 2 * margin) {
+    const pages = Math.ceil(imgH / (pdfH - 2 * margin))
+    for (let i = 0; i < pages; i++) {
+      if (i > 0) pdf.addPage()
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y - i * (pdfH - 2 * margin), imgW, imgH)
+    }
+  } else {
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH)
+  }
   return pdf
 }
 
