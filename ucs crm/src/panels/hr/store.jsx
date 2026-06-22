@@ -16,6 +16,7 @@ export function useHR() {
     generateAllTargets, fetchCurrentMonthTargets,
     setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchMonthlyIncentiveSummary,
     fetchWorkerAllocations, setWorkerAllocations, fetchWorkerSalaryAllocations,
+    generateQR, fetchQRCodes, removeQRCode,
   }
 }
 
