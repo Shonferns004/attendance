@@ -273,3 +273,13 @@ tr:last-child td { border-bottom: none; }
   display: flex; gap: 8px; justify-content: flex-end;
   margin-top: 16px;
 }
+
+textarea {
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+textarea:focus { border-color: var(--primary); }
+
+.pill-orange { background: #fff7ed; color: #9a3412; }

@@ -14,14 +14,14 @@ import Recruiters from './components/Recruiters';
 import SettingsPage from './components/Settings';
 
 const NAV = [
-  { id:'overview',   label:'Overview',    icon:Grid,    eyebrow:'Dashboard',   sub:'Your team at a glance',     roles:['super_admin','hoadmin','hr','recruiter','accounts'] },
-  { id:'employees',  label:'Employees',   icon:Users,   eyebrow:'People',      sub:'Add and manage employees',  roles:['super_admin','hoadmin','hr'] },
-  { id:'attendance', label:'Attendance',  icon:Clock,   eyebrow:'Daily',       sub:'Mark who is in today',      roles:['super_admin','hoadmin','hr'] },
-  { id:'leaves',     label:'Leaves',      icon:Plane,   eyebrow:'Time off',    sub:'Requests and approvals',    roles:['super_admin','hoadmin','hr'] },
-  { id:'letters',    label:'Letters',     icon:FileTxt, eyebrow:'Documents',   sub:'Generate HR letters',       roles:['super_admin','hoadmin','hr'] },
-  { id:'recruiters', label:'Recruiters',  icon:Users,   eyebrow:'Pipeline',    sub:'Track leads and hires',     roles:['super_admin','recruiter'] },
-  { id:'notify',     label:'Notifications',icon:Bell,   eyebrow:'Comms',       sub:'Send a message to the team',roles:['super_admin','hoadmin','hr'] },
-  { id:'holidays',   label:'Holidays',    icon:Cal,     eyebrow:'Calendar',    sub:'Plan the holiday chart',    roles:['super_admin','hoadmin','hr'] },
+  { id:'overview',   label:'Overview',    icon:Grid,    eyebrow:'Dashboard',   sub:'Your team at a glance' },
+  { id:'employees',  label:'Employees',   icon:Users,   eyebrow:'People',      sub:'Add and manage employees' },
+  { id:'attendance', label:'Attendance',  icon:Clock,   eyebrow:'Daily',       sub:'Mark who is in today' },
+  { id:'leaves',     label:'Leaves',      icon:Plane,   eyebrow:'Time off',    sub:'Requests and approvals' },
+  { id:'letters',    label:'Letters',     icon:FileTxt, eyebrow:'Documents',   sub:'Generate HR letters' },
+  { id:'recruiters', label:'Recruiters',  icon:Users,   eyebrow:'Pipeline',    sub:'Track leads and hires' },
+  { id:'notify',     label:'Notifications',icon:Bell,   eyebrow:'Comms',       sub:'Send a message to the team' },
+  { id:'holidays',   label:'Holidays',    icon:Cal,     eyebrow:'Calendar',    sub:'Plan the holiday chart' },
 ];
 
 const PANELS = { overview:Overview, employees:Workers, attendance:Attendance, leaves:Leaves, letters:Letters, recruiters:Recruiters, notify:Notify, holidays:Holidays };
@@ -72,7 +72,7 @@ function LoginScreen() {
   );
 }
 
-function Sidebar({ nav, active, setActive, open, onClose }) {
+function Sidebar({ active, setActive, open, onClose }) {
 
   return (
     <>
@@ -84,7 +84,7 @@ function Sidebar({ nav, active, setActive, open, onClose }) {
         </div>
 
         <nav className="sidebar-nav">
-          {nav.map(n => {
+          {NAV.map(n => {
             const Icon = n.icon;
             return (
               <button key={n.id} className={`snav-item ${active===n.id?'active':''}`}
@@ -101,11 +101,9 @@ function Sidebar({ nav, active, setActive, open, onClose }) {
 
 function Dashboard() {
   const { user, logout, themes, themeName, setTheme } = useHR();
-  const myNav = NAV.filter(n => n.roles.includes(user?.role || ''));
   const [active, setActive] = useState(() => {
     const stored = localStorage.getItem('hr_panel');
-    if (stored && myNav.some(n => n.id === stored)) return stored;
-    return myNav[0]?.id || 'overview';
+    return stored && NAV.some(n => n.id === stored) ? stored : 'overview';
   });
   const setActiveAndPersist = useCallback((id) => {
     setActive(id);
@@ -118,7 +116,7 @@ function Dashboard() {
   const [offboardingEmployee, setOffboardingEmployee] = useState(null);
   const menuRef = useRef(null);
   const Panel = PANELS[active];
-  const meta = myNav.find(n => n.id === active);
+  const meta = NAV.find(n => n.id === active);
   const userName = user?.name || 'HR User';
   const userRole = user?.role || 'HR';
   const userInitials = userName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
@@ -145,7 +143,7 @@ function Dashboard() {
 
   return (
     <div className="app">
-      <Sidebar nav={myNav} active={active} setActive={setActiveAndPersist} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Sidebar active={active} setActive={setActiveAndPersist} open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="main">
         <div className="mobile-top">

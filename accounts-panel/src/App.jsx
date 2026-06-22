@@ -2,11 +2,40 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { AccountsProvider, useAccounts } from './store';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import SuspensePage from './pages/SuspensePage';
+
+const NAV = [
+  { id: 'leads', label: 'Lead Verification', icon: '\u{1F4B0}' },
+  { id: 'suspense', label: 'Suspense', icon: '\u{2753}' },
+];
+
+function Sidebar({ active, setActive }) {
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="brand-mark">AP</div>
+        <div><h1>UFS</h1><span>Accounts Panel</span></div>
+      </div>
+      <nav className="sidebar-nav">
+        {NAV.map(n => (
+          <button key={n.id}
+            className={`snav-item ${active === n.id ? 'active' : ''}`}
+            onClick={() => setActive(n.id)}>
+            <span className="ico">{n.icon}</span>
+            <span>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+    </aside>
+  );
+}
 
 function DashboardPage() {
   const { user, logout } = useAccounts();
+  const [active, setActive] = useState('leads');
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const meta = NAV.find(n => n.id === active);
 
   useEffect(() => {
     const handler = (e) => {
@@ -21,23 +50,12 @@ function DashboardPage() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-mark">AP</div>
-          <div><h1>UFS</h1><span>Accounts Panel</span></div>
-        </div>
-        <nav className="sidebar-nav">
-          <button className="snav-item active">
-            <span className="ico">{'\u{1F4B0}'}</span>
-            <span>Lead Verification</span>
-          </button>
-        </nav>
-      </aside>
+      <Sidebar active={active} setActive={setActive} />
       <div className="main">
         <header className="topbar">
           <div>
             <div className="eyebrow">Accounts</div>
-            <h2>Lead Verification</h2>
+            <h2>{meta?.label || 'Accounts'}</h2>
           </div>
           <div className="topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
             <div className="topbar-user-text">
@@ -56,7 +74,7 @@ function DashboardPage() {
           </div>
         </header>
         <div className="content-body">
-          <Dashboard />
+          {active === 'leads' ? <Dashboard /> : <SuspensePage />}
         </div>
       </div>
     </div>

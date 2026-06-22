@@ -21,7 +21,7 @@ const adminOrHrOrHo = authenticateRole('super_admin', 'hoadmin', 'hr');
 
 router.post('/', adminOrHrOrHo, addWorker);
 router.post('/bulk', adminOrHrOrHo, bulkAddWorkers);
-router.get('/', adminOrHrOrHo, getWorkers);
+router.get('/', authenticateRole('super_admin', 'hoadmin', 'hr', 'accounts'), getWorkers);
 router.get('/birthdays', adminOrHrOrHo, getBirthdays);
 router.get('/me', authenticate, getMyProfile);
 router.put('/me', authenticate, updateMyProfile);

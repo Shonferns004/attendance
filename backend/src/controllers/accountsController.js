@@ -132,6 +132,98 @@ export const verifyLead = async (req, res) => {
   }
 };
 
+// ─── Suspense ─────────────────────────────────────────────
+
+export const getSuspenseList = async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = supabase
+      .from('suspense_donations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json(data || []);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const createSuspense = async (req, res) => {
+  try {
+    const { donor_name, amount, transaction_date, notes } = req.body;
+    if (!donor_name || !amount) {
+      return res.status(400).json({ message: 'Donor name and amount are required' });
+    }
+
+    const { data, error } = await supabase
+      .from('suspense_donations')
+      .insert({ donor_name, amount, transaction_date, notes })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.status(201).json(data);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const addSuspenseNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    if (!notes) return res.status(400).json({ message: 'Notes are required' });
+
+    const { data: existing } = await supabase
+      .from('suspense_donations')
+      .select('notes')
+      .eq('id', id)
+      .single();
+
+    if (!existing) return res.status(404).json({ message: 'Suspense entry not found' });
+
+    const updatedNotes = existing.notes
+      ? existing.notes + '\n---\n' + new Date().toLocaleString() + ': ' + notes
+      : new Date().toLocaleString() + ': ' + notes;
+
+    const { data, error } = await supabase
+      .from('suspense_donations')
+      .update({ notes: updatedNotes })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const assignSuspense = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fro_worker_id } = req.body;
+    if (!fro_worker_id) return res.status(400).json({ message: 'FRO worker ID is required' });
+
+    const { data, error } = await supabase
+      .from('suspense_donations')
+      .update({ assigned_to_fro_id: fro_worker_id, assigned_at: new Date().toISOString(), status: 'resolved' })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const rejectLead = async (req, res) => {
   try {
     const { logId } = req.params;

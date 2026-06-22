@@ -39,3 +39,20 @@ export async function apiPost(path, body) {
   }
   return res.json();
 }
+
+export async function apiPut(path, body) {
+  const token = localStorage.getItem('ac_token');
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(e.message || 'Request failed');
+  }
+  return res.json();
+}
