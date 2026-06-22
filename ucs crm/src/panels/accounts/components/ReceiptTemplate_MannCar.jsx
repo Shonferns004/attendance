@@ -15,6 +15,8 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
   if (donor._dataMissing) {
     return (
       <div
+        data-receipt-sheet
+        data-pdf-width="1000"
         style={{
           width: '1000px',
           margin: '0 auto',
@@ -43,6 +45,8 @@ export default function ReceiptTemplate_MannCar({ donor, index, signature }) {
 
   return (
     <div
+      data-receipt-sheet
+      data-pdf-width="1000"
       style={{
         width: '1000px',
         margin: '0 auto',

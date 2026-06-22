@@ -45,6 +45,8 @@ export default function ReceiptTemplate_Ashray({ donor, index, signature, projec
   if (donor._dataMissing) {
     return (
       <div
+        data-receipt-sheet
+        data-pdf-width="794"
         style={{
           width: '794px',
           margin: '0 auto',
@@ -70,6 +72,8 @@ export default function ReceiptTemplate_Ashray({ donor, index, signature, projec
 
   return (
     <div
+      data-receipt-sheet
+      data-pdf-width="794"
       style={{
         width: '794px',
         margin: '0 auto',

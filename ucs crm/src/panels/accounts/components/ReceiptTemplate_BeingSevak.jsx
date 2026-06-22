@@ -25,6 +25,8 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
   if (donor._dataMissing) {
     return (
       <div
+        data-receipt-sheet
+        data-pdf-width="900"
         style={{
           maxWidth: '900px',
           margin: '0 auto',
@@ -52,7 +54,7 @@ export default function ReceiptTemplate_BeingSevak({ donor, index, signature }) 
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: 'auto', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+    <div data-receipt-sheet data-pdf-width="900" style={{ maxWidth: '900px', margin: 'auto', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
       {/* ===== TOP SECTION: Thank You Letter ===== */}
       <div style={{ background: '#fff', border: `2px solid ${ACCENT}`, borderRadius: '10px', padding: '22px', marginBottom: '20px' }}>
 

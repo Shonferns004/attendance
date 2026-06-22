@@ -194,54 +194,95 @@ function imgToDataUrl(src) {
   })
 }
 
+function getReceiptTarget(element) {
+  if (!element) throw new Error('Receipt preview is not available')
+  if (element.matches?.('[data-receipt-sheet]')) return element
+  return element.querySelector?.('[data-receipt-sheet]') || element.firstElementChild || element
+}
+
+function waitForImage(img) {
+  if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+  return new Promise((resolve) => {
+    const done = () => resolve()
+    img.addEventListener('load', done, { once: true })
+    img.addEventListener('error', done, { once: true })
+  })
+}
+
 export async function generateReceiptPDF(element) {
-  const target = element.firstElementChild || element
+  const target = getReceiptTarget(element)
+  await Promise.all([...target.querySelectorAll('img')].map(waitForImage))
+
+  const requestedWidth = Number(target.dataset.pdfWidth)
+  const captureWidth = requestedWidth > 0
+    ? requestedWidth
+    : Math.ceil(Math.max(target.scrollWidth, target.getBoundingClientRect().width))
   const clone = target.cloneNode(true)
-  clone.style.width = ''
-  clone.style.maxWidth = ''
+  clone.style.width = `${captureWidth}px`
+  clone.style.maxWidth = 'none'
+  clone.style.boxSizing = 'border-box'
   clone.style.margin = '0'
-  clone.style.position = 'fixed'
-  clone.style.left = '-9999px'
+  clone.style.position = 'absolute'
+  clone.style.left = '0'
   clone.style.top = '0'
-  clone.style.zIndex = '9999'
+  clone.style.zIndex = '1'
   clone.style.pointerEvents = 'none'
   clone.style.overflow = 'visible'
+  clone.style.visibility = 'visible'
   const imgs = [...clone.querySelectorAll('img')]
   await Promise.all(imgs.map(async (img) => {
     try {
       img.src = await imgToDataUrl(img.src)
     } catch (_) {}
   }))
-  document.body.appendChild(clone)
-  await document.fonts?.ready
-  await new Promise(r => setTimeout(r, 500))
-  const canvas = await html2canvas(clone, {
-    scale: 3,
-    useCORS: false,
-    allowTaint: false,
-    windowWidth: 600,
-    windowHeight: 2000,
-  })
-  document.body.removeChild(clone)
+  const host = document.createElement('div')
+  host.style.cssText = `position:fixed;left:-10000px;top:0;width:${captureWidth}px;overflow:visible;pointer-events:none;`
+  host.appendChild(clone)
+  document.body.appendChild(host)
+
+  let canvas
+  try {
+    await document.fonts?.ready
+    await Promise.all(imgs.map(waitForImage))
+    canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      width: captureWidth,
+      height: Math.ceil(clone.scrollHeight),
+      windowWidth: captureWidth,
+      windowHeight: Math.ceil(clone.scrollHeight),
+      scrollX: 0,
+      scrollY: 0,
+    })
+  } finally {
+    host.remove()
+  }
   if (!canvas.width || !canvas.height) throw new Error(`Canvas is empty (${canvas.width}x${canvas.height})`)
+
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
   const margin = 10
-  const maxW = pdfW - 2 * margin
-  const ratio = maxW / canvas.width
-  const imgW = maxW
-  const imgH = canvas.height * ratio
-  const x = margin
-  const y = margin
-  if (imgH > pdfH - 2 * margin) {
-    const pages = Math.ceil(imgH / (pdfH - 2 * margin))
-    for (let i = 0; i < pages; i++) {
-      if (i > 0) pdf.addPage()
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y - i * (pdfH - 2 * margin), imgW, imgH)
-    }
-  } else {
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH)
+  const printableW = pdfW - 2 * margin
+  const printableH = pdfH - 2 * margin
+  const pixelsPerMm = canvas.width / printableW
+  const pageSliceHeight = Math.floor(printableH * pixelsPerMm)
+
+  for (let offsetY = 0, page = 0; offsetY < canvas.height; offsetY += pageSliceHeight, page++) {
+    const sliceHeight = Math.min(pageSliceHeight, canvas.height - offsetY)
+    const pageCanvas = document.createElement('canvas')
+    pageCanvas.width = canvas.width
+    pageCanvas.height = sliceHeight
+    pageCanvas.getContext('2d').drawImage(
+      canvas,
+      0, offsetY, canvas.width, sliceHeight,
+      0, 0, canvas.width, sliceHeight,
+    )
+    if (page > 0) pdf.addPage()
+    const renderedHeight = sliceHeight / pixelsPerMm
+    pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, printableW, renderedHeight)
   }
   return pdf
 }
