@@ -90,7 +90,7 @@ export default function ReceiptTemplate_Ashray({ donor, index, signature, projec
         }}
       >
         <div style={{ width: '170px', textAlign: 'center' }}>
-          <img src={ashrayLogo} alt="Logo" style={{ maxWidth:'100%' }} />
+          <img crossOrigin="anonymous" src={ashrayLogo} alt="Logo" style={{ maxWidth:'100%' }} />
         </div>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: '13px', letterSpacing: '3px', opacity: 0.9, marginRight: '136px' }}>{org.tagline}</div>
@@ -327,6 +327,7 @@ export default function ReceiptTemplate_Ashray({ donor, index, signature, projec
           </div>
           <div style={{ textAlign: 'center' }}>
             <img
+              crossOrigin="anonymous"
               src={ashrayStamp}
               alt="Stamp"
               style={{ width: '120px', marginBottom: '10px', marginLeft: '60px', }}
