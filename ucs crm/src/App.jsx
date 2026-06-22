@@ -9,7 +9,7 @@ import RecruiterPanel from './panels/recruiter/RecruiterPanel'
 
 const ROLE_PANELS = {
   super_admin: { panel: SuperAdminPanel, cls: 'panel-sa' },
-  hoadmin: { panel: SuperAdminPanel, cls: 'panel-sa' },
+  hoadmin: { panel: NgoAdminPanel, cls: 'panel-ngo-admin' },
   hr: { panel: HRPanel, cls: 'panel-hr' },
   accounts: { panel: AccountsPanel, cls: 'panel-accounts' },
   'ngo-admin': { panel: NgoAdminPanel, cls: 'panel-ngo-admin' },
