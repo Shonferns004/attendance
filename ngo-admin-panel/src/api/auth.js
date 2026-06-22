@@ -62,3 +62,16 @@ export async function apiPost(path, body) {
   }
   return res.json();
 }
+
+export async function apiDelete(path) {
+  const token = getToken();
+  const res = await fetch(`${API}${path}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(e.message || 'Request failed');
+  }
+  return res.json();
+}
