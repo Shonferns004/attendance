@@ -556,14 +556,15 @@ export const getStations = async (req, res) => {
 
     const stationCountMap = {};
     for (const d of donorData || []) {
-      const key = `${d.station}||${d.ngo}`;
+      const trimmedStation = d.station.trim();
+      const key = `${trimmedStation}||${d.ngo}`;
       stationCountMap[key] = (stationCountMap[key] || 0) + 1;
     }
 
     const assignments = await getStationAssignmentsByNgo(ngoIds);
     const assignMap = {};
     for (const a of assignments) {
-      assignMap[`${a.station}||${a.ngo_id}`] = a;
+      assignMap[`${a.station.trim()}||${a.ngo_id}`] = a;
     }
 
     const ngoIdToName = {};
@@ -604,12 +605,36 @@ export const saveStationAssignment = async (req, res) => {
       return res.status(400).json({ message: 'station and fro_worker_id are required' });
     }
 
+    const trimmedStation = station.trim();
     const access = await getUserNgoAccess(req.user.id);
-    let ngoId = access[0]?.ngo_id;
-    if (!ngoId && req.user.ngo_id) ngoId = req.user.ngo_id;
+    const ngoNames = access.map(a => a.ngo_name).filter(Boolean);
+    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
+
+    if (ngoNames.length === 0 && req.user.ngo_id) {
+      const { data: ngo } = await supabase.from('ngos').select('name').eq('id', req.user.ngo_id).single();
+      if (ngo) { ngoNames.push(ngo.name); ngoIds.push(req.user.ngo_id); }
+    }
+
+    let ngoId;
+    if (ngoNames.length > 0) {
+      const { data: donorStation } = await supabase
+        .from('donor_profiles')
+        .select('ngo')
+        .eq('station', trimmedStation)
+        .in('ngo', ngoNames)
+        .limit(1)
+        .maybeSingle();
+
+      if (donorStation) {
+        const idx = ngoNames.indexOf(donorStation.ngo);
+        if (idx !== -1) ngoId = ngoIds[idx];
+      }
+    }
+
+    if (!ngoId) ngoId = ngoIds[0] || req.user.ngo_id || null;
     if (!ngoId) return res.status(400).json({ message: 'No NGO assigned to your account' });
 
-    const result = await upsertStationAssignment(fro_worker_id, ngoId, station, req.user.id);
+    const result = await upsertStationAssignment(fro_worker_id, ngoId, trimmedStation, req.user.id);
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: error.message });
