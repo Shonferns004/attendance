@@ -166,26 +166,32 @@ export function formatReceiptDate(dateStr) {
   return raw
 }
 
-function waitForImages(el) {
-  const imgs = [...el.querySelectorAll('img')].filter(img => !img.complete || !img.naturalWidth)
-  return Promise.all(imgs.map(img => new Promise(r => { img.onload = r; img.onerror = r })))
-}
-
 export async function generateReceiptPDF(element) {
-  const clone = element.cloneNode(true)
-  clone.style.cssText = 'position:fixed;left:0;top:0;width:1000px;z-index:-9999;opacity:0;pointer-events:none;overflow:visible;'
-  document.body.appendChild(clone)
+  const target = element.firstElementChild || element
   await document.fonts?.ready
-  await waitForImages(clone)
-  await new Promise(r => setTimeout(r, 400))
-  const canvas = await html2canvas(clone, {
+  const canvas = await html2canvas(target, {
     scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    logging: false,
-    width: 1000,
+    useCORS: false,
+    allowTaint: false,
+    logging: true,
+    windowWidth: 1200,
+    windowHeight: 2000,
+    onclone: (doc) => {
+      doc.querySelectorAll('img').forEach(img => { img.removeAttribute('crossorigin') })
+      const el = doc.querySelector('[data-receipt]') || doc.querySelector('[data-receipt-preview]')
+      if (!el) return
+      let p = el.parentElement
+      while (p && p !== doc.body) {
+        p.style.overflow = 'visible'
+        p.style.maxWidth = 'none'
+        p.style.maxHeight = 'none'
+        if (p.style.display === 'none') p.style.display = 'block'
+        if (p.style.visibility === 'hidden') p.style.visibility = 'visible'
+        p = p.parentElement
+      }
+    },
   })
-  document.body.removeChild(clone)
+  if (!canvas.width || !canvas.height) throw new Error(`Canvas is empty (${canvas.width}x${canvas.height})`)
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
