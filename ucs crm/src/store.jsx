@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 import { login as apiLogin, setSession, clearSession, getToken, getUser } from './api/auth'
 
 const ALLOWED_ROLES = {
@@ -17,19 +17,6 @@ export const UcsContext = createContext(null)
 export function UcsProvider({ children }) {
   const [user, setUser] = useState(() => getUser('ucs'))
   const [token, setToken] = useState(() => getToken('ucs'))
-
-  useEffect(() => {
-    const t = getToken('ucs')
-    const u = getUser('ucs')
-    if (t && u && ALLOWED_ROLES[u.role]) {
-      setToken(t)
-      setUser(u)
-    } else {
-      clearSession('ucs')
-      setToken(null)
-      setUser(null)
-    }
-  }, [])
 
   const login = useCallback(async (identifier, password) => {
     const data = await apiLogin(identifier, password)
