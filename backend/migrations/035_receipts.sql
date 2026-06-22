@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS receipts (
   mode TEXT,
   purpose TEXT DEFAULT 'General Donation',
   receipt_date DATE DEFAULT CURRENT_DATE,
-  generated_by UUID REFERENCES users(id),
+  generated_by UUID REFERENCES workers(id),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
