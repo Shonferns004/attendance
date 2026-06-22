@@ -242,7 +242,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final lateFraction = total > 0 ? _late / total : 0.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFf6fafe),
+      backgroundColor: scheme.surface,
       body: SafeArea(
         child: ListView(
           controller: _scrollController,
@@ -272,6 +272,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _profileCard(String name, String loginId, String role, String initials) {
+    final sc = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
     return GestureDetector(
       onTap: () async {
         final result = await Navigator.push<bool>(
@@ -283,9 +285,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFffffff),
+          color: sc.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFc3c6ce)),
+          border: Border.all(color: colors.outline),
         ),
         child: Row(
           children: [
@@ -294,13 +296,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 Container(
                   width: 80, height: 80,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFd1e4ff),
+                    color: colors.primaryFixed,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF00152a), width: 2),
+                    border: Border.all(color: sc.primary, width: 2),
                   ),
                   child: Center(child: Text(initials,
                     style: GoogleFonts.hankenGrotesk(
-                      fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF00152a),
+                      fontSize: 28, fontWeight: FontWeight.w800, color: sc.primary,
                     ),
                   )),
                 ),
@@ -309,9 +311,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Container(
                     width: 20, height: 20,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2a6a4b),
+                      color: sc.secondary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFf6fafe), width: 2),
+                      border: Border.all(color: sc.surface, width: 2),
                     ),
                   ),
                 ),
@@ -324,19 +326,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Text(name,
                     style: GoogleFonts.hankenGrotesk(
-                      fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                      fontSize: 20, fontWeight: FontWeight.w600, color: sc.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(role.isNotEmpty ? role : 'Worker',
                   style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF43474d),
+                    fontSize: 14, fontWeight: FontWeight.w400, color: sc.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text('Employee ID: #$loginId',
                   style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w400, color: const Color(0xFF74777e),
+                    fontSize: 12, fontWeight: FontWeight.w400, color: sc.outline,
                   ),
                 ),
               ],
@@ -349,6 +351,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _monthlyOverview(String monthLabel) {
+    final sc = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -357,19 +361,19 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Text('Monthly Overview',
               style: GoogleFonts.hankenGrotesk(
-                fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF00152a),
+                fontSize: 18, fontWeight: FontWeight.w600, color: sc.onSurface,
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFe4e9ed),
+                color: colors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(monthLabel,
                 style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.05,
-                  color: const Color(0xFF43474d),
+                  color: sc.onSurfaceVariant,
                 ),
               ),
             ),
@@ -381,10 +385,10 @@ class _ProfilePageState extends State<ProfilePage> {
             Row(
               children: [
                 Expanded(child: _statProgressCard('$_present', 'Present', _presentStatsValue,
-                    const Color(0xFF2a6a4b), Icons.check_circle)),
+                    sc.secondary, Icons.check_circle)),
                 const SizedBox(width: 12),
                 Expanded(child: _statProgressCard('$_absent', 'Absent', _absentStatsValue,
-                    const Color(0xFFba1a1a), Icons.cancel)),
+                    sc.error, Icons.cancel)),
               ],
             ),
             const SizedBox(height: 12),
@@ -535,7 +539,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Text(
                       _lateTierDesc,
                       style: TextStyle(
-                        fontSize: 11, color: const Color(0xFF43474d), height: 1.4,
+                        fontSize: 11, color: scheme.onSurfaceVariant, height: 1.4,
                       ),
                     ),
                   ],
@@ -547,7 +551,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: scheme.surface.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
@@ -583,7 +587,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Expanded(
                     child: Text(
                       'First month joining: 1.5 days deducted from expenses (new joiner policy).',
-                      style: TextStyle(fontSize: 11, color: const Color(0xFF43474d), height: 1.3),
+                      style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant, height: 1.3),
                     ),
                   ),
                 ],
@@ -635,12 +639,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _statProgressCard(String count, String label, double value, Color color, IconData icon) {
+    final sc = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFffffff),
+        color: sc.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFc3c6ce)),
+        border: Border.all(color: colors.outline),
       ),
       child: Row(
         children: [
@@ -685,9 +691,9 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFffffff),
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFc3c6ce)),
+        border: Border.all(color: colors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,7 +703,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text('Attendance Calendar',
                 style: GoogleFonts.hankenGrotesk(
-                  fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                  fontSize: 18, fontWeight: FontWeight.w600, color: scheme.onSurface,
                 ),
               ),
               Row(
@@ -796,32 +802,25 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Text('Account Management',
           style: GoogleFonts.hankenGrotesk(
-            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+            fontSize: 18, fontWeight: FontWeight.w600, color: scheme.onSurface,
           ),
         ),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFffffff),
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFc3c6ce)),
+            border: Border.all(color: colors.outline),
           ),
           child: Column(
             children: [
               MenuItem(
-                icon: Icons.settings,
-                label: 'Settings',
-                iconColor: const Color(0xFF43474d),
-                onTap: _openSettingsSheet,
-              ),
-              const Divider(height: 1, color: Color(0xFFc3c6ce)),
-              MenuItem(
                 icon: Icons.help_center,
                 label: 'Help Center',
-                iconColor: const Color(0xFF43474d),
+                iconColor: scheme.onSurfaceVariant,
                 onTap: () {},
               ),
-              const Divider(height: 1, color: Color(0xFFc3c6ce)),
+              Divider(height: 1, color: colors.outline),
               MenuItem(
                 icon: Icons.logout,
                 label: 'Logout',
@@ -836,23 +835,25 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _confirmLogout() {
+    final sc = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: sc.surface,
         title: Text('Logout',
           style: GoogleFonts.hankenGrotesk(
-            fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+            fontSize: 20, fontWeight: FontWeight.w600, color: sc.onSurface,
           ),
         ),
         content: Text('Are you sure you want to logout?',
-          style: TextStyle(fontSize: 14, color: const Color(0xFF43474d)),
+          style: TextStyle(fontSize: 14, color: sc.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-              style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFF43474d)),
+              style: TextStyle(fontWeight: FontWeight.w600, color: sc.onSurfaceVariant),
             ),
           ),
           TextButton(
@@ -861,130 +862,10 @@ class _ProfilePageState extends State<ProfilePage> {
               widget.onLogout?.call();
             },
             child: Text('Logout',
-              style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFFba1a1a)),
+              style: TextStyle(fontWeight: FontWeight.w600, color: sc.error),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _openSettingsSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.4,
-        maxChildSize: 0.7,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFffffff),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Settings',
-                    style: GoogleFonts.hankenGrotesk(
-                      fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFf0f4f8),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.close, size: 18, color: Color(0xFF43474d)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text('Theme',
-                style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _themeOption(Icons.light_mode, 'Light', ThemeMode.light),
-              _themeOption(Icons.dark_mode, 'Dark', ThemeMode.dark),
-              _themeOption(Icons.settings_brightness, 'System', ThemeMode.system),
-              const SizedBox(height: 24),
-              Text('Language',
-                style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFf0f4f8),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.language, size: 20, color: const Color(0xFF43474d)),
-                    const SizedBox(width: 12),
-                    Text('English',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f)),
-                    ),
-                    const Spacer(),
-                    Text('(default)',
-                      style: TextStyle(fontSize: 12, color: const Color(0xFF74777e)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _themeOption(IconData icon, String label, ThemeMode mode) {
-    final active = mode == themeModeNotifier.value;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: () {
-          UfsAttendApp.setThemeMode(context, mode);
-          Navigator.pop(context);
-          _openSettingsSheet();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFf0f4f8),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: active ? const Color(0xFF00152a) : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: const Color(0xFF43474d)),
-              const SizedBox(width: 12),
-              Text(label,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f)),
-              ),
-              const Spacer(),
-              if (active)
-                Icon(Icons.check_circle, size: 20, color: const Color(0xFF2a6a4b)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1005,7 +886,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFf0f4f8),
+        color: Theme.of(context).extension<AppColors>()!.surfaceContainerLow,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1041,9 +922,9 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFffffff),
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFc3c6ce)),
+        border: Border.all(color: colors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1054,7 +935,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(formattedDate, style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                  fontSize: 16, fontWeight: FontWeight.w600, color: scheme.onSurface,
                 )),
               ),
               Container(
@@ -1096,7 +977,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFf0f4f8),
+        color: Theme.of(context).extension<AppColors>()!.surfaceContainerLow,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
@@ -1121,7 +1002,7 @@ class _ProfilePageState extends State<ProfilePage> {
           borderRadius: BorderRadius.circular(3),
         )),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
+        Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
@@ -1132,7 +1013,7 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Icon(icon, size: 10, color: color),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF43474d))),
+        Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }

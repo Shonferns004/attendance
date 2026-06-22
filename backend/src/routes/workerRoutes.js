@@ -13,7 +13,7 @@ import {
   getWorkerAllocations,
   setWorkerAllocations,
 } from '../controllers/workerController.js';
-import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
+import { authenticateRole, authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -23,9 +23,9 @@ router.post('/', adminOrHrOrHo, addWorker);
 router.post('/bulk', adminOrHrOrHo, bulkAddWorkers);
 router.get('/', adminOrHrOrHo, getWorkers);
 router.get('/birthdays', adminOrHrOrHo, getBirthdays);
-router.get('/me', authenticateWorker, getMyProfile);
-router.put('/me', authenticateWorker, updateMyProfile);
-router.put('/me/education', authenticateWorker, updateMyEducation);
+router.get('/me', authenticate, getMyProfile);
+router.put('/me', authenticate, updateMyProfile);
+router.put('/me/education', authenticate, updateMyEducation);
 router.get('/:id', adminOrHrOrHo, getWorker);
 router.put('/:id', adminOrHrOrHo, editWorker);
 router.delete('/:id', adminOrHrOrHo, removeWorker);

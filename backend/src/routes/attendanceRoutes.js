@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { punchIn, punchOut, todayStatus, myHistory, listAll, updateAttendanceRecord } from '../controllers/attendanceController.js';
-import { authenticateRole, authenticateWorker } from '../middleware/authMiddleware.js';
+import { punchIn, punchOut, todayStatus, myHistory, listAll, updateAttendanceRecord, createAttendanceByHR } from '../controllers/attendanceController.js';
+import { authenticateRole, authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.post('/punch-in', authenticateWorker, punchIn);
-router.post('/punch-out', authenticateWorker, punchOut);
-router.get('/today', authenticateWorker, todayStatus);
-router.get('/history', authenticateWorker, myHistory);
+router.post('/punch-in', authenticate, punchIn);
+router.post('/punch-out', authenticate, punchOut);
+router.get('/today', authenticate, todayStatus);
+router.get('/history', authenticate, myHistory);
 router.get('/all', authenticateRole('super_admin', 'hoadmin', 'hr'), listAll);
+router.post('/', authenticateRole('super_admin', 'hoadmin', 'hr'), createAttendanceByHR);
 router.put('/:id', authenticateRole('super_admin', 'hoadmin', 'hr'), updateAttendanceRecord);
 
 export default router;

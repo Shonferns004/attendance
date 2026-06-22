@@ -91,6 +91,12 @@ export default function Attendance() {
   const [editPunchOut, setEditPunchOut] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [addingRecord, setAddingRecord] = useState(false);
+  const [addDate, setAddDate] = useState('');
+  const [addPunchIn, setAddPunchIn] = useState('');
+  const [addPunchOut, setAddPunchOut] = useState('');
+  const [addStatus, setAddStatus] = useState('present');
+  const [addLoading, setAddLoading] = useState(false);
 
   const depts = [...new Set((workers || []).map(w => w.department).filter(Boolean))].sort();
   const roles = [...new Set((workers || []).map(w => (w.department || 'Team Member')).filter(Boolean))].sort();
@@ -106,7 +112,8 @@ export default function Attendance() {
     return true;
   }).map(w => {
     const record = todayMap[w.id];
-    return record || {
+    if (record) { record.workers = w; return record; }
+    return {
       id: 'absent-' + w.id,
       worker_id: w.id,
       date: todayIST,
@@ -164,6 +171,8 @@ export default function Attendance() {
   };
 
   const historyRecords = attendance.filter(r => {
+    const worker = workers.find(w => w.id === r.worker_id);
+    if (worker && !r.workers?.id) r.workers = worker;
     if (dateFrom && r.date < dateFrom) return false;
     if (dateTo && r.date > dateTo) return false;
     if (statusFilter && r.status !== statusFilter) return false;
@@ -250,6 +259,7 @@ export default function Attendance() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <button className="btn btn-sm" onClick={backToOverview}>&larr; Back</button>
             <h2 style={{ margin: 0 }}>{selectedWorker.name}'s Attendance</h2>
+            <button className="btn btn-sm" style={{ marginLeft: 'auto', background:'var(--sage)', color:'#fff', border:'none' }} onClick={() => { setAddingRecord(true); setAddDate(''); setAddPunchIn(''); setAddPunchOut(''); setAddStatus('present'); }}>+ Add Attendance</button>
           </div>
 
           <div className="card" style={{ padding: '20px 22px' }}>
@@ -435,6 +445,80 @@ export default function Attendance() {
             </div>
           )}
         </>
+      )}
+
+      {addingRecord && (
+        <div className="modal-overlay" onClick={() => setAddingRecord(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Add Attendance</h3>
+              <button className="btn btn-sm" onClick={() => setAddingRecord(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <label className="field">
+                <span>Worker</span>
+                <input type="text" value={selectedWorker?.name || ''} disabled />
+              </label>
+              <label className="field">
+                <span>Date</span>
+                <input type="date" value={addDate} onChange={e => setAddDate(e.target.value)} required />
+              </label>
+              <label className="field">
+                <span>Punch In Time</span>
+                <input type="time" value={addPunchIn} onChange={e => setAddPunchIn(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Punch Out Time</span>
+                <input type="time" value={addPunchOut} onChange={e => setAddPunchOut(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Status</span>
+                <select value={addStatus} onChange={e => setAddStatus(e.target.value)}>
+                  <option value="present">Present</option>
+                  <option value="late">Late</option>
+                  <option value="absent">Absent</option>
+                  <option value="leave">Leave</option>
+                </select>
+              </label>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={() => setAddingRecord(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (!addDate) { alert('Please select a date'); return; }
+                setAddLoading(true);
+                try {
+                  const body = {
+                    worker_id: selectedWorker.id,
+                    date: addDate,
+                    punch_in_time: addPunchIn ? `${addDate}T${addPunchIn}:00.000Z` : null,
+                    punch_out_time: addPunchOut ? `${addDate}T${addPunchOut}:00.000Z` : null,
+                    status: addStatus,
+                  };
+                  const res = await fetch(API_BASE + '/attendance', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: 'Bearer ' + localStorage.getItem('hr_token'),
+                    },
+                    body: JSON.stringify(body),
+                  });
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({ message: 'Failed to create' }));
+                    throw new Error(err.message || 'Creation failed');
+                  }
+                  await fetchAttendance();
+                  setAddingRecord(false);
+                } catch (err) {
+                  alert(err.message);
+                } finally {
+                  setAddLoading(false);
+                }
+              }} disabled={addLoading}>
+                {addLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editingRecord && (

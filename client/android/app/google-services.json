@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "102341595350",
-    "project_id": "ufs-attend",
-    "storage_bucket": "ufs-attend.firebasestorage.app"
+    "project_number": "1084552333619",
+    "project_id": "ucsattend",
+    "storage_bucket": "ucsattend.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:102341595350:android:5f42cf4e74505204b4f977",
+        "mobilesdk_app_id": "1:1084552333619:android:4b6533a52d567dc9585646",
         "android_client_info": {
-          "package_name": "com.ufs.attendapp"
+          "package_name": "com.ucs.attendance"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD2OGpJyHswD7dszkQhLItrFkEBvhJK4aY"
+          "current_key": "AIzaSyBAOXrtylmWxvR2vTuMdK91h-ksv4rlYWc"
         }
       ],
       "services": {

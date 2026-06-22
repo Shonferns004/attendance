@@ -11,17 +11,17 @@ import {
   adminEditPolicy,
   adminRemovePolicy,
 } from '../controllers/onboardingController.js';
-import { authenticateWorker, authenticateRole } from '../middleware/authMiddleware.js';
+import { authenticate, authenticateRole } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
 // Worker-facing routes (authenticated via worker token)
-router.post('/submit', authenticateWorker, submitOnboarding);
-router.get('/status', authenticateWorker, checkOnboardingStatus);
-router.post('/upload-photo', authenticateWorker, uploadPhoto);
-router.post('/upload-document', authenticateWorker, uploadDocument);
-router.get('/policies', authenticateWorker, getPolicies);
-router.get('/print-profile', authenticateWorker, getProfileForPrint);
+router.post('/submit', authenticate, submitOnboarding);
+router.get('/status', authenticate, checkOnboardingStatus);
+router.post('/upload-photo', authenticate, uploadPhoto);
+router.post('/upload-document', authenticate, uploadDocument);
+router.get('/policies', authenticate, getPolicies);
+router.get('/print-profile', authenticate, getProfileForPrint);
 
 // Admin routes for policies management
 const adminAuth = authenticateRole('super_admin', 'hoadmin', 'hr');

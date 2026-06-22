@@ -20,12 +20,13 @@ class MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sc = Theme.of(context).colorScheme;
     final effectiveIconColor = iconColor ?? (isDestructive
-        ? const Color(0xFFba1a1a)
-        : const Color(0xFF43474d));
+        ? sc.error
+        : sc.onSurfaceVariant);
     final effectiveLabelColor = labelColor ?? (isDestructive
-        ? const Color(0xFFba1a1a)
-        : const Color(0xFF171c1f));
+        ? sc.error
+        : sc.onSurface);
 
     return InkWell(
       onTap: onTap,
@@ -48,7 +49,7 @@ class MenuItem extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               size: 20,
-              color: const Color(0xFF74777e),
+              color: sc.outlineVariant,
             ),
           ],
         ),

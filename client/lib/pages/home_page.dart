@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../widgets/skeleton_loader.dart';
+import '../main.dart';
 
 import 'scanner_page.dart';
 import 'leave_page.dart';
@@ -341,6 +342,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _openLeaveSheet() {
+    final sc = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -350,8 +352,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFffffff),
+          decoration: BoxDecoration(
+            color: sc.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: LeavePage(scrollController: scrollController),
@@ -460,11 +462,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     if (_loading) return const HomeSkeleton();
 
+    final sc = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
+
     final clockStr = DateFormat('hh:mm a').format(_now);
     final firstName = _workerName.split(' ').first;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFf6fafe),
+      backgroundColor: sc.surface,
       body: SafeArea(
         child: CustomScrollView(
           controller: _scrollController,
@@ -493,7 +498,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                               height: 32 / 24,
-                              color: const Color(0xFF171c1f),
+                              color: sc.onSurface,
                             ),
                           ),
                         ],
@@ -505,14 +510,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFffffff),
+                            color: colors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFc3c6ce)),
+                            border: Border.all(color: colors.outline),
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.notifications_outlined),
                             iconSize: 22,
-                            color: const Color(0xFF43474d),
+                            color: sc.onSurfaceVariant,
                             onPressed: _openNotificationSheet,
                           ),
                         ),
@@ -557,9 +562,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFffffff),
+                        color: sc.surface,
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFc3c6ce)),
+                        border: Border.all(color: colors.outline),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -568,7 +573,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             'SHIFT',
                             style: TextStyle(
                               fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.05,
-                              color: const Color(0xFF74777e),
+                              color: sc.outline,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -576,7 +581,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             '$_officeStartTime – $_officeEndTime',
                             style: TextStyle(
                               fontSize: 14, fontWeight: FontWeight.w600,
-                              color: const Color(0xFF171c1f),
+                              color: sc.onSurface,
                             ),
                           ),
                         ],
@@ -590,7 +595,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         fontWeight: FontWeight.w800,
                         height: 64 / 64,
                         letterSpacing: -1.5,
-                        color: const Color(0xFF171c1f),
+                        color: sc.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -622,7 +627,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           Icon(Icons.check_circle, size: 72, color: const Color(0xFF2a6a4b)),
                           const SizedBox(height: 12),
                           Text('Today completed', style: GoogleFonts.hankenGrotesk(
-                            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                            fontSize: 18, fontWeight: FontWeight.w600, color: sc.onSurface,
                           )),
                         ],
                       )
@@ -716,9 +721,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFffffff),
+                              color: sc.surface,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                              border: Border.all(color: colors.outline),
                             ),
                             child: Column(
                               children: [
@@ -726,7 +731,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   'ARRIVED',
                                   style: TextStyle(
                                     fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
-                                    color: const Color(0xFF74777e),
+                                    color: sc.outline,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -735,7 +740,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   style: GoogleFonts.hankenGrotesk(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF171c1f),
+                                    color: sc.onSurface,
                                   ),
                                 ),
                               ],
@@ -747,9 +752,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFffffff),
+                              color: sc.surface,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFc3c6ce)),
+                              border: Border.all(color: colors.outline),
                             ),
                             child: Column(
                               children: [
@@ -757,7 +762,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   'LEFT',
                                   style: TextStyle(
                                     fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
-                                    color: const Color(0xFF74777e),
+                                    color: sc.outline,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -766,7 +771,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   style: GoogleFonts.hankenGrotesk(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF171c1f),
+                                    color: sc.onSurface,
                                   ),
                                 ),
                               ],
@@ -795,9 +800,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFffffff),
+                                  color: sc.surface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFc3c6ce)),
+                                  border: Border.all(color: colors.outline),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,7 +818,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                           child: Icon(Icons.event_available, size: 20, color: const Color(0xFF2a6a4b)),
                                         ),
                                         const Spacer(),
-                                        Icon(Icons.chevron_right, size: 18, color: const Color(0xFFc3c6ce)),
+                                        Icon(Icons.chevron_right, size: 18, color: sc.onSurfaceVariant),
                                       ],
                                     ),
                                     const SizedBox(height: 16),
@@ -823,7 +828,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         Text(
                                           '${(_attendanceRate * 100).toStringAsFixed(0)}%',
                                           style: GoogleFonts.hankenGrotesk(
-                                            fontSize: 28, fontWeight: FontWeight.w800, color: const Color(0xFF171c1f),
+                                            fontSize: 28, fontWeight: FontWeight.w800, color: sc.onSurface,
                                           ),
                                         ),
                                         const SizedBox(width: 6),
@@ -833,7 +838,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                             'Attendance',
                                             style: TextStyle(
                                               fontSize: 11, fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF74777e),
+                                              color: sc.outline,
                                             ),
                                           ),
                                         ),
@@ -861,9 +866,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFffffff),
+                                  color: sc.surface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFc3c6ce)),
+                                  border: Border.all(color: colors.outline),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -912,7 +917,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                             'Late batch',
                                             style: TextStyle(
                                               fontSize: 11, fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF74777e),
+                                              color: sc.outline,
                                             ),
                                           ),
                                         ),
@@ -949,9 +954,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFffffff),
+                        color: sc.surface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFc3c6ce)),
+                        border: Border.all(color: colors.outline),
                       ),
                       child: InkWell(
                         onTap: _openLeaveSheet,
@@ -971,16 +976,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('New Request', style: GoogleFonts.hankenGrotesk(
-                                    fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                                    fontSize: 16, fontWeight: FontWeight.w600, color: sc.onSurface,
                                   )),
                                   Text('Take a break or leave', style: TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF43474d),
+                                    color: sc.onSurfaceVariant,
                                   )),
                                 ],
                               ),
                             ),
-                            Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
+                            Icon(Icons.chevron_right, size: 20, color: sc.outline),
                             ],
                            ),
                           ),
@@ -989,9 +994,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFffffff),
+                        color: sc.surface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFc3c6ce)),
+                        border: Border.all(color: colors.outline),
                       ),
                       child: InkWell(
                         onTap: () => showModalBottomSheet(
@@ -1003,8 +1008,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             minChildSize: 0.4,
                             maxChildSize: 0.85,
                             builder: (_, scrollController) => Container(
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFffffff),
+                              decoration: BoxDecoration(
+                                color: sc.surface,
                                 borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
                               ),
                               child: AdvancePage(scrollController: scrollController),
@@ -1027,16 +1032,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Apply for Advance', style: GoogleFonts.hankenGrotesk(
-                                    fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                                    fontSize: 16, fontWeight: FontWeight.w600, color: sc.onSurface,
                                   )),
                                   Text('Request salary advance', style: TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF43474d),
+                                    color: sc.onSurfaceVariant,
                                   )),
                                 ],
                               ),
                             ),
-                            Icon(Icons.chevron_right, size: 20, color: const Color(0xFF74777e)),
+                            Icon(Icons.chevron_right, size: 20, color: sc.outline),
                           ],
                         ),
                       ),
@@ -1067,7 +1072,7 @@ IconData _notifIcon(String? type) {
   }
 }
 
-Color _notifColor(String? type) {
+Color _notifColor(String? type, ColorScheme sc) {
   switch (type) {
     case 'birthday':
       return const Color(0xFFf43f5e);
@@ -1078,7 +1083,7 @@ Color _notifColor(String? type) {
     case 'achievement':
       return const Color(0xFFf59e0b);
     default:
-      return const Color(0xFF43474d);
+      return sc.onSurfaceVariant;
   }
 }
 
@@ -1117,13 +1122,15 @@ class _NotificationSheetState extends State<_NotificationSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final sc = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<AppColors>()!;
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.3,
       maxChildSize: 0.9,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFffffff),
+        decoration: BoxDecoration(
+          color: sc.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
         ),
         child: ListView(
@@ -1158,7 +1165,7 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                   style: GoogleFonts.hankenGrotesk(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF171c1f),
+                    color: sc.onSurface,
                   ),
                 ),
                 const Spacer(),
@@ -1167,7 +1174,7 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                     '${widget.unreadCount} unread',
                     style: TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600,
-                      color: const Color(0xFF43474d),
+                      color: sc.onSurfaceVariant,
                     ),
                   ),
               ],
@@ -1179,10 +1186,10 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.notifications_off, size: 48, color: const Color(0xFF74777e).withValues(alpha: 0.3)),
+                      Icon(Icons.notifications_off, size: 48, color: sc.outline.withValues(alpha: 0.3)),
                       const SizedBox(height: 12),
                       Text('No notifications yet', style: TextStyle(
-                        fontSize: 14, color: const Color(0xFF74777e).withValues(alpha: 0.6),
+                        fontSize: 14, color: sc.outline.withValues(alpha: 0.6),
                       )),
                     ],
                   ),
@@ -1247,17 +1254,17 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: !isRead
-                                ? const Color(0xFFf0f4f8)
-                                : const Color(0xFFffffff),
+                                ? colors.surfaceContainerHigh
+                                : colors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(8),
-                            border: !isRead ? Border.all(color: const Color(0xFFc3c6ce).withValues(alpha: 0.3)) : null,
+                            border: !isRead ? Border.all(color: colors.outline.withValues(alpha: 0.3)) : null,
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 _notifIcon(n['type']?.toString()),
                                 size: 20,
-                                color: _notifColor(n['type']?.toString()),
+                                color: _notifColor(n['type']?.toString(), sc),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -1268,7 +1275,7 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                                       n['title'] ?? '',
                                       style: TextStyle(
                                         fontSize: 14, fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF171c1f),
+                                        color: sc.onSurface,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -1276,7 +1283,7 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                                       n['body'] ?? '',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: const Color(0xFF74777e),
+                                        color: sc.outline,
                                       ),
                                     ),
                                   ],
@@ -1298,8 +1305,8 @@ class _NotificationSheetState extends State<_NotificationSheet> {
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFf0f4f8),
-                  foregroundColor: const Color(0xFF171c1f),
+                  backgroundColor: colors.surfaceContainerHigh,
+                  foregroundColor: sc.onSurface,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),

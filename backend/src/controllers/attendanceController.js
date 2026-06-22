@@ -178,6 +178,27 @@ function expandLeaveDates(leave) {
   return dates;
 }
 
+export const createAttendanceByHR = async (req, res) => {
+  try {
+    const { worker_id, date, punch_in_time, punch_out_time, status, late_minutes } = req.body;
+    if (!worker_id || !date) {
+      return res.status(400).json({ message: 'worker_id and date are required' });
+    }
+    const record = {
+      worker_id,
+      date,
+      punch_in_time: punch_in_time || null,
+      punch_out_time: punch_out_time || null,
+      status: status || 'present',
+      late_minutes: late_minutes || 0,
+    };
+    const result = await createAttendance(record);
+    return res.status(201).json({ message: 'Attendance created', attendance: result });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const updateAttendanceRecord = async (req, res) => {
   try {
     const { id } = req.params;

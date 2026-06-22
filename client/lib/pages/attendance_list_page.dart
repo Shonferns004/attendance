@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../main.dart';
 import '../widgets/skeleton_loader.dart';
 
 class AttendanceListPage extends StatefulWidget {
@@ -41,7 +42,7 @@ class _AttendanceListPageState extends State<AttendanceListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFf6fafe),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: _loading
           ? ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -81,7 +82,7 @@ class _AttendanceListPageState extends State<AttendanceListPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFc3c6ce)),
+                          border: Border.all(color: Theme.of(context).extension<AppColors>()!.outline),
                         ),
                         child: Row(
                           children: [
@@ -101,14 +102,14 @@ class _AttendanceListPageState extends State<AttendanceListPage> {
                                   Text(
                                     _fmtDate(date),
                                     style: GoogleFonts.hankenGrotesk(
-                                      fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f),
+                                      fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     '${inTime.isNotEmpty ? _fmtTime(inTime) : '—'} – ${outTime.isNotEmpty ? _fmtTime(outTime) : '—'}',
                                     style: TextStyle(
-                                      fontSize: 12, color: const Color(0xFF43474d),
+                                      fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -180,7 +181,7 @@ class _AttendanceSkeletonItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFc3c6ce)),
+          border: Border.all(color: Theme.of(context).extension<AppColors>()!.outline),
         ),
         child: Row(
           children: [

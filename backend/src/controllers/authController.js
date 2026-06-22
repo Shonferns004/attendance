@@ -16,8 +16,7 @@ export const adminLogin = async (req, res) => {
     ) {
       const token = jwt.sign(
         { email, role: 'super_admin', name: 'Super Admin' },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        process.env.JWT_SECRET
       );
       return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email, role: 'super_admin' }, message: 'Login successful' });
     }
@@ -43,8 +42,7 @@ export const unifiedLogin = async (req, res) => {
       ) {
         const token = jwt.sign(
           { email: identifier, role: 'super_admin', name: 'Super Admin' },
-          process.env.JWT_SECRET,
-          { expiresIn: '7d' }
+          process.env.JWT_SECRET
         );
         return res.json({ token, role: 'super_admin', user: { name: 'Super Admin', email: identifier, role: 'super_admin' }, message: 'Login successful' });
       }
@@ -57,8 +55,7 @@ export const unifiedLogin = async (req, res) => {
         }
         const token = jwt.sign(
           { id: user.id, ngo_id: user.ngo_id, email: user.email, role: user.role, name: user.name },
-          process.env.JWT_SECRET,
-          { expiresIn: '7d' }
+          process.env.JWT_SECRET
         );
         const { password_hash, ...safeUser } = user;
         return res.json({ token, role: user.role, user: safeUser, message: 'Login successful' });
@@ -72,8 +69,7 @@ export const unifiedLogin = async (req, res) => {
         }
         const token = jwt.sign(
           { id: hr.id, ngo_id: hr.ngo_id, email: hr.email, role: 'hr', name: hr.name },
-          process.env.JWT_SECRET,
-          { expiresIn: '7d' }
+          process.env.JWT_SECRET
         );
         const { password_hash, ...safeHR } = hr;
         return res.json({ token, role: 'hr', user: safeHR, message: 'Login successful' });
@@ -90,8 +86,7 @@ export const unifiedLogin = async (req, res) => {
       }
       const token = jwt.sign(
         { id: userFromName.id, ngo_id: userFromName.ngo_id, email: userFromName.email, role: userFromName.role, name: userFromName.name },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        process.env.JWT_SECRET
       );
       const { password_hash, ...safeUser } = userFromName;
       return res.json({ token, role: userFromName.role, user: safeUser, message: 'Login successful' });
@@ -111,8 +106,7 @@ export const unifiedLogin = async (req, res) => {
     const role = isRecruiter ? 'recruiter' : isAccounts ? 'accounts' : 'worker';
     const token = jwt.sign(
       { id: worker.id, login_id: worker.login_id, ngo_id: worker.ngo_id, role, department: worker.department },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      process.env.JWT_SECRET
     );
     return res.json({
       token,

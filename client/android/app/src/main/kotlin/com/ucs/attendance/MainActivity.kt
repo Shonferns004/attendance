@@ -1,4 +1,4 @@
-package com.ufs.attendapp
+package com.ucs.attendance
 
 import io.flutter.embedding.android.FlutterActivity
 

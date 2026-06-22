@@ -13,7 +13,6 @@ import 'pages/profile_page.dart';
 import 'pages/splash_page.dart';
 
 bool firebaseInitialized = false;
-final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,8 +29,7 @@ void main() async {
     statusBarBrightness: Brightness.light,
   ));
   final navigatorKey = GlobalKey<NavigatorState>();
-  final themeMode = await _loadThemeMode();
-  runApp(UfsAttendApp(navigatorKey: navigatorKey, initialThemeMode: themeMode));
+  runApp(UfsAttendApp(navigatorKey: navigatorKey));
 }
 
 class AppColors extends ThemeExtension<AppColors> {
@@ -172,40 +170,6 @@ class AppColors extends ThemeExtension<AppColors> {
   @override
   ThemeExtension<AppColors> lerp(covariant ThemeExtension<AppColors>? other, double t) => this;
 
-  static const dark = AppColors(
-    primaryFixed: Color(0xFFb0c9e8),
-    primaryFixedDim: Color(0xFF8fb0d0),
-    onPrimaryFixed: Color(0xFF011d35),
-    onPrimaryFixedVariant: Color(0xFFb0c9e8),
-    secondaryContainer: Color(0xFF0a5135),
-    onSecondaryContainer: Color(0xFFaff1ca),
-    secondaryFixed: Color(0xFF93d4af),
-    secondaryFixedDim: Color(0xFF78b895),
-    onSecondaryFixed: Color(0xFF002112),
-    onSecondaryFixedVariant: Color(0xFFaff1ca),
-    tertiary: Color(0xFF201100),
-    tertiaryContainer: Color(0xFF3c2300),
-    onTertiary: Color(0xFFffffff),
-    onTertiaryContainer: Color(0xFFffddb8),
-    tertiaryFixed: Color(0xFFffb95f),
-    tertiaryFixedDim: Color(0xFFe69e3f),
-    onTertiaryFixed: Color(0xFF2a1700),
-    onTertiaryFixedVariant: Color(0xFFffddb8),
-    surfaceContainerLowest: Color(0xFF0f1417),
-    surfaceContainerLow: Color(0xFF1a2024),
-    surfaceContainer: Color(0xFF1e2529),
-    surfaceContainerHigh: Color(0xFF282f33),
-    surfaceContainerHighest: Color(0xFF333a3f),
-    surfaceDim: Color(0xFF0f1417),
-    surfaceBright: Color(0xFF353c40),
-    surfaceVariant: Color(0xFF333a3f),
-    outline: Color(0xFF8b9197),
-    outlineVariant: Color(0xFF42484d),
-    inverseSurface: Color(0xFFdfe3e7),
-    inverseOnSurface: Color(0xFF2c3134),
-    inversePrimary: Color(0xFF00152a),
-  );
-
   static const light = AppColors(
     primaryFixed: Color(0xFFd1e4ff),
     primaryFixedDim: Color(0xFFb0c9e8),
@@ -241,62 +205,16 @@ class AppColors extends ThemeExtension<AppColors> {
   );
 }
 
-Future<ThemeMode> _loadThemeMode() async {
-  final prefs = await SharedPreferences.getInstance();
-  final val = prefs.getString('theme_mode');
-  switch (val) {
-    case 'dark': themeModeNotifier.value = ThemeMode.dark; return ThemeMode.dark;
-    case 'system': themeModeNotifier.value = ThemeMode.system; return ThemeMode.system;
-    default: themeModeNotifier.value = ThemeMode.light; return ThemeMode.light;
-  }
-}
-
-Future<void> _saveThemeMode(ThemeMode mode) async {
-  final prefs = await SharedPreferences.getInstance();
-  String val;
-  switch (mode) {
-    case ThemeMode.dark: val = 'dark'; break;
-    case ThemeMode.system: val = 'system'; break;
-    default: val = 'light';
-  }
-  await prefs.setString('theme_mode', val);
-}
-
-class UfsAttendApp extends StatefulWidget {
+class UfsAttendApp extends StatelessWidget {
   final GlobalKey<NavigatorState> navigatorKey;
-  final ThemeMode initialThemeMode;
-  const UfsAttendApp({super.key, required this.navigatorKey, required this.initialThemeMode});
-
-  static void setThemeMode(BuildContext context, ThemeMode mode) {
-    context.findAncestorStateOfType<_UfsAttendAppState>()?.setThemeMode(mode);
-  }
-
-  @override
-  State<UfsAttendApp> createState() => _UfsAttendAppState();
-}
-
-class _UfsAttendAppState extends State<UfsAttendApp> {
-  late ThemeMode _themeMode;
-
-  @override
-  void initState() {
-    super.initState();
-    _themeMode = widget.initialThemeMode;
-  }
-
-  void setThemeMode(ThemeMode mode) {
-    themeModeNotifier.value = mode;
-    setState(() => _themeMode = mode);
-    _saveThemeMode(mode);
-  }
+  const UfsAttendApp({super.key, required this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: widget.navigatorKey,
+      navigatorKey: navigatorKey,
       title: 'UFS Attend',
       debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -324,62 +242,6 @@ class _UfsAttendAppState extends State<UfsAttendApp> {
         extensions: const [AppColors.light],
         scaffoldBackgroundColor: const Color(0xFFf6fafe),
         textTheme: GoogleFonts.manropeTextTheme().copyWith(
-          headlineLarge: GoogleFonts.hankenGrotesk(
-            fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
-          ),
-          headlineMedium: GoogleFonts.hankenGrotesk(
-            fontSize: 20, fontWeight: FontWeight.w600, height: 28 / 20,
-          ),
-          headlineSmall: GoogleFonts.hankenGrotesk(
-            fontSize: 18, fontWeight: FontWeight.w600, height: 24 / 18,
-          ),
-          titleLarge: GoogleFonts.hankenGrotesk(
-            fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
-          ),
-          bodyLarge: GoogleFonts.manrope(
-            fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16,
-          ),
-          bodyMedium: GoogleFonts.manrope(
-            fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14,
-          ),
-          labelLarge: GoogleFonts.manrope(
-            fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 20, letterSpacing: 0.02,
-          ),
-          labelMedium: GoogleFonts.manrope(
-            fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.05,
-          ),
-          labelSmall: GoogleFonts.manrope(
-            fontSize: 11, fontWeight: FontWeight.w700, height: 12 / 11,
-          ),
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFb0c9e8),
-          onPrimary: Color(0xFF001a33),
-          primaryContainer: Color(0xFF0f2842),
-          onPrimaryContainer: Color(0xFF7a92b0),
-          secondary: Color(0xFF93d4af),
-          onSecondary: Color(0xFF003822),
-          secondaryContainer: Color(0xFF0a5135),
-          onSecondaryContainer: Color(0xFFaff1ca),
-          surface: Color(0xFF0f1417),
-          onSurface: Color(0xFFdfe3e7),
-          surfaceContainerHighest: Color(0xFF333a3f),
-          outline: Color(0xFF8b9197),
-          error: Color(0xFFffb4ab),
-          onError: Color(0xFF690005),
-          errorContainer: Color(0xFF93000a),
-          onErrorContainer: Color(0xFFffdad6),
-          inverseSurface: Color(0xFFdfe3e7),
-          onInverseSurface: Color(0xFF2c3134),
-          inversePrimary: Color(0xFF00152a),
-        ),
-        extensions: const [AppColors.dark],
-        scaffoldBackgroundColor: const Color(0xFF0f1417),
-        textTheme: GoogleFonts.manropeTextTheme(TextTheme()).copyWith(
           headlineLarge: GoogleFonts.hankenGrotesk(
             fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24,
           ),
