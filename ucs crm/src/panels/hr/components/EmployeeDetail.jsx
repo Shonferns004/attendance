@@ -6,7 +6,11 @@ import { Dropdown, DatePicker } from './ui';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
 
 export default function EmployeeDetail({ worker, onBack, onOffboard }) {
-  const { fetchWorkerById, attendance, leaves, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, setWorkerAllocations, DEPTS, ngos, fetchNGOs, holidays, fetchHolidays } = useHR();
+  const { fetchWorkerById, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, setWorkerAllocations, DEPTS, fetchNGOs, fetchHolidays } = useHR();
+  const [attendance, setAttendance] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [ngos, setNgos] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [data, setData] = useState(null);
   const [letters, setLetters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,10 +69,10 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
           .catch(() => {});
       }
     });
-    if (!attendance.length) fetchAttendance();
-    if (!leaves.length) fetchLeaves();
-    if (!ngos.length) fetchNGOs();
-    if (!holidays.length) fetchHolidays();
+    fetchAttendance().then(setAttendance).catch(() => {});
+    fetchLeaves().then(setLeaves).catch(() => {});
+    fetchNGOs().then(setNgos).catch(() => {});
+    fetchHolidays().then(setHolidays).catch(() => {});
     return () => { cancelled = true; };
   }, [worker.id]);
 

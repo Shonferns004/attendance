@@ -15,9 +15,10 @@ function save(v) {
 }
 
 export default function Workers({ onSelect, onOffboard }) {
-  const { workers, addWorker, DEPTS, fetchWorkers, fetchNGOs } = useHR();
+  const { addWorker, DEPTS, fetchWorkers, fetchNGOs } = useHR();
+  const [workers, setWorkers] = useState([]);
   const [name, setName] = useState('');
-  const [dept, setDept] = useState(DEPTS[0]);
+  const [dept, setDept] = useState(DEPTS?.[0] || '');
   const [err, setErr] = useState('');
   const [search, setSearch] = useState(load().search || '');
   const [roleFilter, setRoleFilter] = useState(load().roleFilter || '');
@@ -27,7 +28,7 @@ export default function Workers({ onSelect, onOffboard }) {
   const tableRef = useRef(null);
 
   useEffect(() => {
-    fetchWorkers().catch(() => {});
+    fetchWorkers().then(setWorkers).catch(() => {});
     fetchNGOs().catch(() => {});
     const token = localStorage.getItem('hr_token');
     fetch(API_BASE + '/salary/workers-summary', {
@@ -72,7 +73,8 @@ export default function Workers({ onSelect, onOffboard }) {
     try {
       await addWorker({ name: name.trim(), dept });
       setName('');
-      setDept(DEPTS[0]);
+      setDept(DEPTS?.[0] || '');
+      fetchWorkers().then(setWorkers).catch(() => {});
     } catch (e) {
       setErr(e.message);
     }

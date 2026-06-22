@@ -73,7 +73,9 @@ function Badge({ status }) {
 }
 
 export default function Attendance() {
-  const { attendance, fetchAttendance, workers, fetchWorkers } = useHR();
+  const { fetchAttendance, fetchWorkers } = useHR();
+  const [attendance, setAttendance] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [tab, setTab] = useState('today');
   const [punchStatus, setPunchStatus] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -148,8 +150,8 @@ export default function Attendance() {
     setDateTo(getIstDateStr(d));
     d.setDate(d.getDate() - 30);
     setDateFrom(getIstDateStr(d));
-    fetchAttendance();
-    fetchWorkers();
+    fetchAttendance().then(setAttendance).catch(() => {});
+    fetchWorkers().then(setWorkers).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -161,13 +163,14 @@ export default function Attendance() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchAttendance(), fetchWorkers()]);
+    const [a, w] = await Promise.all([fetchAttendance(), fetchWorkers()]);
+    setAttendance(a); setWorkers(w);
     setRefreshing(false);
   };
 
   const handleLoadHistory = () => {
     if (!dateFrom && !dateTo) return;
-    fetchAttendance();
+    fetchAttendance().then(setAttendance).catch(() => {});
   };
 
   const historyRecords = attendance.filter(r => {
@@ -233,7 +236,7 @@ export default function Attendance() {
         const err = await res.json().catch(() => ({ message: 'Failed to update' }));
         throw new Error(err.message || 'Update failed');
       }
-      await fetchAttendance();
+      fetchAttendance().then(setAttendance).catch(() => {});
       closeEdit();
     } catch (err) {
       alert(err.message);
@@ -506,7 +509,7 @@ export default function Attendance() {
                     const err = await res.json().catch(() => ({ message: 'Failed to create' }));
                     throw new Error(err.message || 'Creation failed');
                   }
-                  await fetchAttendance();
+                  fetchAttendance().then(setAttendance).catch(() => {});
                   setAddingRecord(false);
                 } catch (err) {
                   alert(err.message);

@@ -3,8 +3,11 @@ import { useHR } from '../store';
 import { Dropdown } from './ui';
 import { Send, Bell } from '../icons';
 
+const now = () => new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+
 export default function Notify() {
-  const { notifs, sendNotif, DEPTS } = useHR();
+  const { sendNotif, DEPTS } = useHR();
+  const [notifs, setNotifs] = useState([]);
   const [to, setTo] = useState('Everyone');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -14,6 +17,7 @@ export default function Notify() {
     setErr('');
     try {
       await sendNotif(to, msg.trim());
+      setNotifs(p => [{ id: Date.now(), to, msg: msg.trim(), time: now() }, ...p]);
       setMsg('');
     } catch (e) {
       setErr(e.message);

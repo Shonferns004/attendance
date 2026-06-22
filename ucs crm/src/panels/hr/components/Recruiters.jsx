@@ -25,7 +25,10 @@ const formatDT = (ts) => {
 };
 
 export default function Recruiters() {
-  const { leads, leadsLoading, recruiters, fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
+  const { fetchLeads, addLead, updateLead, fetchRecruiters, user } = useHR();
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [recruiters, setRecruiters] = useState([]);
   const [recruiterFilter, setRecruiterFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -37,8 +40,9 @@ export default function Recruiters() {
   const [tab, setTab] = useState('all');
 
   useEffect(() => {
-    fetchLeads();
-    fetchRecruiters();
+    setLeadsLoading(true);
+    fetchLeads().then(d => { setLeads(d); setLeadsLoading(false); }).catch(() => setLeadsLoading(false));
+    fetchRecruiters().then(setRecruiters).catch(() => {});
   }, []);
 
   const filteredLeads = leads.filter(l => {
@@ -124,6 +128,8 @@ export default function Recruiters() {
       }
       setShowForm(false);
       setEditingLead(null);
+      setLeadsLoading(true);
+      fetchLeads().then(d => { setLeads(d); setLeadsLoading(false); }).catch(() => setLeadsLoading(false));
     } catch {}
   };
 

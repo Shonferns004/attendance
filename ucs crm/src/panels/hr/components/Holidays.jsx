@@ -7,7 +7,9 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export default function Holidays() {
-  const { holidays, workers, fetchWorkers, addHoliday, removeHoliday, fetchHolidays } = useHR();
+  const { addHoliday, removeHoliday, fetchHolidays, fetchWorkers } = useHR();
+  const [holidays, setHolidays] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [name, setName] = useState('');
   const [type, setType] = useState('holiday');
   const [recurring, setRecurring] = useState(true);
@@ -17,7 +19,10 @@ export default function Holidays() {
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { fetchWorkers(); fetchHolidays(); }, []);
+  useEffect(() => {
+    fetchWorkers().then(setWorkers).catch(() => {});
+    fetchHolidays().then(setHolidays).catch(() => {});
+  }, []);
 
   const birthdays = useMemo(() => {
     const map = {};
@@ -85,6 +90,7 @@ export default function Holidays() {
     await addHoliday({ name: name.trim(), date, is_recurring: recurring, type });
     setName('');
     setShowForm(false);
+    fetchHolidays().then(setHolidays).catch(() => {});
   };
 
   const isToday = (d) => calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate();
@@ -153,7 +159,7 @@ export default function Holidays() {
                     </div>
                   </div>
                   {e.kind !== 'birthday' && (
-                    <button className="btn btn-icon" onClick={() => removeHoliday(e.id)} title="Remove">
+                    <button className="btn btn-icon" onClick={() => { removeHoliday(e.id); fetchHolidays().then(setHolidays).catch(() => {}); }} title="Remove">
                       <Trash width={13} />
                     </button>
                   )}

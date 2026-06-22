@@ -1,16 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useHR } from '../store';
 import { Pill } from './ui';
 import { Check, X } from '../icons';
 
 export default function Leaves() {
-  const { leaves, fetchLeaves, decideLeave } = useHR();
+  const { fetchLeaves, decideLeave } = useHR();
+  const [leaves, setLeaves] = useState([]);
 
-  useEffect(() => { fetchLeaves(); }, []);
+  useEffect(() => { fetchLeaves().then(setLeaves).catch(() => {}); }, []);
 
   const handleDecide = async (id, status) => {
     try {
       await decideLeave(id, status);
+      fetchLeaves().then(setLeaves).catch(() => {});
     } catch (e) {
       alert(e.message);
     }

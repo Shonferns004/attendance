@@ -20,12 +20,13 @@ function build(type, w) {
 }
 
 export default function Letters() {
-  const { workers, fetchWorkers } = useHR();
+  const { fetchWorkers } = useHR();
+  const [workers, setWorkers] = useState([]);
   const [name, setName] = useState('');
   const [type, setType] = useState(TYPES[0]);
   const [out, setOut] = useState(null);
 
-  useEffect(() => { fetchWorkers(); }, []);
+  useEffect(() => { fetchWorkers().then(setWorkers).catch(() => {}); }, []);
 
   const generate = () => {
     const w = workers.find(x => x.name === name);

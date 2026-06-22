@@ -3,7 +3,20 @@ import { UcsContext } from '../../store'
 export function useHR() {
   const ctx = useContext(UcsContext)
   if (!ctx) throw new Error('useHR must be used within UcsProvider')
-  return ctx
+  return {
+    ...ctx,
+    DEPTS,
+    fetchWorkers, fetchNGOs, addWorker, removeWorker, fetchWorkerById, updateWorker,
+    fetchAttendance, fetchLeaves, decideLeave,
+    fetchTemplates, generateLetter, fetchWorkerLetters, sendNotif,
+    fetchHolidays, addHoliday, removeHoliday,
+    fetchLeads, addLead, updateLead, fetchRecruiters, fetchRecruiterStats, fetchLeadsDashboard,
+    fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary,
+    fetchWorkerTargets, fetchWorkerTargetForMonth, updateWorkerTarget,
+    generateAllTargets, fetchCurrentMonthTargets,
+    setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchMonthlyIncentiveSummary,
+    fetchWorkerAllocations, setWorkerAllocations, fetchWorkerSalaryAllocations,
+  }
 }
 
 import { api } from '../../api/auth'
