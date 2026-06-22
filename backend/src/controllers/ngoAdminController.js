@@ -17,15 +17,30 @@ import {
 } from '../models/froStationAssignmentModel.js';
 import { upsertTarget, getTargetsByNgo, getTargetByWorker } from '../models/froTargetModel.js';
 import { getTotalCollectedByWorker } from '../models/froDonorLogModel.js';
+import { getWorkersByNgo } from '../models/workerNgoAllocationModel.js';
 
 async function getFroWorkersByNgo(ngoId) {
+  const workerIds = await getWorkersByNgo(ngoId);
+
+  const conditions = [`ngo_id.eq.${ngoId}`];
+  if (workerIds.length > 0) {
+    conditions.push(`id.in.(${workerIds.join(',')})`);
+  }
+
   const { data, error } = await supabase
     .from('workers')
     .select('*')
-    .eq('ngo_id', ngoId)
-    .ilike('department', 'fro');
+    .ilike('department', 'fro')
+    .or(conditions.join(','));
+
   if (error) throw error;
-  return data || [];
+
+  const seen = new Set();
+  return (data || []).filter(w => {
+    if (seen.has(w.id)) return false;
+    seen.add(w.id);
+    return true;
+  });
 }
 
 async function getUserNgoIds(user) {
