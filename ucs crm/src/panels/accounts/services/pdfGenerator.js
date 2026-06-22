@@ -195,14 +195,14 @@ export async function generateReceiptPDF(element) {
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfW = pdf.internal.pageSize.getWidth()
   const pdfH = pdf.internal.pageSize.getHeight()
-  const margin = 15
+  const margin = 20
   const maxW = pdfW - 2 * margin
   const maxH = pdfH - 2 * margin
   const ratio = Math.min(maxW / canvas.width, maxH / canvas.height)
   const imgW = canvas.width * ratio
   const imgH = canvas.height * ratio
   const x = (pdfW - imgW) / 2
-  const y = (pdfH - imgH) / 2
+  const y = margin
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH)
   return pdf
 }
