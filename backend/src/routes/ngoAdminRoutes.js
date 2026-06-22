@@ -12,6 +12,10 @@ import {
   getDashboard,
   getAccountsPending,
   verifyLeadDone,
+  getStations,
+  saveStationAssignment,
+  removeStationAssignment,
+  distributeByStation,
 } from '../controllers/ngoAdminController.js';
 
 const router = Router();
@@ -29,5 +33,10 @@ router.get('/targets', getTargets);
 router.post('/targets', setTarget);
 router.get('/accounts/pending', getAccountsPending);
 router.post('/accounts/:logId/verify', verifyLeadDone);
+
+router.get('/stations', getStations);
+router.post('/station-assignments', saveStationAssignment);
+router.delete('/station-assignments/:id', removeStationAssignment);
+router.post('/station-assignments/distribute', distributeByStation);
 
 export default router;
