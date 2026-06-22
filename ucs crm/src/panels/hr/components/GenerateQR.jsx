@@ -13,6 +13,7 @@ export default function GenerateQR() {
   const [radius, setRadius] = useState('100');
   const [busy, setBusy] = useState(false);
   const [newQR, setNewQR] = useState(null);
+  const [viewedQR, setViewedQR] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -127,20 +128,46 @@ export default function GenerateQR() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, padding: 16 }}>
             {codes.map(qr => (
-              <div key={qr.id} className="card" style={{ padding: 14, textAlign: 'center', boxShadow: 'none' }}>
+              <div key={qr.id} className="card" style={{ padding: 14, textAlign: 'center', boxShadow: 'none', cursor: 'pointer' }} onClick={() => setViewedQR(qr)}>
                 <QRCodeCanvas value={JSON.stringify({ code: qr.code, lat: qr.latitude, lng: qr.longitude })} size={120} level="H" />
                 <p style={{ fontSize: 12, fontWeight: 600, margin: '6px 0 2px' }}>{qr.label}</p>
                 <p style={{ fontSize: 10, color: 'var(--ink-soft)' }}>{qr.latitude}, {qr.longitude}</p>
                 <p style={{ fontSize: 10, color: 'var(--ink-soft)' }}>{qr.radius_meters}m radius</p>
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 6 }}>
-                  <button className="btn btn-sm" onClick={() => printQR(qr)} title="Print">&#x1F5A8;</button>
-                  <button className="btn btn-sm" onClick={() => handleDelete(qr.id)} title="Delete" style={{ color: 'var(--danger)' }}>&#x1F5D1;</button>
+                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); printQR(qr); }} title="Print">&#x1F5A8;</button>
+                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(qr.id); }} title="Delete" style={{ color: 'var(--danger)' }}>&#x1F5D1;</button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      {viewedQR && (
+        <div className="modal-overlay" onClick={() => setViewedQR(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-head">
+              <h3>{viewedQR.label}</h3>
+              <button className="btn btn-sm" onClick={() => setViewedQR(null)}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '24px 24px 16px' }}>
+              <QRCodeCanvas value={JSON.stringify({ code: viewedQR.code, lat: viewedQR.latitude, lng: viewedQR.longitude })} size={280} level="H" />
+              <p style={{ margin: '12px 0 2px', fontSize: 14, color: 'var(--ink-soft)' }}>
+                {viewedQR.latitude}, {viewedQR.longitude}
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>
+                {viewedQR.radius_meters}m radius
+              </p>
+            </div>
+            <div className="modal-foot" style={{ justifyContent: 'center', gap: 8 }}>
+              <button className="btn btn-sm" onClick={() => { navigator.clipboard.writeText(JSON.stringify({ code: viewedQR.code, lat: viewedQR.latitude, lng: viewedQR.longitude })); alert('Copied!'); }}>
+                Copy Data
+              </button>
+              <button className="btn btn-sm" onClick={() => printQR(viewedQR)}>Print</button>
+              <button className="btn btn-sm" onClick={() => { setViewedQR(null); handleDelete(viewedQR.id); }} style={{ color: 'var(--danger)' }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
