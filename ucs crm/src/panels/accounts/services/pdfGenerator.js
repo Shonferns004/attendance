@@ -179,14 +179,18 @@ export function formatReceiptDate(dateStr) {
   return raw
 }
 
-async function imgToDataUrl(url) {
-  const resp = await fetch(url)
-  const blob = await resp.blob()
+function imgToDataUrl(src) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      c.getContext('2d').drawImage(img, 0, 0)
+      resolve(c.toDataURL('image/png'))
+    }
+    img.onerror = reject
+    img.src = src
   })
 }
 
