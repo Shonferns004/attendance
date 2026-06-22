@@ -228,7 +228,7 @@ export default function Attendance() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + localStorage.getItem('hr_token'),
+          Authorization: 'Bearer ' + localStorage.getItem('ucs_token'),
         },
         body: JSON.stringify(body),
       });
@@ -501,7 +501,7 @@ export default function Attendance() {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
-                      Authorization: 'Bearer ' + localStorage.getItem('hr_token'),
+                      Authorization: 'Bearer ' + localStorage.getItem('ucs_token'),
                     },
                     body: JSON.stringify(body),
                   });

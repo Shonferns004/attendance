@@ -1514,7 +1514,7 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                                   onClick={async () => {
                                     if (!confirm('Delete this salary record?')) return;
                                     try {
-                                      await fetch(API_BASE + '/salary/' + s.id, { method:'DELETE', headers:{ Authorization: 'Bearer ' + localStorage.getItem('hr_token') } });
+                                      await fetch(API_BASE + '/salary/' + s.id, { method:'DELETE', headers:{ Authorization: 'Bearer ' + localStorage.getItem('ucs_token') } });
                                       setSalaries(p => p.filter(x => x.id !== s.id));
                                     } catch (e) { alert(e.message); }
                                   }}>

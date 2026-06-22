@@ -66,7 +66,7 @@ export default function HRPanel() {
   const menuRef = useRef(null)
 
   const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sage')
-  useEffect(() => { applyTheme(themeName); localStorage.setItem('hr_theme', themeName) }, [themeName])
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('hr_theme', themeName) }, [themeName])
 
   const Panel = PANELS[active]
   const meta = NAV.find(n => n.id === active)
@@ -115,7 +115,7 @@ export default function HRPanel() {
               <div className="user-menu">
                 <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
                   Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
-                    {themes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
                   </select>
                 </div>
                 <div className="user-menu-divider" />

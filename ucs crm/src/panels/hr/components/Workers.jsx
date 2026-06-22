@@ -30,7 +30,7 @@ export default function Workers({ onSelect, onOffboard }) {
   useEffect(() => {
     fetchWorkers().then(setWorkers).catch(() => {});
     fetchNGOs().catch(() => {});
-    const token = localStorage.getItem('hr_token');
+    const token = localStorage.getItem('ucs_token');
     fetch(API_BASE + '/salary/workers-summary', {
       headers: { Authorization: 'Bearer ' + token },
     })
@@ -83,7 +83,7 @@ export default function Workers({ onSelect, onOffboard }) {
   const handleFullPayExport = async () => {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const token = localStorage.getItem('hr_token');
+    const token = localStorage.getItem('ucs_token');
     try {
       const res = await fetch(API_BASE + '/salary/payroll?month=' + month + '&extended=true', {
         headers: { Authorization: 'Bearer ' + token },
@@ -185,7 +185,7 @@ export default function Workers({ onSelect, onOffboard }) {
   const handlePayExport = async () => {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const token = localStorage.getItem('hr_token');
+    const token = localStorage.getItem('ucs_token');
     try {
       const res = await fetch(API_BASE + '/salary/payroll?month=' + month, {
         headers: { Authorization: 'Bearer ' + token },
