@@ -257,6 +257,7 @@ export default function NewData() {
   }
 
   const { unassigned, ngo_data } = data
+  const totalAvailable = unassigned.length + ngo_data.length
   const selectedDonors = ngo_data.filter(d => selected.has(d.id))
 
   return (
@@ -288,14 +289,14 @@ export default function NewData() {
         <div className="card-head">
           <h3>Ready to Assign to FRO Workers</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span className="count">{ngo_data.length} donors</span>
-            <button className="btn btn-primary btn-sm" onClick={handleDistributeUStations} disabled={distributing || ngo_data.length === 0}>
+            <span className="count">{totalAvailable} donors</span>
+            <button className="btn btn-primary btn-sm" onClick={handleDistributeUStations} disabled={distributing || totalAvailable === 0}>
               {distributing ? 'Distributing...' : 'Distribute by U-Stations'}
             </button>
-            <button className="btn btn-primary btn-sm" onClick={handleDistributeEqually} disabled={distributingEqual || ngo_data.length === 0}>
+            <button className="btn btn-primary btn-sm" onClick={handleDistributeEqually} disabled={distributingEqual || totalAvailable === 0}>
               {distributingEqual ? 'Distributing...' : 'Distribute Equally'}
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => setShowCapacity(true)} disabled={ngo_data.length === 0}>
+            <button className="btn btn-outline btn-sm" onClick={() => setShowCapacity(true)} disabled={totalAvailable === 0}>
               By Capacity
             </button>
             <button className="btn btn-outline btn-sm" onClick={() => setShowAssign(true)} disabled={selected.size === 0}>
@@ -309,7 +310,7 @@ export default function NewData() {
           ) : (
             <DataTable
               donors={ngo_data}
-              emptyMsg="No donors ready for assignment. Import new data first."
+              emptyMsg={totalAvailable > 0 ? "New data from file must be converted first. Use a distribution method above." : "No donors ready for assignment. Import new data first."}
               selected={selected}
               onToggle={toggle}
               onToggleAll={toggleAll}
@@ -330,7 +331,7 @@ export default function NewData() {
       {showCapacity && (
         <CapacityModal
           froWorkers={froWorkers}
-          totalDonors={ngo_data.length}
+          totalDonors={totalAvailable}
           onClose={() => setShowCapacity(false)}
           onDistribute={(res) => { setShowCapacity(false); setResult(res); load() }}
         />
