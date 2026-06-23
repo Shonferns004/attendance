@@ -15,6 +15,12 @@ const TEMPLATES = {
 
 const DB_TO_TEMPLATE = { maan: 'manncar', aflf: 'ashray', bsct: 'beingsevak' };
 
+const PROJECT_LABELS = {
+  maan: 'Mann Care Foundation',
+  aflf: 'Ashray For Life Foundation',
+  bsct: 'Being Sevak Charitable Trust',
+};
+
 function getTemplateId(projectId) {
   return DB_TO_TEMPLATE[projectId] || 'beingsevak';
 }
@@ -58,7 +64,12 @@ export default function ReceiptHistory() {
     const templateId = getTemplateId(r.project_id);
     const Comp = TEMPLATES[templateId];
     if (!Comp) return;
-    setPreview({ receipt: r, templateId, Comp });
+    setPreview({ receipt: r, templateId, Comp, donorMobile: '' });
+    try {
+      const leads = await apiGet('/accounts/leads');
+      const lead = leads.find(l => l.log_id === r.log_id);
+      if (lead) setPreview(p => ({ ...p, donorMobile: lead.donor_mobile || '' }));
+    } catch {}
   };
 
   const handleDownload = async () => {
@@ -73,6 +84,39 @@ export default function ReceiptHistory() {
       alert('Failed to generate PDF: ' + err.message);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleWhatsApp = async () => {
+    if (!preview) return;
+    const phone = (preview.donorMobile || '').replace(/\D/g, '');
+    if (!phone) {
+      alert('Donor mobile number not available');
+      return;
+    }
+    try {
+      const el = document.querySelector('[data-receipt-preview]');
+      if (!el) return;
+      const pdf = await generateReceiptPDF(el);
+      const blob = pdf.output('blob');
+      const fileName = `receipt_${preview.receipt.receipt_no.replace(/[/\\]/g, '_')}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      const r = preview.receipt;
+      const projectId = (r.project_id || '').toLowerCase();
+      const foundationName = PROJECT_LABELS[projectId] || 'our foundation';
+      const amt = Number(r.amount || 0).toLocaleString('en-IN');
+      const text = `Thank you for your generous donation of ₹${amt} to ${foundationName}. Your receipt (No: ${r.receipt_no || ''}) has been generated.\n\nWith gratitude,\n${foundationName} Team`;
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text, title: `Donation Receipt - ${r.receipt_no || ''}` });
+      } else {
+        pdf.save(fileName);
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        alert('Failed to share PDF: ' + err.message);
+      }
     }
   };
 
@@ -132,6 +176,9 @@ export default function ReceiptHistory() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-primary btn-sm" onClick={handleDownload} disabled={downloading}>
                   {downloading ? 'Downloading...' : 'Download PDF'}
+                </button>
+                <button className="btn btn-sm" style={{ background: '#25D366', color: '#fff' }} onClick={handleWhatsApp}>
+                  Send via WhatsApp
                 </button>
                 <button className="btn btn-sm" onClick={() => setPreview(null)}>Close</button>
               </div>
