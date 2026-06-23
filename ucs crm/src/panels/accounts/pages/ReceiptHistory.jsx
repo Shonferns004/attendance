@@ -137,7 +137,7 @@ export default function ReceiptHistory() {
               </div>
             </div>
             <div className="modal-body" style={{ padding: 20 }}>
-              <div data-receipt-preview>
+              <div data-receipt-preview data-receipt-print>
                 <preview.Comp
                   donor={buildDonor(preview.receipt)}
                   index={0}
@@ -164,12 +164,56 @@ export default function ReceiptHistory() {
         .modal-header h3 { margin: 0; font-size: 16px; }
         .modal-body { overflow: auto; max-height: calc(90vh - 70px); }
         @media print {
+          @page { size: A4 portrait; margin: 8mm; }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
           body * { visibility: hidden; }
-          .modal, .modal * { visibility: visible; }
-          .modal { position: absolute; top: 0; left: 0; transform: none; max-width: 100%; width: 100%; box-shadow: none; border-radius: 0; }
-          .modal-overlay { display: none; }
-          .modal-header { display: none; }
-          .modal-body { padding: 0 !important; max-height: none; overflow: visible; display: flex; justify-content: center; }
+          [data-receipt-print], [data-receipt-print] * { visibility: visible; }
+          .modal-overlay { display: none !important; }
+          .modal-header { display: none !important; }
+          .modal {
+            position: static !important;
+            transform: none !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .modal-body {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+          }
+          [data-receipt-print] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+            overflow: visible !important;
+          }
+          [data-receipt-print] [data-receipt-sheet] {
+            margin: 0 auto !important;
+            max-width: none !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          [data-receipt-print] [data-pdf-width="1000"] { zoom: 0.68; }
+          [data-receipt-print] [data-pdf-width="900"] { zoom: 0.75; }
+          [data-receipt-print] [data-pdf-width="794"] { zoom: 0.85; }
         }
       `}</style>
     </div>
