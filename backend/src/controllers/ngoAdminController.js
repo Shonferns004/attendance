@@ -794,9 +794,9 @@ export const getNewData = async (req, res) => {
     if (ngoNames.length > 0) {
       const { data: ngoProfiles, error: npErr } = await supabase
         .from('donor_profiles')
-        .select('id, name, mobile_number, category, amount, created_at, ngo')
+        .select('id, name, mobile_number, category, amount, first_imported_at, ngo')
         .in('ngo', ngoNames)
-        .order('created_at', { ascending: false });
+        .order('first_imported_at', { ascending: false });
 
       if (npErr) throw npErr;
 
@@ -808,7 +808,10 @@ export const getNewData = async (req, res) => {
           .in('donor_id', profileIds);
 
         const assignedIds = new Set(froAsgn ? froAsgn.map(a => a.donor_id) : []);
-        ngoData = ngoProfiles.filter(p => !assignedIds.has(p.id));
+        ngoData = ngoProfiles.filter(p => !assignedIds.has(p.id)).map(p => ({
+          ...p,
+          created_at: p.first_imported_at,
+        }));
       }
     }
 
