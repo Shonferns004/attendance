@@ -157,7 +157,7 @@ export const getDonorProfilesByNgo = async (ngoList, limit = 1000) => {
 
 export const getDonorProfilesByImportNgo = async (ngoList, limit = 1000) => {
   const { data: mobiles, error: mErr } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .select('mobile_number')
     .in('ngo', ngoList)
     .not('mobile_number', 'is', null);

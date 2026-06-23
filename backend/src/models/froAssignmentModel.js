@@ -80,7 +80,7 @@ export const getUnassignedDonorIds = async (ngoId, ngoName) => {
 
   if (ngoName) {
     const { data: mobiles, error: mErr } = await supabase
-      .from('imported_data')
+      .from('new_data')
       .select('mobile_number')
       .eq('ngo', ngoName)
       .not('mobile_number', 'is', null);
