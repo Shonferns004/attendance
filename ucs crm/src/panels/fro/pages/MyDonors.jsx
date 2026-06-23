@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getMyDonors, getDonorDetail, addDonorLog, uploadPaymentScreenshot } from '../api/donors';
+import { getMyDonors, getDonorDetail, addDonorLog, uploadPaymentScreenshot, markDonorSeen } from '../api/donors';
 
 const NOT_CONNECTED = [
   { id: 'busy', label: 'Busy' }, { id: 'ringing', label: 'Ringing' },
@@ -90,6 +90,11 @@ export default function MyDonors() {
   const loadDetail = useCallback(() => {
     if (!donor) return;
     setDetailLoading(true);
+    if (donor.is_new) {
+      markDonorSeen(donor.id).then(() => {
+        setDonors(prev => prev.map(d => d.id === donor.id ? { ...d, is_new: false } : d));
+      }).catch(() => {});
+    }
     getDonorDetail(donor.id).then(setDetail).catch(() => {}).finally(() => setDetailLoading(false));
   }, [donor?.id]);
 
@@ -175,7 +180,14 @@ export default function MyDonors() {
         {/* Filter bar */}
         <div className="bento-col-12" style={{flexShrink:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-            <h3 style={{fontSize:14, fontWeight:700}}>My Donors</h3>
+            <h3 style={{fontSize:14, fontWeight:700}}>
+              My Donors
+              {donors.filter(d => d.is_new).length > 0 && (
+                <span style={{marginLeft:8, padding:'1px 7px', borderRadius:999, background:'#16a34a', color:'#fff', fontSize:9, fontWeight:700, verticalAlign:'middle'}}>
+                  {donors.filter(d => d.is_new).length} new
+                </span>
+              )}
+            </h3>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
               style={{border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:10, fontFamily:'inherit', outline:'none'}}>
               {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -190,7 +202,12 @@ export default function MyDonors() {
             <div style={{width:44, height:44, borderRadius:'50%', background:'var(--md-surface-high)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:6}}>
               <span style={{fontSize:16, fontWeight:800, color:'var(--md-on-bg)'}}>{initials(donor.donor_name)}</span>
             </div>
-            <h2 style={{fontSize:16, fontWeight:700, lineHeight:1.2}}>{donor.donor_name}</h2>
+            <h2 style={{fontSize:16, fontWeight:700, lineHeight:1.2}}>
+              {donor.donor_name}
+              {donor.is_new && (
+                <span style={{marginLeft:6, padding:'1px 6px', borderRadius:4, background:'#16a34a', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, verticalAlign:'middle'}}>NEW</span>
+              )}
+            </h2>
             <p style={{fontSize:12, fontWeight:500, color:'var(--md-outline)', marginBottom:6}}>{donor.donor_mobile || '—'}</p>
             <span style={{background:'var(--md-tertiary-fixed)', color:'var(--md-on-primary-container)', padding:'2px 8px', borderRadius:999, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
               {donor.status || 'pending'}

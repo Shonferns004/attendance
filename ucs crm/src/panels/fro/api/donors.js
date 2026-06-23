@@ -28,3 +28,7 @@ export async function uploadPaymentScreenshot(fileBase64, mimeType) {
 export async function getMyDashboard() {
   return api('/fro/dashboard', { _prefix: 'ucs' })
 }
+
+export async function markDonorSeen(assignmentId) {
+  return api(`/fro/donors/${assignmentId}/mark-seen`, { method: 'PUT', _prefix: 'ucs' })
+}

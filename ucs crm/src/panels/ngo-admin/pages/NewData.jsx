@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { apiGet, apiPost } from '../api/auth'
 
 function AssignModal({ donors, froWorkers, onClose, onAssigned }) {
@@ -52,11 +52,103 @@ function AssignModal({ donors, froWorkers, onClose, onAssigned }) {
   )
 }
 
+function CapacityModal({ froWorkers, totalDonors, onClose, onDistribute }) {
+  const [capacities, setCapacities] = useState(() =>
+    froWorkers.map(w => ({ fro_worker_id: w.id, name: w.name, count: 0 }))
+  )
+  const [loading, setLoading] = useState(false)
+
+  const total = capacities.reduce((s, c) => s + (parseInt(c.count) || 0), 0)
+  const remaining = totalDonors - total
+
+  const handleChange = (idx, val) => {
+    const next = [...capacities]
+    next[idx] = { ...next[idx], count: Math.max(0, parseInt(val) || 0) }
+    setCapacities(next)
+  }
+
+  const fillEqually = () => {
+    if (capacities.length === 0) return
+    const base = Math.floor(totalDonors / capacities.length)
+    const rem = totalDonors % capacities.length
+    const next = capacities.map((c, i) => ({
+      ...c,
+      count: base + (i < rem ? 1 : 0),
+    }))
+    setCapacities(next)
+  }
+
+  const handleSubmit = async () => {
+    if (total !== totalDonors) {
+      alert(`Total capacity (${total}) must equal available donors (${totalDonors})`)
+      return
+    }
+    setLoading(true)
+    try {
+      const payload = capacities.map(c => ({ fro_worker_id: c.fro_worker_id, count: c.count }))
+      const res = await apiPost('/ngo-admin/assignments/distribute-by-capacity', { capacities: payload })
+      onDistribute(res)
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+        <div className="modal-head">
+          <h3>Distribute by Capacity</h3>
+          <button className="btn btn-sm btn-outline" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--ink-soft)' }}>
+            Available donors: <strong>{totalDonors}</strong>
+          </p>
+          <table style={{ width: '100%', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', paddingBottom: 6 }}>FRO Worker</th>
+                <th style={{ textAlign: 'center', paddingBottom: 6, width: 100 }}>Capacity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {capacities.map((c, i) => (
+                <tr key={c.fro_worker_id}>
+                  <td style={{ padding: '4px 0' }}>{c.name}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input type="number" min="0" value={c.count} onChange={e => handleChange(i, e.target.value)}
+                      style={{ width: 70, padding: '4px 6px', border: '1px solid var(--line)', borderRadius: 4, textAlign: 'center', fontFamily: 'inherit' }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ marginTop: 10, fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: remaining === 0 ? 'var(--success)' : 'var(--ink-soft)' }}>
+              {remaining === 0 ? '✓ Fully distributed' : `Remaining: ${remaining}`}
+            </span>
+            <button className="btn btn-sm btn-outline" onClick={fillEqually}>Fill Equally</button>
+          </div>
+          <div className="modal-actions" style={{ marginTop: 14 }}>
+            <button className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmit} disabled={loading || total !== totalDonors}>
+              {loading ? 'Distributing...' : 'Distribute'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DataTable({ donors, emptyMsg, selected, onToggle, onToggleAll }) {
   if (donors.length === 0) {
     return <div className="empty-state"><p>{emptyMsg}</p></div>
   }
   const allSelected = selected && selected.size === donors.length
+  const hasNgo = donors[0]?.ngo !== undefined
   return (
     <table>
       <thead>
@@ -66,7 +158,7 @@ function DataTable({ donors, emptyMsg, selected, onToggle, onToggleAll }) {
           <th>Mobile</th>
           <th>Category</th>
           <th>Amount</th>
-          {donors[0].ngo !== undefined && <th>NGO</th>}
+          {hasNgo && <th>NGO</th>}
           <th>Imported</th>
         </tr>
       </thead>
@@ -80,7 +172,7 @@ function DataTable({ donors, emptyMsg, selected, onToggle, onToggleAll }) {
             <td><code>{d.mobile_number}</code></td>
             <td><span className="pill">{d.category || '\u2014'}</span></td>
             <td>{'\u20B9'}{Number(d.amount || 0).toLocaleString()}</td>
-            {d.ngo !== undefined && <td><span className="pill pill-blue">{d.ngo}</span></td>}
+            {hasNgo && <td><span className="pill pill-blue">{d.ngo}</span></td>}
             <td className="muted">{d.created_at ? new Date(d.created_at).toLocaleDateString() : '\u2014'}</td>
           </tr>
         ))}
@@ -93,10 +185,12 @@ export default function NewData() {
   const [data, setData] = useState({ unassigned: [], ngo_data: [] })
   const [loading, setLoading] = useState(true)
   const [distributing, setDistributing] = useState(false)
+  const [distributingEqual, setDistributingEqual] = useState(false)
   const [result, setResult] = useState(null)
   const [froWorkers, setFroWorkers] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [showAssign, setShowAssign] = useState(false)
+  const [showCapacity, setShowCapacity] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -115,8 +209,8 @@ export default function NewData() {
 
   useEffect(load, [])
 
-  const handleDistribute = async () => {
-    if (!confirm('Auto-create N-stations (one per FRO worker) and distribute all new data?')) return
+  const handleDistributeUStations = async () => {
+    if (!confirm('Auto-create U-stations (U-1, U-2, U-3... one per FRO worker) and distribute all unassigned data?')) return
     setDistributing(true)
     setResult(null)
     try {
@@ -128,6 +222,22 @@ export default function NewData() {
       alert(err.message)
     } finally {
       setDistributing(false)
+    }
+  }
+
+  const handleDistributeEqually = async () => {
+    if (!confirm('Distribute all unassigned donors equally among all active FRO workers?')) return
+    setDistributingEqual(true)
+    setResult(null)
+    try {
+      const res = await apiPost('/ngo-admin/assignments/distribute-equally', {})
+      setResult(res)
+      setSelected(new Set())
+      load()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDistributingEqual(false)
     }
   }
 
@@ -154,12 +264,13 @@ export default function NewData() {
       {result && (
         <div style={{ padding: '10px 14px', marginBottom: 16, borderRadius: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
           {result.message}
+          {result.count !== undefined && <span style={{ fontWeight: 700, marginLeft: 8 }}>({result.count} donors)</span>}
         </div>
       )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
-          <h3>Unassigned New Data</h3>
+          <h3>New Data from File</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span className="count">{unassigned.length} donors</span>
           </div>
@@ -168,18 +279,24 @@ export default function NewData() {
           {loading ? (
             <div className="loading">Loading new data...</div>
           ) : (
-            <DataTable donors={unassigned} emptyMsg="No unassigned new data. Awaiting super admin distribution to NGOs." />
+            <DataTable donors={unassigned} emptyMsg="No new data from uploaded files." />
           )}
         </div>
       </div>
 
       <div className="card">
         <div className="card-head">
-          <h3>My NGO's New Data</h3>
+          <h3>Ready to Assign to FRO Workers</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span className="count">{ngo_data.length} donors</span>
-            <button className="btn btn-primary btn-sm" onClick={handleDistribute} disabled={distributing || ngo_data.length === 0}>
-              {distributing ? 'Distributing...' : 'Distribute by N-Stations'}
+            <button className="btn btn-primary btn-sm" onClick={handleDistributeUStations} disabled={distributing || ngo_data.length === 0}>
+              {distributing ? 'Distributing...' : 'Distribute by U-Stations'}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={handleDistributeEqually} disabled={distributingEqual || ngo_data.length === 0}>
+              {distributingEqual ? 'Distributing...' : 'Distribute Equally'}
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => setShowCapacity(true)} disabled={ngo_data.length === 0}>
+              By Capacity
             </button>
             <button className="btn btn-outline btn-sm" onClick={() => setShowAssign(true)} disabled={selected.size === 0}>
               Custom Assign ({selected.size})
@@ -192,7 +309,7 @@ export default function NewData() {
           ) : (
             <DataTable
               donors={ngo_data}
-              emptyMsg="No new data assigned to your NGO yet, or all donors have been assigned to FRO workers."
+              emptyMsg="No donors ready for assignment. Import new data first."
               selected={selected}
               onToggle={toggle}
               onToggleAll={toggleAll}
@@ -207,6 +324,15 @@ export default function NewData() {
           froWorkers={froWorkers}
           onClose={() => setShowAssign(false)}
           onAssigned={() => { setShowAssign(false); setSelected(new Set()); load() }}
+        />
+      )}
+
+      {showCapacity && (
+        <CapacityModal
+          froWorkers={froWorkers}
+          totalDonors={ngo_data.length}
+          onClose={() => setShowCapacity(false)}
+          onDistribute={(res) => { setShowCapacity(false); setResult(res); load() }}
         />
       )}
     </div>

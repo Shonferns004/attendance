@@ -7,6 +7,7 @@ import {
   createAssignmentHandler,
   getAssignments,
   distributeEqually,
+  distributeByCapacity,
   setTarget,
   getTargets,
   getDashboard,
@@ -31,6 +32,7 @@ router.get('/fro-workers', getFroWorkers);
 router.get('/assignments', getAssignments);
 router.post('/assignments', createAssignmentHandler);
 router.post('/assignments/distribute-equally', distributeEqually);
+router.post('/assignments/distribute-by-capacity', distributeByCapacity);
 router.get('/targets', getTargets);
 router.post('/targets', setTarget);
 router.get('/accounts/pending', getAccountsPending);

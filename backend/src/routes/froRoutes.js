@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import supabase from '../config/supabase.js';
 import {
   getDashboard,
   getMyDonors,
@@ -27,6 +28,20 @@ router.use(requireFro);
 router.get('/dashboard', getDashboard);
 router.get('/donors', getMyDonors);
 router.put('/donors/:id/status', updateDonorStatus);
+router.put('/donors/:id/mark-seen', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('fro_assignments')
+      .update({ is_new: false })
+      .eq('id', parseInt(id))
+      .eq('fro_worker_id', req.user.id);
+    if (error) throw error;
+    return res.json({ message: 'Marked as seen' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
 router.get('/donors/:id/logs', getDonorLogs);
 router.post('/donors/:id/logs', createDonorLogHandler);
 router.post('/donors/:id/schedule', scheduleContact);

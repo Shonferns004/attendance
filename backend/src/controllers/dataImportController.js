@@ -47,9 +47,23 @@ export const uploadImport = async (req, res) => {
 
     const { deduped, duplicatesRemoved } = dedupRows(extracted);
 
+    const { data: ngos, error: nErr } = await supabase
+      .from('ngos')
+      .select('id, name')
+      .eq('is_active', true);
+    if (nErr) throw nErr;
+
     const importBatchId = uuidv4();
 
-    const dbRows = deduped.map((r) => {
+    // Distribute donors equally among NGOs
+    let ngoIndex = 0;
+    const ngoNames = ngos && ngos.length > 0 ? ngos.map(n => n.name) : ['Default'];
+    const dbRows = [];
+
+    for (const r of deduped) {
+      const ngo = ngoNames[ngoIndex % ngoNames.length];
+      ngoIndex++;
+
       const row = {
         data_source_id,
         import_date: date,
@@ -58,6 +72,7 @@ export const uploadImport = async (req, res) => {
         name: r.name || null,
         category: r.category || '',
         amount: r.amount || 0,
+        ngo,
       };
       if (fullSheet) {
         Object.assign(row, {
@@ -86,73 +101,29 @@ export const uploadImport = async (req, res) => {
           account_of: r.account_of || null,
           branch: r.branch || null,
           station: r.station || null,
-          ngo: r.ngo || null,
         });
       }
-      return row;
-    });
+      dbRows.push(row);
+    }
 
     const inserted = await insertNewDataBatch(dbRows);
 
-    let profilesCreated = 0;
-    const errors = [];
-    if (fullSheet) {
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < deduped.length; i += BATCH_SIZE) {
-        const batch = deduped.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map(row => {
-            const profile = {
-              mobile_number: row.mobile_number,
-              name: row.name || null,
-              bank_donor_name: row.bank_donor_name || null,
-              agent_donor_name: row.agent_donor_name || null,
-              mobile_2: row.mobile_2 || null,
-              address_1: row.address_1 || null,
-              address_2: row.address_2 || null,
-              city: row.city || null,
-              pin_code: row.pin_code || null,
-              pan_number: row.pan_number || null,
-              email: row.email || null,
-              birth_date: row.birth_date || null,
-              data_category: row.data_category || null,
-              team: row.team || null,
-              agent_name: row.agent_name || null,
-              mop: row.mop || null,
-              donors_bank_name: row.donors_bank_name || null,
-              project_supported: row.project_supported || null,
-              account_of: row.account_of || null,
-              amount: row.amount || 0,
-              category: row.category || '',
-              transaction_date: row.transaction_date || null,
-              station: row.station || null,
-              ngo: row.ngo || null,
-              raw_data: row,
-              import_batch_id: importBatchId,
-            };
-            return upsertDonorProfile(profile);
-          })
-        );
-        for (const r of results) {
-          if (r.status === 'fulfilled') {
-            if (r.value && r.value.first_import_batch_id === importBatchId) profilesCreated++;
-          } else {
-            errors.push(r.reason?.message || 'Unknown error');
-          }
-        }
-      }
+    // Build per-NGO stats
+    const ngoCounts = {};
+    for (const row of dbRows) {
+      ngoCounts[row.ngo] = (ngoCounts[row.ngo] || 0) + 1;
     }
+    const distribution = Object.entries(ngoCounts).map(([name, count]) => `${count} → ${name}`);
 
     return res.status(201).json({
-      message: 'Data imported successfully',
-      type: fullSheet ? 'full' : 'quick',
+      message: 'Data imported and distributed to NGOs successfully',
       batch_id: importBatchId,
       total_in_file: extracted.length,
-      valid_rows: extracted.length,
       duplicates_removed: duplicatesRemoved,
       imported: inserted.length,
-      profiles_created: profilesCreated,
-      errors: errors.length > 0 ? errors : undefined,
+      distribution: distribution.join('; '),
+      ngo_counts: ngoCounts,
+      ngos_used: ngoNames.length,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

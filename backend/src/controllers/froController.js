@@ -142,6 +142,7 @@ export const getMyDonors = async (req, res) => {
         last_contacted_at: a.last_contacted_at,
         next_follow_up: a.next_follow_up,
         assigned_at: a.assigned_at,
+        is_new: a.is_new !== false,
         next_scheduled_at: sc?.next_scheduled_at || null,
         is_overdue: sc?.is_overdue || false,
         schedule_id: sc?.schedule_id || null,
