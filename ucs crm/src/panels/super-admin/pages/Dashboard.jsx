@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react'
 import { getDashboard } from '../api/endpoints'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
-} from 'recharts'
 
-const COLORS = {
-  blue: '#2563eb', green: '#10b981', amber: '#f59e0b', purple: '#8b5cf6',
-  cyan: '#06b6d4', rose: '#f43f5e', indigo: '#6366f1', orange: '#f97316',
-  teal: '#14b8a6', pink: '#ec4899', slate: '#64748b',
-}
+const MINT = '#3EB489'
+const CORAL = '#FF7F50'
+const PRIMARY = '#091426'
 
-const ROLE_COLORS = {
-  hoadmin: '#2563eb', accounts: '#10b981', leads: '#f59e0b',
-  recruiter: '#8b5cf6', telecaller: '#06b6d4', team_lead: '#f43f5e',
+const ROLE_COLORS_MAP = {
+  hoadmin: PRIMARY,
+  accounts: MINT,
+  leads: CORAL,
+  recruiter: '#8b5cf6',
+  telecaller: '#06b6d4',
+  team_lead: '#f43f5e',
   hr: '#f97316',
 }
 
-const DEPT_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#6366f1', '#f97316', '#14b8a6', '#ec4899']
+const DEPT_DOT_COLORS = [PRIMARY, MINT, CORAL, '#8b5cf6', '#06b6d4', '#f43f5e', '#6366f1', '#f97316', '#14b8a6', '#ec4899']
 
 const PERIODS = [
   { key: '7d', label: '7 Days' },
@@ -27,11 +25,66 @@ const PERIODS = [
   { key: 'all', label: 'All Time' },
 ]
 
+function Sparkline({ trend }) {
+  let d
+  if (trend === 'up') d = 'M0 35 Q 25 35, 50 20 T 100 5'
+  else if (trend === 'down') d = 'M0 5 L 30 15 L 60 25 L 100 35'
+  else d = 'M0 20 L 100 20'
+  const color = trend === 'up' ? MINT : trend === 'down' ? CORAL : '#64748b'
+  return (
+    <svg className="sa-sparkline" viewBox="0 0 100 40">
+      <path d={d} fill="none" stroke={color} strokeLinecap="round" strokeWidth="4" />
+    </svg>
+  )
+}
+
+function DonutChart({ segments, size, centerValue, centerLabel, animated }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0)
+  if (total === 0) return null
+  const r = 15.915
+  let offset = 0
+  return (
+    <div className="sa-donut-wrap" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 36 36" className="sa-donut-svg">
+        <circle cx="18" cy="18" fill="transparent" r={r} stroke="#f0f2f5" strokeWidth="3" />
+        {segments.map((seg) => {
+          const pct = (seg.value / total) * 100
+          const dash = pct.toFixed(1)
+          const gap = (100 - parseFloat(dash)).toFixed(1)
+          const el = (
+            <circle
+              key={seg.label}
+              cx="18" cy="18" fill="transparent" r={r}
+              stroke={seg.color}
+              strokeDasharray={animated ? `${dash} ${gap}` : `0 100`}
+              strokeDashoffset={-offset}
+              strokeLinecap="round"
+              strokeWidth="4.5"
+              className="sa-donut-segment"
+            />
+          )
+          offset += animated ? parseFloat(dash) : 0
+          return el
+        })}
+      </svg>
+      {(centerValue !== undefined || centerLabel) && (
+        <div className="sa-donut-center">
+          {centerValue !== undefined && <span className="sa-donut-center-value">{Number(centerValue).toLocaleString()}</span>}
+          {centerLabel && <span className="sa-donut-center-label">{centerLabel}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [period, setPeriod] = useState('all')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
+  const [animated, setAnimated] = useState(false)
+
+  useEffect(() => { const t = setTimeout(() => setAnimated(true), 150); return () => clearTimeout(t) }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -46,316 +99,323 @@ export default function Dashboard() {
 
   const {
     stats = {}, deptWorkers = {}, roleDistribution = {}, ngoUserCounts = [],
-    genderCounts = {}, attendanceStatus = {}, pendingLeaves = 0,
-    monthlyAttendance = [], totalSalaryPayable = 0,
-    kpiChanges = {}, attendancePercent = 0, deptAttendance = [],
+    attendanceStatus = {},
+    kpiChanges = {}, attendancePercent = 0,
     recentNotices = [], upcomingEvents = [],
   } = data
 
-  const kpiCards = [
-    { label: 'Total NGOs', value: stats.totalNgos || 0, color: COLORS.blue, changeKey: 'totalNgos' },
-    { label: 'Total Workers', value: stats.totalWorkers || 0, color: COLORS.green, changeKey: 'totalWorkers' },
-    { label: 'Total Users', value: stats.totalUsers || 0, color: COLORS.amber, changeKey: 'totalUsers' },
-    { label: 'Active Workers', value: stats.activeWorkers || 0, color: COLORS.cyan, changeKey: '' },
-    { label: 'Attendance %', value: attendancePercent + '%', color: COLORS.teal, changeKey: 'attendancePercent' },
-    { label: 'Pending Leaves', value: pendingLeaves, color: COLORS.rose, changeKey: '' },
-    { label: 'New This Period', value: stats.workersJoinedThisMonth || 0, color: COLORS.purple, changeKey: '' },
+  const metricCards = [
+    { label: 'Total NGOs', value: stats.totalNgos || 0, icon: 'corporate_fare', changeKey: 'totalNgos' },
+    { label: 'Total Workers', value: stats.totalWorkers || 0, icon: 'badge', changeKey: 'totalWorkers' },
+    { label: 'Total Users', value: stats.totalUsers || 0, icon: 'person', changeKey: '' },
+    { label: 'Active Workers', value: stats.activeWorkers || 0, icon: 'bolt', changeKey: 'reach' },
+    { label: 'Attendance %', value: attendancePercent, suffix: '%', icon: 'event_available', changeKey: 'attendancePercent' },
   ]
+
+  function getTrend(changeKey) {
+    if (changeKey === 'reach') return { direction: 'up', text: '100% Reach' }
+    const v = kpiChanges[changeKey]
+    if (v === undefined || v === null) return null
+    if (v > 0) return { direction: 'up', text: `+${Math.abs(v)}%` }
+    if (v < 0) return { direction: 'down', text: `-${Math.abs(v)}%` }
+    return { direction: 'flat', text: 'Stable' }
+  }
 
   const deptData = Object.entries(deptWorkers || {})
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
-
-  const roleData = Object.entries(roleDistribution || {})
-    .map(([name, value]) => ({ name: name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()), value }))
-    .sort((a, b) => b.value - a.value)
+  const maxDept = deptData.length > 0 ? deptData[0].value : 1
 
   const ngoChartData = (ngoUserCounts || []).slice(0, 10).map(n => ({
-    name: n.name.length > 12 ? n.name.slice(0, 12) + '…' : n.name,
-    Users: n.users,
-    Workers: n.workers,
+    name: n.name.length > 12 ? n.name.slice(0, 12) + '\u2026' : n.name,
+    Users: n.users || 0,
+    Workers: n.workers || 0,
   }))
+  const maxNgo = Math.max(...ngoChartData.flatMap(n => [n.Users, n.Workers]), 1)
 
-  const attStatusData = Object.entries(attendanceStatus || {})
-    .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+  const roleData = Object.entries(roleDistribution || {})
+    .map(([name, value]) => ({
+      name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      value,
+      color: ROLE_COLORS_MAP[name] || '#64748b',
+    }))
+    .sort((a, b) => b.value - a.value)
 
-  const genderData = Object.entries(genderCounts || {})
-    .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name, value }))
+  const attPresent = attendanceStatus?.present || 0
+  const attLate = attendanceStatus?.late || 0
+  const attAbsent = attendanceStatus?.absent || 0
 
-  const formatCurrency = (v) => v ? `₹${Number(v).toLocaleString()}` : '₹0'
+  const attSegments = []
+  if (attPresent > 0) attSegments.push({ label: 'Present', value: attPresent, color: MINT })
+  if (attLate > 0) attSegments.push({ label: 'Late', value: attLate, color: '#FFD700' })
+  if (attAbsent > 0) attSegments.push({ label: 'Absent', value: attAbsent, color: CORAL })
 
-  const totalAttendance = Object.values(attendanceStatus).reduce((s, v) => s + v, 0)
-
-  function renderChange(key) {
-    const v = kpiChanges[key]
-    if (v === undefined || v === null) return null
-    const isPos = v > 0
-    const isNeg = v < 0
-    const cls = isPos ? 'dash-change-up' : isNeg ? 'dash-change-down' : 'dash-change-flat'
-    const arrow = isPos ? '↑' : isNeg ? '↓' : '→'
-    return <span className={`dash-kpi-change ${cls}`}>{arrow} {Math.abs(v)}%</span>
-  }
+  const iconColors = [PRIMARY, MINT]
 
   return (
     <div className="dash-page">
-      {/* Period Selector */}
-      <div className="dash-period-bar">
-        {PERIODS.map(p => (
-          <button
-            key={p.key}
-            className={`dash-period-btn${period === p.key ? ' active' : ''}`}
-            disabled={loading}
-            onClick={() => setPeriod(p.key)}
-          >
-            {loading && period === p.key ? '◉ ' : ''}{p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* KPI Cards */}
-      <div className="dash-kpi-grid">
-        {kpiCards.map(c => (
-          <div key={c.label} className="dash-kpi-card" style={{ borderLeftColor: c.color }}>
-            <div className="dash-kpi-label">{c.label}</div>
-            <div className="dash-kpi-value" style={{ color: c.color }}>{c.value.toLocaleString()}</div>
-            {c.changeKey && renderChange(c.changeKey)}
+      <div className="dash-header">
+        <div>
+          <h2 className="dash-header-title">Dashboard Overview</h2>
+          <p className="dash-header-sub">Operational insights across all NGOs and departments.</p>
+        </div>
+        <div className="dash-header-actions">
+          <div className="dash-period-bar">
+            {PERIODS.map(p => (
+              <button
+                key={p.key}
+                className={`dash-period-btn${period === p.key ? ' active' : ''}`}
+                disabled={loading}
+                onClick={() => setPeriod(p.key)}
+              >
+                {loading && period === p.key ? '\u25c9 ' : ''}{p.label}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* Row 1: Recent Notices + Upcoming Events */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Recent Notices</h3>
-          {recentNotices.length === 0 ? (
-            <p className="dash-muted">No recent notices</p>
-          ) : (
-            <div className="dash-timeline">
-              {recentNotices.map(n => (
-                <div key={n.id} className="dash-timeline-item">
-                  <div className="dash-tl-date">
-                    {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  </div>
-                  <div className="dash-tl-body">
-                    <div className="dash-tl-title">{n.title}</div>
-                    <div className="dash-tl-text">
-                      {n.content && n.content.length > 120 ? n.content.slice(0, 120) + '…' : n.content || ''}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Upcoming Events</h3>
-          {upcomingEvents.length === 0 ? (
-            <p className="dash-muted">No upcoming events</p>
-          ) : (
-            <div className="dash-timeline">
-              {upcomingEvents.map(ev => (
-                <div key={ev.id} className="dash-timeline-item">
-                  <div className="dash-tl-date dash-tl-event">
-                    <span className="dash-tl-day">{new Date(ev.event_date).getDate()}</span>
-                    <span className="dash-tl-mon">{new Date(ev.event_date).toLocaleString('en-IN', { month: 'short' })}</span>
-                  </div>
-                  <div className="dash-tl-body">
-                    <div className="dash-tl-title">{ev.title}</div>
-                    <div className="dash-tl-meta">
-                      {ev.event_time && <span>⏰ {ev.event_time.slice(0, 5)}</span>}
-                      {ev.location && <span>📍 {ev.location}</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <button className="btn btn-primary btn-sm">Export Report</button>
         </div>
       </div>
 
-      {/* Row 2: Dept Bar + Role Pie */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Workers by Department</h3>
-          {deptData.length === 0 ? (
-            <p className="dash-muted">No department data</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={deptData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" tick={{ fontSize: 12 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} />
-                <Tooltip formatter={(v) => [v.toLocaleString(), 'Workers']} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {deptData.map((_, i) => (
-                    <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Role Distribution</h3>
-          {roleData.length === 0 ? (
-            <p className="dash-muted">No user data</p>
-          ) : (
-            <div className="dash-pie-wrap">
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={roleData} cx="50%" cy="50%" innerRadius={55} outerRadius={90}
-                    dataKey="value" paddingAngle={2}>
-                    {roleData.map(e => (
-                      <Cell key={e.name} fill={ROLE_COLORS[e.name.toLowerCase().replace(' ', '_')] || COLORS.slate} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => [v.toLocaleString(), 'Users']} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="dash-legend">
-                {roleData.map(e => (
-                  <div key={e.name} className="dash-legend-item">
-                    <span className="dash-legend-dot" style={{
-                      background: ROLE_COLORS[e.name.toLowerCase().replace(' ', '_')] || COLORS.slate
-                    }} />
-                    <span className="dash-legend-label">{e.name}</span>
-                    <span className="dash-legend-value">{e.value}</span>
+      <div className="metrics-grid">
+        {metricCards.map((card, i) => {
+          const trend = getTrend(card.changeKey)
+          return (
+            <div key={card.label} className="clay-card bouncy-appear" style={{ animationDelay: `${0.1 * (i + 1)}s` }}>
+              <div className="clay-card-top">
+                <span className="clay-card-label">{card.label}</span>
+                <div className="clay-card-icon-wrap">
+                  <span className="material-symbols-outlined">{card.icon}</span>
+                </div>
+              </div>
+              <div className="clay-card-body">
+                <span className="clay-card-value">
+                  {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}{card.suffix || ''}
+                </span>
+                {trend && (
+                  <div className="clay-card-trend">
+                    <Sparkline trend={trend.direction} />
+                    <span className={`clay-card-trend-text trend-${trend.direction}`}>
+                      {trend.direction !== 'flat' && (
+                        <span className="material-symbols-outlined">
+                          {trend.direction === 'up' ? 'trending_up' : 'trending_down'}
+                        </span>
+                      )}
+                      {trend.text}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="dash-grid">
+        <div className="dash-grid-main">
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '0.6s' }}>
+            <div className="clay-section-header">
+              <h3 className="clay-section-title">Workers by Department</h3>
+              <div className="clay-section-more">
+                <span className="material-symbols-outlined">more_horiz</span>
+              </div>
+            </div>
+            {deptData.length === 0 ? (
+              <p className="dash-muted">No department data</p>
+            ) : (
+              <div className="dept-progress-list">
+                {deptData.map((d, i) => (
+                  <div key={d.name} className="dept-progress-item">
+                    <div className="dept-progress-header">
+                      <span className="dept-progress-name">
+                        <span className="dept-progress-dot" style={{ background: DEPT_DOT_COLORS[i % DEPT_DOT_COLORS.length] }} />
+                        {d.name}
+                      </span>
+                      <span className="dept-progress-count">{d.value} Workers</span>
+                    </div>
+                    <div className="dept-progress-track">
+                      <div
+                        className="dept-progress-fill"
+                        style={{
+                          width: animated ? `${(d.value / maxDept) * 100}%` : '0%',
+                          background: DEPT_DOT_COLORS[i % DEPT_DOT_COLORS.length],
+                          transitionDelay: `${i * 0.12}s`,
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* Row 3: NGO Overview + Attendance Status */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">NGOs — Users & Workers (Top 10)</h3>
-          {ngoChartData.length === 0 ? (
-            <p className="dash-muted">No NGO data</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={ngoChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Users" fill={COLORS.blue} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Workers" fill={COLORS.green} radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Attendance Overview</h3>
-          <div className="dash-pie-wrap">
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={attStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                  dataKey="value" paddingAngle={2}>
-                  {attStatusData.map(e => {
-                    const c = e.name === 'Present' ? COLORS.green : e.name === 'Late' ? COLORS.amber : e.name === 'Absent' ? COLORS.rose : COLORS.blue
-                    return <Cell key={e.name} fill={c} />
-                  })}
-                </Pie>
-                <Tooltip formatter={(v) => [v.toLocaleString(), 'Records']} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="dash-legend">
-              {attStatusData.map(e => {
-                const c = e.name === 'Present' ? COLORS.green : e.name === 'Late' ? COLORS.amber : e.name === 'Absent' ? COLORS.rose : COLORS.blue
-                return (
-                  <div key={e.name} className="dash-legend-item">
-                    <span className="dash-legend-dot" style={{ background: c }} />
-                    <span className="dash-legend-label">{e.name}</span>
-                    <span className="dash-legend-value">{e.value}</span>
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '0.7s' }}>
+            <div className="clay-section-header">
+              <h3 className="clay-section-title">NGOs \u2014 Users & Workers</h3>
+              <div className="clay-section-legend">
+                <span className="clay-legend-item">
+                  <span className="clay-legend-swatch" style={{ background: PRIMARY }} />
+                  Users
+                </span>
+                <span className="clay-legend-item">
+                  <span className="clay-legend-swatch" style={{ background: MINT }} />
+                  Workers
+                </span>
+              </div>
+            </div>
+            {ngoChartData.length === 0 ? (
+              <p className="dash-muted">No NGO data</p>
+            ) : (
+              <div className="ngo-bar-chart">
+                {ngoChartData.map((n, i) => (
+                  <div key={n.name} className="ngo-bar-group">
+                    <div className="ngo-bars">
+                      <div
+                        className="ngo-bar ngo-bar-users"
+                        style={{
+                          height: animated ? `${(n.Users / maxNgo) * 100}%` : '0%',
+                          transitionDelay: `${0.3 + i * 0.08}s`,
+                        }}
+                      />
+                      <div
+                        className="ngo-bar ngo-bar-workers"
+                        style={{
+                          height: animated ? `${(n.Workers / maxNgo) * 100}%` : '0%',
+                          transitionDelay: `${0.3 + i * 0.08}s`,
+                        }}
+                      />
+                    </div>
+                    <span className="ngo-bar-label">{n.name}</span>
                   </div>
-                )
-              })}
-              <div className="dash-legend-item" style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4 }}>
-                <span className="dash-legend-label" style={{ fontWeight: 600 }}>Total</span>
-                <span className="dash-legend-value" style={{ fontWeight: 600 }}>{totalAttendance}</span>
+                ))}
               </div>
-            </div>
+            )}
           </div>
-          <div className="dash-mini-stats">
-            <div className="dash-mini-stat">
-              <span className="dash-mini-label">Salary Payable</span>
-              <span className="dash-mini-value">{formatCurrency(totalSalaryPayable)}</span>
+        </div>
+
+        <div className="dash-grid-side">
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '0.8s' }}>
+            <h3 className="clay-section-title">Role Distribution</h3>
+            {roleData.length === 0 ? (
+              <p className="dash-muted">No user data</p>
+            ) : (
+              <div className="sa-pie-wrap">
+                <DonutChart
+                  segments={roleData}
+                  size={180}
+                  centerValue={roleData.reduce((s, r) => s + r.value, 0)}
+                  centerLabel="Active"
+                  animated={animated}
+                />
+                <div className="sa-pie-legend">
+                  {roleData.map(r => (
+                    <div key={r.name} className="sa-pie-legend-item">
+                      <span className="sa-pie-dot" style={{ background: r.color }} />
+                      <span className="sa-pie-label">{r.name}</span>
+                      <span className="sa-pie-value">{r.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '0.9s' }}>
+            <h3 className="clay-section-title">Daily Check-ins</h3>
+            {attSegments.length === 0 ? (
+              <p className="dash-muted">No attendance data</p>
+            ) : (
+              <div className="sa-checkins-wrap">
+                <DonutChart segments={attSegments} size={160} animated={animated} />
+                <div className="sa-checkins-list">
+                  {attSegments.map((s, i) => (
+                    <div
+                      key={s.label}
+                      className={`sa-checkin-item${animated ? ' sa-checkin-show' : ''}`}
+                      style={{
+                        background: s.label === 'Present' ? 'rgba(62,180,137,0.08)' : s.label === 'Late' ? 'rgba(255,215,0,0.08)' : 'rgba(255,127,80,0.08)',
+                        borderColor: s.label === 'Present' ? 'rgba(62,180,137,0.2)' : s.label === 'Late' ? 'rgba(255,215,0,0.2)' : 'rgba(255,127,80,0.2)',
+                        transitionDelay: `${0.3 + i * 0.12}s`,
+                      }}
+                    >
+                      <div className="sa-checkin-icon-wrap" style={{
+                        background: s.label === 'Present' ? 'rgba(62,180,137,0.15)' : s.label === 'Late' ? 'rgba(255,215,0,0.15)' : 'rgba(255,127,80,0.15)',
+                      }}>
+                        <span className="material-symbols-outlined" style={{ color: s.color }}>
+                          {s.label === 'Present' ? 'verified' : s.label === 'Late' ? 'pace' : 'cancel'}
+                        </span>
+                      </div>
+                      <span className="sa-checkin-label">{s.label}</span>
+                      <span className="sa-checkin-count">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '1.0s' }}>
+            <div className="clay-section-header">
+              <h3 className="clay-section-title">Recent Notices</h3>
+              <a className="clay-section-link" href="#">VIEW ALL</a>
             </div>
-            <div className="dash-mini-stat">
-              <span className="dash-mini-label">Departments</span>
-              <span className="dash-mini-value">{deptData.length}</span>
-            </div>
-            <div className="dash-mini-stat">
-              <span className="dash-mini-label">NGOs</span>
-              <span className="dash-mini-value">{stats.totalNgos || 0}</span>
-            </div>
+            {recentNotices.length === 0 ? (
+              <p className="dash-muted">No recent notices</p>
+            ) : (
+              <div className="sa-notice-list">
+                {recentNotices.slice(0, 2).map((n, i) => (
+                  <div key={n.id} className="sa-notice-item">
+                    <div className="sa-notice-icon" style={{ background: iconColors[i % iconColors.length] }}>
+                      <span className="material-symbols-outlined" style={{ color: '#fff' }}>
+                        {i % 2 === 0 ? 'priority_high' : 'verified_user'}
+                      </span>
+                    </div>
+                    <div className="sa-notice-body">
+                      <h4 className="sa-notice-title">{n.title}</h4>
+                      <p className="sa-notice-text">
+                        {n.content && n.content.length > 120 ? n.content.slice(0, 120) + '\u2026' : n.content || ''}
+                      </p>
+                      <span className="sa-notice-time">
+                        {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="clay-card dash-card-section bouncy-appear" style={{ animationDelay: '1.1s' }}>
+            <h3 className="clay-section-title">Upcoming Events</h3>
+            {upcomingEvents.length === 0 ? (
+              <p className="dash-muted">No upcoming events</p>
+            ) : (
+              <>
+                <div className="sa-event-list">
+                  {upcomingEvents.slice(0, 2).map(ev => {
+                    const d = new Date(ev.event_date)
+                    return (
+                      <div key={ev.id} className="sa-event-item">
+                        <div className="sa-event-date">
+                          <span className="sa-event-mon">{d.toLocaleString('en-IN', { month: 'short' })}</span>
+                          <span className="sa-event-day">{d.getDate()}</span>
+                        </div>
+                        <div className="sa-event-body">
+                          <h4 className="sa-event-title">{ev.title}</h4>
+                          <p className="sa-event-meta">
+                            {ev.location && <span>{ev.location}</span>}
+                            {ev.event_time && <span> \u2022 {ev.event_time.slice(0, 5)}</span>}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <button className="sa-event-add-btn">ADD NEW EVENT</button>
+              </>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Row 3: Attendance Trend + Dept Attendance */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Daily Trend ({period === 'all' ? 'All Time' : `Last ${period}`})</h3>
-          {monthlyAttendance.length === 0 ? (
-            <p className="dash-muted">No attendance data</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={monthlyAttendance} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(v) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip labelFormatter={(v) => `Date: ${v}`} />
-                <Area type="monotone" dataKey="present" stackId="1" stroke={COLORS.green} fill={COLORS.green} fillOpacity={0.3} />
-                <Area type="monotone" dataKey="late" stackId="1" stroke={COLORS.amber} fill={COLORS.amber} fillOpacity={0.3} />
-                <Area type="monotone" dataKey="absent" stackId="1" stroke={COLORS.rose} fill={COLORS.rose} fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <div className="dash-card dash-card-half">
-          <h3 className="dash-card-title">Department Attendance</h3>
-          {deptAttendance.length === 0 ? (
-            <p className="dash-muted">No data</p>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={deptAttendance} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="department" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="present" stackId="a" fill={COLORS.green} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="late" stackId="a" fill={COLORS.amber} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="absent" stackId="a" fill={COLORS.rose} radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="dash-mini-stats" style={{ marginTop: 8 }}>
-                <div className="dash-mini-stat">
-                  <span className="dash-mini-label">Male</span>
-                  <span className="dash-mini-value">{genderData.find(g => g.name === 'Male')?.value || 0}</span>
-                </div>
-                <div className="dash-mini-stat">
-                  <span className="dash-mini-label">Female</span>
-                  <span className="dash-mini-value">{genderData.find(g => g.name === 'Female')?.value || 0}</span>
-                </div>
-                <div className="dash-mini-stat">
-                  <span className="dash-mini-label">Other</span>
-                  <span className="dash-mini-value">{genderData.find(g => g.name === 'Other')?.value || 0}</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
     </div>
   )
 }
