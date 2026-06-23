@@ -56,35 +56,35 @@ const standaloneIds = ['dashboard', 'salary', 'incentives', 'achievements', 'acc
 
 function Sidebar({ active, setActive, collapsedGroups, toggleGroup }) {
   return (
-    <aside className="sa-sidebar">
-      <div className="sa-sidebar-header">
-        <div className="sa-logo">SA</div>
-        <span className="sa-logo-text">Super Admin</span>
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="brand-mark">SA</div>
+        <div><h1>UFS</h1><span>Super Admin</span></div>
       </div>
-      <nav className="sa-nav">
+      <nav className="sidebar-nav">
         {standaloneIds.map(id => {
           const n = navMap[id]
           return (
-            <button key={n.id} className={`sa-nav-item${active === n.id ? ' active' : ''}`} onClick={() => setActive(n.id)}>
-              <span className="sa-nav-icon">{n.icon}</span>
-              <span className="sa-nav-label">{n.label}</span>
+            <button key={n.id} className={`snav-item${active === n.id ? ' active' : ''}`} onClick={() => setActive(n.id)}>
+              <span className="ico">{n.icon}</span>
+              <span>{n.label}</span>
             </button>
           )
         })}
         {GROUPS.map(g => (
           <div key={g.id}>
-            <div className="sa-nav-group-header" onClick={() => toggleGroup(g.id)}>
-              <span className="sa-nav-icon">{g.icon}</span>
-              <span className="sa-nav-label">{g.label}</span>
-              <span className={`sa-nav-chevron${collapsedGroups.includes(g.id) ? '' : ' open'}`}>▸</span>
+            <div className="snav-group-header" onClick={() => toggleGroup(g.id)}>
+              <span className="ico">{g.icon}</span>
+              <span>{g.label}</span>
+              <span className={`snav-chevron${collapsedGroups.includes(g.id) ? '' : ' open'}`}>▸</span>
             </div>
-            <div className={`sa-nav-group-items${collapsedGroups.includes(g.id) ? ' collapsed' : ''}`}>
+            <div className={`snav-group-items${collapsedGroups.includes(g.id) ? ' collapsed' : ''}`}>
               {g.items.map(id => {
                 const n = navMap[id]
                 return (
-                  <button key={n.id} className={`sa-nav-item sa-nav-sub${active === n.id ? ' active' : ''}`} onClick={() => setActive(n.id)}>
-                    <span className="sa-nav-icon">{n.icon}</span>
-                    <span className="sa-nav-label">{n.label}</span>
+                  <button key={n.id} className={`snav-item snav-sub${active === n.id ? ' active' : ''}`} onClick={() => setActive(n.id)}>
+                    <span className="ico">{n.icon}</span>
+                    <span>{n.label}</span>
                   </button>
                 )
               })}
@@ -114,7 +114,23 @@ export default function SuperAdminPanel() {
   })
   const menuRef = useRef(null)
 
-  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('sa_theme', themeName) }, [themeName])
+  useEffect(() => {
+    if (themes[themeName]) {
+      applyTheme(themes[themeName])
+      const t = themes[themeName]
+      const root = document.documentElement
+      root.style.setProperty('--bg', t.sand)
+      root.style.setProperty('--bg-card', t.paper)
+      root.style.setProperty('--text', t.ink)
+      root.style.setProperty('--text-soft', t['ink-soft'])
+      root.style.setProperty('--border', t.line)
+      root.style.setProperty('--primary', t.sage)
+      root.style.setProperty('--primary-hover', t.sage)
+      root.style.setProperty('--danger', t.danger)
+      root.style.setProperty('--bg-sidebar', t.ink)
+    }
+    localStorage.setItem('sa_theme', themeName)
+  }, [themeName])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
@@ -181,45 +197,38 @@ export default function SuperAdminPanel() {
   }
 
   return (
-    <div className="sa-app">
+    <div className="app">
       <Sidebar active={active} setActive={setActive} collapsedGroups={collapsedGroups} toggleGroup={toggleGroup} />
-      <div className="sa-main">
-        <header className="sa-topbar">
+      <div className="main">
+        <header className="topbar">
           <div>
-            <div className="sa-eyebrow">{meta?.label || 'Dashboard'}</div>
+            <div className="eyebrow">{meta?.label || 'Dashboard'}</div>
             <h2>{meta?.label || 'Dashboard'}</h2>
           </div>
-          <div className="sa-topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
-            <div className="sa-topbar-text">
-              <div className="sa-topbar-name">{userName}</div>
-              <div className="sa-topbar-role">Super Admin</div>
+          <div className="topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
+            <div className="topbar-user-text">
+              <div className="topbar-name">{userName}</div>
+              <div className="topbar-role">Super Admin</div>
             </div>
-            <div className="sa-avatar">{initials}</div>
+            <div className="avatar">{initials}</div>
             {showMenu && (
-              <div className="sa-user-menu" onClick={e => e.stopPropagation()}>
-                <div className="sa-user-menu-header">
-                  <div className="sa-topbar-name">{userName}</div>
-                  <div className="sa-topbar-role">Super Admin</div>
+              <div className="user-menu">
+                <div className="user-menu-item" style={{fontWeight:600, fontSize:13, cursor:'default'}}>{userName} <span style={{fontWeight:400, color:'var(--ink-soft)'}}>Super Admin</span></div>
+                <div className="user-menu-divider" />
+                <div className="user-menu-item" style={{cursor:'default'}}>
+                  <span style={{fontSize:13, color:'var(--ink-soft)'}}>{dark ? '☀️ Light' : '🌙 Dark'}</span>
+                  <label className="dm-toggle" style={{marginLeft:'auto'}}>
+                    <input type="checkbox" checked={dark} onChange={() => setDark(!dark)} />
+                    <span className="dm-slider"></span>
+                  </label>
                 </div>
-                <div className="sa-menu-divider" />
-                <div className="sa-menu-section">
-                  <div className="sa-menu-row">
-                    <span className="sa-menu-label">{dark ? '☀️ Light Mode' : '🌙 Dark Mode'}</span>
-                    <label className="dm-toggle">
-                      <input type="checkbox" checked={dark} onChange={() => setDark(!dark)} />
-                      <span className="dm-slider"></span>
-                    </label>
-                  </div>
+                <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
+                  Theme: <select value={themeName} onClick={e=>e.stopPropagation()} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid var(--line)', borderRadius:6, padding:'2px 8px'}}>
+                    {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
+                  </select>
                 </div>
-                <div className="sa-menu-section" style={{padding:'8px 14px'}}>
-                  <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
-                    Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
-                      {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="sa-menu-divider" />
-                <button className="sa-menu-item" onClick={() => { setShowMenu(false); logout() }}>
+                <div className="user-menu-divider" />
+                <button className="user-menu-item" onClick={() => { setShowMenu(false); logout() }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   Sign out
                 </button>
@@ -227,7 +236,7 @@ export default function SuperAdminPanel() {
             )}
           </div>
         </header>
-        <div className="sa-content-body">
+        <div className="content-body" style={{maxWidth:'none'}}>
           {renderPage()}
         </div>
       </div>

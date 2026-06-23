@@ -40,7 +40,17 @@ export default function AccountsPanel() {
   const menuRef = useRef(null)
   const meta = NAV.find(n => n.id === active)
 
-  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('accounts_theme', themeName) }, [themeName])
+  useEffect(() => {
+    if (themes[themeName]) {
+      applyTheme(themes[themeName])
+      const t = themes[themeName]
+      const root = document.documentElement
+      root.style.setProperty('--bg', t.sand)
+      root.style.setProperty('--card-bg', t.paper)
+      root.style.setProperty('--sage-light', t['sage-soft'])
+    }
+    localStorage.setItem('accounts_theme', themeName)
+  }, [themeName])
 
   useEffect(() => {
     const handler = (e) => {
@@ -71,7 +81,7 @@ export default function AccountsPanel() {
             {showMenu && (
               <div className="user-menu">
                 <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
-                  Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
+                  Theme: <select value={themeName} onClick={e=>e.stopPropagation()} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
                     {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
                   </select>
                 </div>

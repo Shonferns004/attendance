@@ -114,7 +114,7 @@ export default function HRPanel() {
             {showMenu && (
               <div className="user-menu">
                 <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
-                  Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
+                  Theme: <select value={themeName} onClick={e=>e.stopPropagation()} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
                     {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
                   </select>
                 </div>
