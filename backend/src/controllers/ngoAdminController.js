@@ -916,6 +916,7 @@ export const distributeByCapacity = async (req, res) => {
 
     let totalAssigned = 0;
     const messages = [];
+    const allRemainingIds = [];
 
     for (const { ngoId, ngoName } of ngoEntries) {
       // Convert new_data to donor_profiles if needed
@@ -972,6 +973,8 @@ export const distributeByCapacity = async (req, res) => {
       const assignedSet = new Set(froAsgn ? froAsgn.map(a => a.donor_id) : []);
       let unassignedIds = allIds.filter(id => !assignedSet.has(id));
 
+      if (unassignedIds.length === 0) continue;
+
       // Prioritize old data re-routing: check previous FRO connections
       const { data: prevAssignments } = await supabase
         .from('fro_assignments')
@@ -979,7 +982,6 @@ export const distributeByCapacity = async (req, res) => {
         .in('donor_id', unassignedIds);
 
       const reAssignments = [];
-      const remainingIds = [];
       const reRouted = new Set();
 
       if (prevAssignments) {
@@ -996,40 +998,44 @@ export const distributeByCapacity = async (req, res) => {
         }
       }
 
-      for (const id of unassignedIds) {
-        if (!reRouted.has(id)) remainingIds.push(id);
-      }
-
       if (reAssignments.length > 0) {
         await batchCreateAssignments(reAssignments);
         totalAssigned += reAssignments.length;
-        messages.push(`${reAssignments.length} old donors re-routed to previous FROs`);
+        messages.push(`${reAssignments.length} old donors re-routed to previous FROs (${ngoName})`);
       }
 
-      // Distribute remaining by capacity
-      if (remainingIds.length > 0) {
-        const shuffled = [...remainingIds].sort(() => Math.random() - 0.5);
-        let idx = 0;
-        const newAssignments = [];
-
-        for (const cap of capacities) {
-          const count = Math.min(cap.count, shuffled.length - idx);
-          if (count <= 0) continue;
-          for (let j = 0; j < count; j++) {
-            newAssignments.push({
-              donor_id: shuffled[idx++],
-              fro_worker_id: cap.fro_worker_id,
-              ngo_id: ngoId,
-              assigned_by: req.user.id,
-            });
-          }
+      // Collect remaining (non-rerouted) IDs with their NGO
+      for (const id of unassignedIds) {
+        if (!reRouted.has(id)) {
+          allRemainingIds.push({ donor_id: id, ngo_id: ngoId });
         }
+      }
+    }
 
-        if (newAssignments.length > 0) {
-          await batchCreateAssignments(newAssignments);
-          totalAssigned += newAssignments.length;
-          messages.push(`${newAssignments.length} donors distributed by capacity (${ngoName})`);
+    // Distribute ALL remaining donors by capacity in a single pass
+    if (allRemainingIds.length > 0) {
+      const shuffled = [...allRemainingIds].sort(() => Math.random() - 0.5);
+      let idx = 0;
+      const newAssignments = [];
+
+      for (const cap of capacities) {
+        const count = Math.min(cap.count, shuffled.length - idx);
+        if (count <= 0) continue;
+        for (let j = 0; j < count; j++) {
+          newAssignments.push({
+            donor_id: shuffled[idx].donor_id,
+            fro_worker_id: cap.fro_worker_id,
+            ngo_id: shuffled[idx].ngo_id,
+            assigned_by: req.user.id,
+          });
+          idx++;
         }
+      }
+
+      if (newAssignments.length > 0) {
+        await batchCreateAssignments(newAssignments);
+        totalAssigned += newAssignments.length;
+        messages.push(`${newAssignments.length} donors distributed by capacity`);
       }
     }
 
