@@ -318,7 +318,7 @@ export default function LeadDetail({ logId, onBack }) {
           [data-receipt-print] {
             position: relative;
             width: 100%;
-            margin: 0 !important;
+            margin: -8mm 0 0 !important;
             padding: 0 !important;
             display: flex !important;
             justify-content: center !important;
