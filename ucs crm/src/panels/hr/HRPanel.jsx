@@ -66,7 +66,7 @@ export default function HRPanel() {
   const menuRef = useRef(null)
 
   const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sky')
-  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('hr_theme', themeName) }, [themeName])
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName], '.panel-hr'); localStorage.setItem('hr_theme', themeName) }, [themeName])
 
   const Panel = PANELS[active]
   const meta = NAV.find(n => n.id === active)

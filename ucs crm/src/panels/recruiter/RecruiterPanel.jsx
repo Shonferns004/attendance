@@ -24,7 +24,7 @@ function AppShell() {
   const [active, setActive] = useState('dashboard')
   const { user, logout } = useUcs()
   const [themeName, setThemeName] = useState(() => localStorage.getItem('recruiter_theme') || 'sky')
-  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('recruiter_theme', themeName) }, [themeName])
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName], '.panel-recruiter'); localStorage.setItem('recruiter_theme', themeName) }, [themeName])
   const recruiter = useRec()
   const meta = NAV.find(n => n.id === active)
   const Panel = PANELS[active]

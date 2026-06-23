@@ -42,12 +42,12 @@ export default function AccountsPanel() {
 
   useEffect(() => {
     if (themes[themeName]) {
-      applyTheme(themes[themeName])
+      applyTheme(themes[themeName], '.panel-accounts')
       const t = themes[themeName]
-      const root = document.documentElement
-      root.style.setProperty('--bg', t.sand)
-      root.style.setProperty('--card-bg', t.paper)
-      root.style.setProperty('--sage-light', t['sage-soft'])
+      const el = document.querySelector('.panel-accounts') || document.documentElement
+      el.style.setProperty('--bg', t.sand)
+      el.style.setProperty('--card-bg', t.paper)
+      el.style.setProperty('--sage-light', t['sage-soft'])
     }
     localStorage.setItem('accounts_theme', themeName)
   }, [themeName])

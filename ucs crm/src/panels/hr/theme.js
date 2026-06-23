@@ -199,10 +199,19 @@ export const themes = {
   },
 };
 
-export function applyTheme(theme) {
+export function applyTheme(theme, panelClass) {
   const root = document.documentElement;
   for (const [key, value] of Object.entries(theme)) {
     if (key === 'name') continue;
     root.style.setProperty(`--${key}`, value);
+  }
+  if (panelClass) {
+    const panel = document.querySelector(panelClass);
+    if (panel) {
+      for (const [key, value] of Object.entries(theme)) {
+        if (key === 'name') continue;
+        panel.style.setProperty(`--${key}`, value);
+      }
+    }
   }
 }

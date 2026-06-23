@@ -50,12 +50,12 @@ export default function NgoAdminPanel() {
 
   useEffect(() => {
     if (themes[themeName]) {
-      applyTheme(themes[themeName])
+      applyTheme(themes[themeName], '.panel-ngo-admin')
       const t = themes[themeName]
-      const root = document.documentElement
-      root.style.setProperty('--bg', t.sand)
-      root.style.setProperty('--card-bg', t.paper)
-      root.style.setProperty('--sage-light', t['sage-soft'])
+      const el = document.querySelector('.panel-ngo-admin') || document.documentElement
+      el.style.setProperty('--bg', t.sand)
+      el.style.setProperty('--card-bg', t.paper)
+      el.style.setProperty('--sage-light', t['sage-soft'])
     }
     localStorage.setItem('ngoadmin_theme', themeName)
   }, [themeName])

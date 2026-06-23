@@ -116,18 +116,18 @@ export default function SuperAdminPanel() {
 
   useEffect(() => {
     if (themes[themeName]) {
-      applyTheme(themes[themeName])
+      applyTheme(themes[themeName], '.panel-sa')
       const t = themes[themeName]
-      const root = document.documentElement
-      root.style.setProperty('--bg', t.sand)
-      root.style.setProperty('--bg-card', t.paper)
-      root.style.setProperty('--text', t.ink)
-      root.style.setProperty('--text-soft', t['ink-soft'])
-      root.style.setProperty('--border', t.line)
-      root.style.setProperty('--primary', t.sage)
-      root.style.setProperty('--primary-hover', t.sage)
-      root.style.setProperty('--danger', t.danger)
-      root.style.setProperty('--bg-sidebar', t.ink)
+      const el = document.querySelector('.panel-sa') || document.documentElement
+      el.style.setProperty('--bg', t.sand)
+      el.style.setProperty('--bg-card', t.paper)
+      el.style.setProperty('--text', t.ink)
+      el.style.setProperty('--text-soft', t['ink-soft'])
+      el.style.setProperty('--border', t.line)
+      el.style.setProperty('--primary', t.sage)
+      el.style.setProperty('--primary-hover', t.sage)
+      el.style.setProperty('--danger', t.danger)
+      el.style.setProperty('--bg-sidebar', t.ink)
     }
     localStorage.setItem('sa_theme', themeName)
   }, [themeName])
