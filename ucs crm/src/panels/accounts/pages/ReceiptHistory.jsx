@@ -99,25 +99,14 @@ export default function ReceiptHistory() {
       const el = document.querySelector('[data-receipt-preview]');
       if (!el) return;
       const pdf = await generateReceiptPDF(el);
-      const blob = pdf.output('blob');
-      const fileName = `receipt_${preview.receipt.receipt_no.replace(/[/\\]/g, '_')}.pdf`;
-      const file = new File([blob], fileName, { type: 'application/pdf' });
+      pdf.save(`receipt_${preview.receipt.receipt_no.replace(/[/\\]/g, '_')}.pdf`);
       const r = preview.receipt;
       const projectId = (r.project_id || '').toLowerCase();
       const foundationName = PROJECT_LABELS[projectId] || 'our foundation';
       const amt = Number(r.amount || 0).toLocaleString('en-IN');
-      const text = `Thank you for your generous donation of ₹${amt} to ${foundationName}. Your receipt (No: ${r.receipt_no || ''}) has been generated.\n\nWith gratitude,\n${foundationName} Team`;
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text, title: `Donation Receipt - ${r.receipt_no || ''}` });
-      } else {
-        pdf.save(fileName);
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-      }
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Thank you for your generous donation of ₹${amt} to ${foundationName}. Your receipt (No: ${r.receipt_no || ''}) has been generated.\n\nWith gratitude,\n${foundationName} Team`)}`, '_blank');
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        alert('Failed to share PDF: ' + err.message);
-      }
+      alert('Failed to generate PDF: ' + err.message);
     }
   };
 
