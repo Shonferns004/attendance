@@ -29,6 +29,9 @@ export default function DataImport() {
   const [oldSheets, setOldSheets] = useState([])
   const [oldSelectedSheets, setOldSelectedSheets] = useState({})
 
+  const [distributingToNgos, setDistributingToNgos] = useState(false)
+  const [distributeResult, setDistributeResult] = useState(null)
+
   useEffect(() => {
     api('/data-sources').then(setDataSources).catch(e => setErr(e.message))
     api('/data-import/batches').then(setBatches).catch(() => {})
@@ -215,6 +218,7 @@ export default function DataImport() {
         <button className={`sa-tab${tab === 'import' ? ' active' : ''}`} onClick={() => setTab('import')}>Import</button>
         <button className={`sa-tab${tab === 'history' ? ' active' : ''}`} onClick={() => { setTab('history'); loadBatches() }}>History ({batches.length})</button>
         <button className={`sa-tab${tab === 'old' ? ' active' : ''}`} onClick={() => setTab('old')}>Old Data</button>
+        <button className={`sa-tab${tab === 'distribute' ? ' active' : ''}`} onClick={() => setTab('distribute')}>Distribute</button>
       </div>
 
       {tab === 'import' && (
@@ -319,6 +323,47 @@ export default function DataImport() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {tab === 'distribute' && (
+        <>
+          <div className="sa-card">
+            <h3 className="sa-card-title">Distribute New Data to NGOs</h3>
+            <p className="sa-muted" style={{marginBottom:12}}>
+              Distribute all unassigned new data equally among all active NGOs.
+              Each row is deduplicated by mobile number. Donor profiles are created with the respective NGO name.
+            </p>
+            <button className="btn btn-primary" onClick={async () => {
+              if (!confirm('Distribute all unassigned new data equally among all active NGOs?')) return
+              setDistributingToNgos(true)
+              setDistributeResult(null)
+              try {
+                const res = await api('/data-import/distribute-to-ngos', { method: 'POST' })
+                setDistributeResult(res)
+              } catch (e) {
+                setDistributeResult({ error: e.message })
+              } finally {
+                setDistributingToNgos(false)
+              }
+            }} disabled={distributingToNgos}>
+              {distributingToNgos ? 'Distributing...' : 'Distribute to NGOs'}
+            </button>
+          </div>
+
+          {distributeResult && (
+            <div className="sa-card">
+              <h3 className="sa-card-title" style={{color: distributeResult.error ? '#ef4444' : '#10b981'}}>
+                {distributeResult.error ? 'Distribution Failed' : 'Distribution Complete'}
+              </h3>
+              <p style={{margin:0, fontSize:14}}>
+                {distributeResult.error || distributeResult.message}
+              </p>
+              {distributeResult.count !== undefined && (
+                <p className="sa-muted" style={{marginTop:8}}>Donors distributed: {distributeResult.count}</p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {tab === 'old' && (

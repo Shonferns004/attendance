@@ -1,8 +1,8 @@
 import supabase from '../config/supabase.js';
 
-export const insertImportedBatch = async (rows) => {
+export const insertNewDataBatch = async (rows) => {
   const { data, error } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .insert(rows)
     .select();
   if (error) throw error;
@@ -11,7 +11,7 @@ export const insertImportedBatch = async (rows) => {
 
 export const getImportBatches = async () => {
   const { data, error } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .select('import_batch_id, data_source_id, import_date, created_at, data_sources(name)')
     .order('created_at', { ascending: false })
     .limit(100);
@@ -36,7 +36,7 @@ export const getImportBatches = async () => {
 
 export const getBatchRecords = async (batchId) => {
   const { data, error } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .select('*')
     .eq('import_batch_id', batchId)
     .order('created_at', { ascending: true });
@@ -46,7 +46,7 @@ export const getBatchRecords = async (batchId) => {
 
 export const getBatchCount = async (batchId) => {
   const { count, error } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .select('*', { count: 'exact', head: true })
     .eq('import_batch_id', batchId);
   if (error) throw error;
@@ -55,7 +55,7 @@ export const getBatchCount = async (batchId) => {
 
 export const getBatchById = async (batchId) => {
   const { data, error } = await supabase
-    .from('imported_data')
+    .from('new_data')
     .select('import_batch_id, data_source_id, import_date, created_at, data_sources(name)')
     .eq('import_batch_id', batchId)
     .limit(1);

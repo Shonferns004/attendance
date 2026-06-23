@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { insertImportedBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById } from '../models/importedDataModel.js';
+import { insertNewDataBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById } from '../models/newDataModel.js';
 import { upsertDonorProfile } from '../models/donorProfileModel.js';
+import supabase from '../config/supabase.js';
 import {
   parseImportFile,
   getSheetNames,
@@ -91,7 +92,7 @@ export const uploadImport = async (req, res) => {
       return row;
     });
 
-    const inserted = await insertImportedBatch(dbRows);
+    const inserted = await insertNewDataBatch(dbRows);
 
     let profilesCreated = 0;
     const errors = [];
@@ -227,7 +228,7 @@ export const uploadOldDataImport = async (req, res) => {
       return row;
     });
 
-    const inserted = await insertImportedBatch(dbRows);
+    const inserted = await insertNewDataBatch(dbRows);
 
     let profilesCreated = 0;
     const errors = [];
@@ -427,6 +428,98 @@ export const downloadSample = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=data-import-sample.xlsx');
     return res.send(buf);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const distributeToNgos = async (req, res) => {
+  try {
+    const { data: ngos, error: nErr } = await supabase
+      .from('ngos')
+      .select('id, name')
+      .eq('is_active', true);
+    if (nErr) throw nErr;
+    if (!ngos || ngos.length < 2) {
+      return res.status(400).json({ message: 'Need at least 2 active NGOs to distribute' });
+    }
+
+    const { data: allRows, error: rErr } = await supabase
+      .from('new_data')
+      .select('name, mobile_number, category, amount')
+      .is('ngo', null)
+      .not('mobile_number', 'is', null)
+      .order('created_at', { ascending: false });
+    if (rErr) throw rErr;
+    if (!allRows || allRows.length === 0) {
+      return res.json({ message: 'No unassigned new data to distribute', count: 0 });
+    }
+
+    const latest = {};
+    for (const row of allRows) {
+      if (!latest[row.mobile_number]) {
+        latest[row.mobile_number] = row;
+      }
+    }
+
+    const mobiles = Object.keys(latest);
+
+    const { data: existingProfiles, error: pErr } = await supabase
+      .from('donor_profiles')
+      .select('mobile_number')
+      .in('mobile_number', mobiles);
+    if (pErr) throw pErr;
+
+    const existingSet = new Set(existingProfiles.map(p => p.mobile_number));
+    const newMobiles = mobiles.filter(m => !existingSet.has(m));
+
+    if (newMobiles.length === 0) {
+      return res.json({ message: 'All data already has donor profiles', count: 0 });
+    }
+
+    const shuffled = [...newMobiles].sort(() => Math.random() - 0.5);
+    const base = Math.floor(shuffled.length / ngos.length);
+    const remainder = shuffled.length % ngos.length;
+
+    let totalCreated = 0;
+    let idx = 0;
+    const results = [];
+
+    for (let i = 0; i < ngos.length; i++) {
+      const count = base + (i < remainder ? 1 : 0);
+      const batchMobiles = shuffled.slice(idx, idx + count);
+      idx += count;
+      if (batchMobiles.length === 0) continue;
+
+      let created = 0;
+      for (const mobile of batchMobiles) {
+        const row = latest[mobile];
+        await upsertDonorProfile({
+          mobile_number: mobile,
+          name: row.name || null,
+          category: row.category || '',
+          amount: parseFloat(row.amount) || 0,
+          total_amount: parseFloat(row.amount) || 0,
+          donation_count: 1,
+          ngo: ngos[i].name,
+        });
+        created++;
+      }
+
+      await supabase
+        .from('new_data')
+        .update({ ngo: ngos[i].name })
+        .in('mobile_number', batchMobiles)
+        .is('ngo', null);
+
+      totalCreated += created;
+      results.push(`${created} donors → ${ngos[i].name}`);
+    }
+
+    return res.json({
+      message: results.join('; '),
+      count: totalCreated,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
