@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUcs } from '../../store'
+import { themes, applyTheme } from '../hr/theme'
 import { RecProvider, useRec, initials, avatarColor, avatarTint } from './store'
 import { Grid, Spark, Funnel, Users, Brief, Heart, LogOut } from './icons'
 import Dashboard from './components/Dashboard'
@@ -22,6 +23,8 @@ const PANELS = { dashboard:Dashboard, leads:Leads, pipeline:Pipeline, candidates
 function AppShell() {
   const [active, setActive] = useState('dashboard')
   const { user, logout } = useUcs()
+  const [themeName, setThemeName] = useState(() => localStorage.getItem('recruiter_theme') || 'sky')
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('recruiter_theme', themeName) }, [themeName])
   const recruiter = useRec()
   const meta = NAV.find(n => n.id === active)
   const Panel = PANELS[active]
@@ -55,6 +58,9 @@ function AppShell() {
               <div style={{fontSize:11,color:'var(--ink-soft)'}}>{user?.login_id || 'Recruiter'}</div>
             </div>
             <div className="avatar" style={{background:avatarTint(col),color:col,width:38,height:38}}>{init}</div>
+            <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid var(--line)', borderRadius:6, padding:'2px 6px', fontSize:12, background:'var(--paper)', color:'var(--ink)'}}>
+              {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name.replace(' (Default)','')}</option>)}
+            </select>
             <button className="btn btn-icon" onClick={logout} title="Sign out" style={{marginLeft:4}}><LogOut width={16}/></button>
           </div>
         </header>

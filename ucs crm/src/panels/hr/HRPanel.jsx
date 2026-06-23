@@ -65,7 +65,7 @@ export default function HRPanel() {
   const [offboardingEmployee, setOffboardingEmployee] = useState(null)
   const menuRef = useRef(null)
 
-  const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sage')
+  const [themeName, setThemeName] = useState(() => localStorage.getItem('hr_theme') || 'sky')
   useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('hr_theme', themeName) }, [themeName])
 
   const Panel = PANELS[active]

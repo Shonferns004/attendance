@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useUcs } from '../../store'
+import { themes, applyTheme } from '../hr/theme'
 import Dashboard from './pages/Dashboard'
 import Donors from './pages/Donors'
 import DonorDetail from './pages/DonorDetail'
@@ -44,7 +45,10 @@ export default function NgoAdminPanel() {
   const [active, setActive] = useState('dashboard')
   const [selectedDonor, setSelectedDonor] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
+  const [themeName, setThemeName] = useState(() => localStorage.getItem('ngoadmin_theme') || 'sky')
   const menuRef = useRef(null)
+
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('ngoadmin_theme', themeName) }, [themeName])
 
   useEffect(() => {
     const handler = (e) => {
@@ -80,6 +84,12 @@ export default function NgoAdminPanel() {
             <div className="avatar">{initials}</div>
             {showMenu && (
               <div className="user-menu">
+                <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
+                  Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
+                    {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
+                  </select>
+                </div>
+                <div className="user-menu-divider" />
                 <button className="user-menu-item" onClick={() => { setShowMenu(false); logout() }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   Sign out

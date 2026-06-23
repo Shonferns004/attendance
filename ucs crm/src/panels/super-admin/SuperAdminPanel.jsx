@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUcs } from '../../store'
+import { themes, applyTheme } from '../hr/theme'
 import Dashboard from './pages/Dashboard'
 import NGOs from './pages/NGOs'
 import Users from './pages/Users'
@@ -51,23 +52,7 @@ const GROUPS = [
 
 const standaloneIds = ['dashboard', 'salary', 'incentives', 'achievements', 'accounts', 'reports']
 
-const THEMES = [
-  { id: 'blue', label: 'Blue', primary: '#2563eb', sidebar: '#0f172a', colors: ['#2563eb', '#1d4ed8', '#0f172a'] },
-  { id: 'emerald', label: 'Emerald', primary: '#059669', sidebar: '#064e3b', colors: ['#059669', '#047857', '#064e3b'] },
-  { id: 'purple', label: 'Purple', primary: '#7c3aed', sidebar: '#2e1065', colors: ['#7c3aed', '#6d28d9', '#2e1065'] },
-  { id: 'rose', label: 'Rose', primary: '#e11d48', sidebar: '#4c0519', colors: ['#e11d48', '#be123c', '#4c0519'] },
-  { id: 'amber', label: 'Amber', primary: '#d97706', sidebar: '#451a03', colors: ['#d97706', '#b45309', '#451a03'] },
-  { id: 'teal', label: 'Teal', primary: '#0891b2', sidebar: '#083344', colors: ['#0891b2', '#0e7490', '#083344'] },
-]
 
-function applyTheme(themeId) {
-  const theme = THEMES.find(t => t.id === themeId)
-  if (!theme) return
-  const root = document.documentElement
-  root.style.setProperty('--primary', theme.primary)
-  root.style.setProperty('--primary-hover', theme.colors[1])
-  root.style.setProperty('--bg-sidebar', theme.sidebar)
-}
 
 function Sidebar({ active, setActive, collapsedGroups, toggleGroup }) {
   return (
@@ -118,8 +103,8 @@ export default function SuperAdminPanel() {
   })
   const [workerId, setWorkerId] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('sa_theme') || 'blue' } catch { return 'blue' }
+  const [themeName, setThemeName] = useState(() => {
+    try { return localStorage.getItem('sa_theme') || 'sky' } catch { return 'sky' }
   })
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sa_collapsed_groups') || '[]') } catch { return [] }
@@ -129,13 +114,7 @@ export default function SuperAdminPanel() {
   })
   const menuRef = useRef(null)
 
-  const switchTheme = (id) => {
-    setTheme(id)
-    localStorage.setItem('sa_theme', id)
-    applyTheme(id)
-  }
-
-  useEffect(() => { applyTheme(theme) }, [])
+  useEffect(() => { if (themes[themeName]) applyTheme(themes[themeName]); localStorage.setItem('sa_theme', themeName) }, [themeName])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
@@ -232,17 +211,11 @@ export default function SuperAdminPanel() {
                     </label>
                   </div>
                 </div>
-                <div className="sa-menu-section">
-                  <div className="sa-menu-label" style={{margin:'6px 0 8px'}}>Palette</div>
-                  <div className="sa-menu-swatches">
-                    {THEMES.map(t => (
-                      <span key={t.id}
-                        className={`sa-menu-swatch${theme === t.id ? ' active' : ''}`}
-                        style={{background: t.primary}}
-                        onClick={() => switchTheme(t.id)}
-                        title={t.label}
-                      />
-                    ))}
+                <div className="sa-menu-section" style={{padding:'8px 14px'}}>
+                  <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
+                    Theme: <select value={themeName} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
+                      {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
+                    </select>
                   </div>
                 </div>
                 <div className="sa-menu-divider" />
