@@ -158,195 +158,210 @@ export default function MyDonors() {
 
   if (loading) return <div className="loading">Loading donors...</div>;
 
-  return (
-    <div className="card-view-wrapper">
-      <div className="card">
-        <div className="card-head">
-          <h3>My Donors</h3>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-          </select>
+  const detailContent = () => {
+    if (detailLoading) return <div className="bento-card-b"><div className="loading" style={{ padding:0 }}>Loading...</div></div>;
+    if (!donor) return null;
+
+    return (
+      <div className="bento-grid">
+        {/* Filter row */}
+        <div className="bento-col-12">
+          <div className="bento-card">
+            <div className="bento-card-h">
+              <h3>My Donors</h3>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                style={{ border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:11, fontFamily:'inherit', outline:'none' }}>
+                {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {donors.length === 0 ? (
-        <div className="card"><div className="empty-state"><div className="icon">👫</div><h3>No donors assigned</h3><p>Your assigned donors will appear here once assigned.</p></div></div>
-      ) : (
-        <div className="card card-view-card">
-          <div className="card-view-content">
-            {detailLoading ? (
-              <div className="loading" style={{ padding: 20 }}>Loading details...</div>
-            ) : !donor ? null : (
+        {/* Donor info card */}
+        <div className="bento-col-5">
+          <div className="bento-card" style={{ alignItems:'center', textAlign:'center' }}>
+            <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--md-primary-container)', color:'var(--md-on-primary-container)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, marginBottom:8 }}>
+              {initials(donor.donor_name)}
+            </div>
+            <div style={{ fontSize:16, fontWeight:600, lineHeight:1.2 }}>{donor.donor_name}</div>
+            <div style={{ fontSize:13, color:'var(--md-primary)', fontWeight:500, marginBottom:8 }}>{donor.donor_mobile || '—'}</div>
+
+            {nextSchedule && !nextSchedule.is_completed && (
+              <div style={{ width:'100%', padding:'5px 8px', marginBottom:6, borderRadius:6, fontSize:10, background: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error-container)' : '#e0f2fe', color: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error)' : '#0369a1', border:`1px solid ${new Date(nextSchedule.scheduled_at) < new Date() ? '#fecaca' : '#bae6fd'}` }}>
+                {new Date(nextSchedule.scheduled_at) < new Date()
+                  ? <>Overdue — {new Date(nextSchedule.scheduled_at).toLocaleString()}</>
+                  : <>Next: {new Date(nextSchedule.scheduled_at).toLocaleString()}</>}
+                {nextSchedule.notes && <span> ({nextSchedule.notes})</span>}
+              </div>
+            )}
+            {donor.status === 'payment_rejected' && (
+              <div style={{ width:'100%', padding:'5px 8px', marginBottom:6, borderRadius:6, fontSize:10, background:'var(--md-error-container)', color:'var(--md-error)', border:'1px solid #fecaca' }}>
+                Payment rejected — {donor.notes || 'No details'}
+              </div>
+            )}
+            {donor.is_overdue && (
+              <div style={{ color:'var(--md-error)', fontWeight:600, fontSize:11, marginBottom:6 }}>OVERDUE</div>
+            )}
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', width:'100%', textAlign:'left', marginTop:8 }}>
+              {[
+                ['City', donor.donor_city], ['Amount', `₹${Number(donor.donor_amount || 0).toLocaleString('en-IN')}`],
+                ['Email', donor.donor_email], ['Project', donor.donor_project],
+                ['Status', donor.status ? donor.status.replace(/_/g,' ') : '—'],
+                ['Donations', `${donor.donation_count || 0} (₹${Number(donor.total_donated || 0).toLocaleString('en-IN')})`],
+                donor.donor_pan && ['PAN', donor.donor_pan],
+                donor.donor_address && ['Address', donor.donor_address],
+                donor.donor_dob && ['DOB', donor.donor_dob],
+                donor.next_follow_up && ['Next F/up', new Date(donor.next_follow_up).toLocaleDateString()],
+              ].filter(Boolean).map(([l, v]) => (
+                <div key={l}><div className="fro-label">{l}</div><div style={{fontSize:11,fontWeight:500}}>{v || '—'}</div></div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Disposition + timeline */}
+        <div className="bento-col-7">
+          <div className="bento-card">
+            <div className="bento-card-h"><h3>Log Disposition</h3></div>
+
+            {message && (
+              <div style={{ padding:'4px 8px', marginBottom:6, borderRadius:6, fontSize:10,
+                background: message.type === 'error' ? 'var(--md-error-container)' : '#dcfce7',
+                color: message.type === 'error' ? 'var(--md-error)' : '#166534',
+                border: `1px solid ${message.type === 'error' ? '#fecaca' : '#bbf7d0'}` }}>
+                {message.text}
+              </div>
+            )}
+
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--md-error)', marginBottom:3 }}>NOT CONNECTED</div>
+            <div className="bento-chips" style={{ marginBottom:6 }}>
+              {NOT_CONNECTED.map(opt => (
+                <button key={opt.id} className={`bento-chip ${selected === opt.id ? 'selected-nc' : ''}`}
+                  onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
+              ))}
+            </div>
+
+            <div style={{ fontSize:10, fontWeight:600, color:'#16a34a', marginBottom:3 }}>CONNECTED</div>
+            <div className="bento-chips" style={{ marginBottom:8 }}>
+              {CONNECTED.map(opt => (
+                <button key={opt.id} className={`bento-chip ${selected === opt.id ? 'selected-c' : ''}`}
+                  onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
+              ))}
+            </div>
+
+            {selected === 'scheduled' && (
+              <div style={{ marginBottom:6 }}>
+                <label className="fro-label">Schedule Date & Time</label>
+                <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="fro-input" />
+              </div>
+            )}
+
+            {selected === 'lead_done' && (
               <>
-                {/* Header */}
-                <div className="card-avatar">{initials(donor.donor_name)}</div>
-                <div className="card-name">{donor.donor_name}</div>
-                <div className="card-phone">{donor.donor_mobile || '—'}</div>
-
-                {/* Callouts */}
-                {nextSchedule && !nextSchedule.is_completed && (
-                  <div className={`callout ${new Date(nextSchedule.scheduled_at) < new Date() ? 'callout-danger' : 'callout-info'}`} style={{ marginBottom: 12, padding: '6px 10px', fontSize: 12 }}>
-                    {new Date(nextSchedule.scheduled_at) < new Date()
-                      ? <>Overdue schedule — {new Date(nextSchedule.scheduled_at).toLocaleString()}</>
-                      : <>Next schedule: {new Date(nextSchedule.scheduled_at).toLocaleString()}</>}
-                    {nextSchedule.notes && <span> ({nextSchedule.notes})</span>}
-                  </div>
-                )}
-                {donor.status === 'payment_rejected' && (
-                  <div className="callout callout-danger" style={{ marginBottom: 12, padding: '6px 10px', fontSize: 12 }}>
-                    Payment rejected — {donor.notes || 'No details'}
-                  </div>
-                )}
-
-                {donor.is_overdue && (
-                  <div style={{ textAlign: 'center', color: '#dc2626', fontWeight: 600, fontSize: 12, marginBottom: 8 }}>⚠ OVERDUE</div>
-                )}
-
-                <div className="card-divider" />
-
-                {/* Contact info */}
-                <div className="info-grid">
-                  <div><div className="label">City</div><div className="value">{donor.donor_city || '—'}</div></div>
-                  <div><div className="label">Amount</div><div className="value">₹{Number(donor.donor_amount || 0).toLocaleString('en-IN')}</div></div>
-                  <div><div className="label">Email</div><div className="value">{donor.donor_email || '—'}</div></div>
-                  <div><div className="label">Project</div><div className="value">{donor.donor_project || '—'}</div></div>
-                  <div><div className="label">Status</div><div className="value">{statusPill(donor.status)}</div></div>
-                  <div><div className="label">Donations</div><div className="value">{donor.donation_count || 0} times (₹{Number(donor.total_donated || 0).toLocaleString('en-IN')})</div></div>
-                  {donor.donor_pan && <div><div className="label">PAN</div><div className="value">{donor.donor_pan}</div></div>}
-                  {donor.donor_address && <div><div className="label">Address</div><div className="value">{donor.donor_address}</div></div>}
-                  {donor.donor_dob && <div><div className="label">DOB</div><div className="value">{donor.donor_dob}</div></div>}
-                  {donor.next_follow_up && <div><div className="label">Next Follow-up</div><div className="value">{new Date(donor.next_follow_up).toLocaleDateString()}</div></div>}
+                <div style={{ marginBottom:6 }}>
+                  <label className="fro-label">Amount (₹)</label>
+                  <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min="1" placeholder="Enter amount" className="fro-input" />
                 </div>
-
-                <div className="card-divider" />
-
-                {/* Disposition */}
-                <div className="card-section-title">Log Disposition</div>
-                {message && (
-                  <div style={{ padding: '6px 10px', marginBottom: 8, borderRadius: 6, fontSize: 12,
-                    background: message.type === 'error' ? '#fef2f2' : '#f0fdf4',
-                    color: message.type === 'error' ? '#dc2626' : '#16a34a',
-                    border: `1px solid ${message.type === 'error' ? '#fecaca' : '#bbf7d0'}` }}>
-                    {message.text}
+                <div style={{ marginBottom:6 }}>
+                  <label className="fro-label">Screenshot (optional)</label>
+                  <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize:11 }} />
+                  {paymentScreenshot && <span style={{ fontSize:9, color:'var(--md-primary)' }}> ✓ Selected</span>}
+                </div>
+                <div style={{ marginBottom:6 }}>
+                  <label className="fro-label">PAN</label>
+                  <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} className="fro-input" />
+                </div>
+                {!donor.donor_address && (
+                  <div style={{ marginBottom:6 }}>
+                    <label className="fro-label">Address</label>
+                    <input type="text" value={addressField} onChange={e => setAddressField(e.target.value)} placeholder="Donor address" className="fro-input" />
                   </div>
                 )}
-
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', marginBottom: 4 }}>NOT CONNECTED</div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {NOT_CONNECTED.map(opt => (
-                      <button key={opt.id} className={`chip ${selected === opt.id ? 'chip-selected chip-not-connected' : ''}`}
-                        onClick={() => handleChipClick(opt.id)} style={{ fontSize: 11, padding: '4px 10px' }}>{opt.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', marginBottom: 4 }}>CONNECTED</div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {CONNECTED.map(opt => (
-                      <button key={opt.id} className={`chip ${selected === opt.id ? 'chip-selected chip-connected' : ''}`}
-                        onClick={() => handleChipClick(opt.id)} style={{ fontSize: 11, padding: '4px 10px' }}>{opt.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {selected === 'scheduled' && (
-                  <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>Schedule Date & Time</label>
-                    <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
-                      style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                  </div>
-                )}
-
-                {selected === 'lead_done' && (
-                  <>
-                    <div style={{ marginBottom: 8 }}>
-                      <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>Amount (₹)</label>
-                      <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min="1" placeholder="Enter amount"
-                        style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>Screenshot (optional)</label>
-                      <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: 12 }} />
-                      {paymentScreenshot && <span style={{ fontSize: 10, color: 'var(--sage)' }}>✓ File selected</span>}
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>PAN</label>
-                      <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10}
-                        style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                    </div>
-                    {!donor.donor_address && (
-                      <div style={{ marginBottom: 8 }}>
-                        <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>Address</label>
-                        <input type="text" value={addressField} onChange={e => setAddressField(e.target.value)} placeholder="Donor address"
-                          style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                    )}
-                    {!donor.donor_dob && (
-                      <div style={{ marginBottom: 8 }}>
-                        <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>DOB</label>
-                        <input type="date" value={dobField} onChange={e => setDobField(e.target.value)}
-                          style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ display: 'block', fontSize: 11, marginBottom: 2, color: 'var(--ink-soft)' }}>Notes</label>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add any notes..."
-                    style={{ padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', fontSize: 12, outline: 'none', resize: 'vertical', width: '100%', boxSizing: 'border-box' }} />
-                </div>
-
-                <button className="btn btn-primary" onClick={handleSave} disabled={saving || uploading || !selected}
-                  style={{ width: '100%', background: selected === 'lead_done' ? 'var(--success)' : '', borderColor: selected === 'lead_done' ? 'var(--success)' : '' }}>
-                  {uploading ? 'Uploading...' : saving ? 'Saving...' : !selected ? 'Select a disposition' : selected === 'lead_done' ? 'Send to Accounts' : `Log ${findDisp(selected)?.label || selected}`}
-                </button>
-
-                <div className="card-divider" />
-
-                {/* Timeline */}
-                <div className="card-section-title">CRM Timeline <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>· Total: ₹{totalCollected.toLocaleString('en-IN')}</span></div>
-                {logs.length === 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--ink-soft)', padding: '8px 0' }}>No activity yet.</div>
-                ) : (
-                  <div className="compact-timeline">
-                    {logs.slice(0, 5).map(log => {
-                      const isDisp = log.action === 'disposition';
-                      const cat = log.disposition_category;
-                      const icon = isDisp ? (cat === 'connected' ? '✅' : '❌') : {
-                        call: '📞', visit: '🏠', message: '✉️',
-                        follow_up: '🔄', donation: '💵', note: '📝',
-                      }[log.action] || '📋';
-                      const label = isDisp ? (log.disposition_detail?.replace(/_/g, ' ') || '') : log.action.replace(/_/g, ' ');
-                      return (
-                        <div key={log.id} className="compact-timeline-item">
-                          <div className="time">{new Date(log.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-                          <div className="info">
-                            <span style={{ fontWeight: 500 }}>{icon} {label}</span>
-                            {log.notes && <div style={{ color: 'var(--ink-soft)', fontSize: 11 }}>{log.notes}</div>}
-                            {log.amount_collected && <div style={{ color: '#16a34a', fontSize: 11 }}>₹{Number(log.amount_collected).toLocaleString('en-IN')}</div>}
-                            {log.disposition_detail === 'lead_done' && log.accounts_status === 'verified' && <div style={{ color: '#16a34a', fontSize: 11 }}>Accounts: Verified ✓</div>}
-                            {log.disposition_detail === 'lead_done' && log.accounts_status === 'rejected' && <div style={{ color: '#dc2626', fontSize: 11 }}>Accounts: Rejected</div>}
-                            {log.disposition_detail === 'lead_done' && log.accounts_status === 'pending' && <div style={{ color: '#f59e0b', fontSize: 11 }}>Accounts: Pending</div>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {logs.length > 5 && <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 4 }}>+{logs.length - 5} more</div>}
+                {!donor.donor_dob && (
+                  <div style={{ marginBottom:6 }}>
+                    <label className="fro-label">DOB</label>
+                    <input type="date" value={dobField} onChange={e => setDobField(e.target.value)} className="fro-input" />
                   </div>
                 )}
               </>
             )}
+
+            <div style={{ marginBottom:6 }}>
+              <label className="fro-label">Notes</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add any notes..."
+                className="fro-input" style={{ resize:'vertical', minHeight:36 }} />
+            </div>
+
+            <button onClick={handleSave} disabled={saving || uploading || !selected}
+              style={{ width:'100%', padding:'7px 0', border:'none', borderRadius:8, fontSize:11, fontWeight:600, fontFamily:'inherit', cursor:'pointer',
+                background: selected === 'lead_done' ? '#16a34a' : 'var(--md-primary)', color:'#fff',
+                opacity: (saving || uploading || !selected) ? .6 : 1 }}>
+              {uploading ? 'Uploading...' : saving ? 'Saving...' : !selected ? 'Select a disposition' : selected === 'lead_done' ? 'Send to Accounts' : `Log ${findDisp(selected)?.label || selected}`}
+            </button>
           </div>
 
-          <div className="card-view-nav">
-            <button className="btn btn-sm" disabled={index === 0} onClick={() => setIndex(i => i - 1)}
-              style={{ background: index === 0 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>← Prev</button>
-            <span className="counter">{index + 1} of {donors.length}</span>
-            <button className="btn btn-sm" disabled={index === donors.length - 1} onClick={() => setIndex(i => i + 1)}
-              style={{ background: index === donors.length - 1 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>Next →</button>
+          {/* Timeline card */}
+          <div className="bento-card" style={{ marginTop:8 }}>
+            <div className="bento-card-h">
+              <h3>CRM Timeline</h3>
+              <span style={{ fontSize:10, color:'var(--md-outline)' }}>₹{totalCollected.toLocaleString('en-IN')}</span>
+            </div>
+            {logs.length === 0 ? (
+              <div style={{ fontSize:10, color:'var(--md-outline)', padding:'6px 0' }}>No activity yet.</div>
+            ) : (
+              <div className="bento-tl">
+                {logs.slice(0, 5).map(log => {
+                  const isDisp = log.action === 'disposition';
+                  const cat = log.disposition_category;
+                  const icon = isDisp ? (cat === 'connected' ? '✅' : '❌') : {
+                    call: '📞', visit: '🏠', message: '✉️',
+                    follow_up: '🔄', donation: '💵', note: '📝',
+                  }[log.action] || '📋';
+                  const lbl = isDisp ? (log.disposition_detail?.replace(/_/g, ' ') || '') : log.action.replace(/_/g, ' ');
+                  return (
+                    <div key={log.id} className="bento-tl-item">
+                      <div className="t">{new Date(log.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+                      <div className="i">
+                        <span className="l">{icon} {lbl}</span>
+                        {log.notes && <div className="s">{log.notes}</div>}
+                        {log.amount_collected && <div className="s" style={{color:'#16a34a'}}>₹{Number(log.amount_collected).toLocaleString('en-IN')}</div>}
+                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'verified' && <div className="s" style={{color:'#16a34a'}}>Accounts: Verified ✓</div>}
+                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'rejected' && <div className="s" style={{color:'var(--md-error)'}}>Accounts: Rejected</div>}
+                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'pending' && <div className="s" style={{color:'#f59e0b'}}>Accounts: Pending</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {logs.length > 5 && <div style={{ fontSize:9, color:'var(--md-outline)', textAlign:'center', padding:2 }}>+{logs.length - 5} more</div>}
+              </div>
+            )}
           </div>
+
+          {/* Prev/Next */}
+          <div className="bento-nav" style={{ marginTop:4 }}>
+            <button disabled={index === 0} onClick={() => setIndex(i => i - 1)}>← Prev</button>
+            <span className="cnt">{index + 1} of {donors.length}</span>
+            <button disabled={index === donors.length - 1} onClick={() => setIndex(i => i + 1)}>Next →</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bento-grid" style={{flex:1}}>
+      {donors.length === 0 ? (
+        <div className="bento-col-12">
+          <div className="bento-card" style={{ alignItems:'center', padding:40 }}>
+            <div style={{ fontSize:32, marginBottom:8, opacity:.3 }}>👫</div>
+            <div style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>No donors assigned</div>
+            <div style={{ fontSize:11, color:'var(--md-outline)' }}>Your assigned donors will appear here once assigned.</div>
+          </div>
+        </div>
+      ) : (
+        <div className="bento-col-12">
+          {detailContent()}
         </div>
       )}
     </div>

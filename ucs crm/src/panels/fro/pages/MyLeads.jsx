@@ -80,58 +80,74 @@ export default function MyLeads() {
 
   if (loading) return <div className="loading">Loading leads…</div>;
 
-  return (
-    <div className="card-view-wrapper">
-      <div className="card">
-        <div className="card-head">
-          <h3>My Leads</h3>
-          <span className="count">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</span>
-        </div>
-        <div className="card-pad">
-          <div className="filter-bar" style={{ margin: 0 }}>
-            <input placeholder="Search name, phone, email…" value={search}
-              onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All</option>
-              <option value="hold">Hold</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="selected">Selected</option>
-              <option value="rejected">Rejected</option>
-              <option value="joined">Joined</option>
-            </select>
+  const leadContent = () => {
+    if (!lead) return null;
+    return (
+      <div className="bento-grid" style={{flex:1}}>
+        {/* Filter row */}
+        <div className="bento-col-12">
+          <div className="bento-card">
+            <div className="bento-card-h">
+              <h3>My Leads <span style={{fontWeight:400, color:'var(--md-outline)', fontSize:10}}>({filtered.length})</span></h3>
+              <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                <input placeholder="Search name, phone…" value={search} onChange={e => setSearch(e.target.value)}
+                  style={{ border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:10, fontFamily:'inherit', outline:'none', width:140 }} />
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                  style={{ border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:10, fontFamily:'inherit', outline:'none' }}>
+                  <option value="">All</option>
+                  <option value="hold">Hold</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="selected">Selected</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="joined">Joined</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {filtered.length === 0 ? (
-        <div className="card"><div className="empty-state"><div className="icon">📋</div><h3>No leads found</h3><p>Leads assigned to you will appear here.</p></div></div>
-      ) : (
-        <div className="card card-view-card">
-          <div className="card-view-content">
-            <div className="card-avatar">{initials(lead.name)}</div>
-            <div className="card-name">{lead.name}</div>
-            <div className="card-phone">{lead.phone || '—'}</div>
+        {/* Lead info */}
+        <div className="bento-col-5">
+          <div className="bento-card" style={{ alignItems:'center', textAlign:'center' }}>
+            <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--md-primary-container)', color:'var(--md-on-primary-container)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, marginBottom:8 }}>
+              {initials(lead.name)}
+            </div>
+            <div style={{ fontSize:16, fontWeight:600, lineHeight:1.2 }}>{lead.name}</div>
+            <div style={{ fontSize:13, color:'var(--md-primary)', fontWeight:500, marginBottom:6 }}>{lead.phone || '—'}</div>
 
-            <div className="card-divider" />
-
-            <div className="info-grid">
-              <div><div className="label">Email</div><div className="value">{lead.email || '—'}</div></div>
-              <div><div className="label">Source</div><div className="value">{lead.source || 'Walk-in'}</div></div>
-              <div><div className="label">Age</div><div className="value">{lead.age ?? '—'}</div></div>
-              <div><div className="label">Status</div><div className="value"><span className={`pill ${STATUS_STYLES[lead.status] || 'pill-gray'}`}>{lead.status || 'hold'}</span></div></div>
-              <div><div className="label">Created</div><div className="value">{new Date(lead.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</div></div>
-              {lead.dob && <div><div className="label">DOB</div><div className="value">{lead.dob}</div></div>}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', width:'100%', textAlign:'left', marginTop:6 }}>
+              {[
+                ['Email', lead.email], ['Source', lead.source || 'Walk-in'],
+                ['Age', lead.age ?? '—'], ['Status', lead.status || 'hold'],
+                ['Created', new Date(lead.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })],
+                lead.dob && ['DOB', lead.dob],
+              ].filter(Boolean).map(([l, v]) => (
+                <div key={l}><div className="fro-label">{l}</div><div style={{fontSize:11,fontWeight:500}}>{v || '—'}</div></div>
+              ))}
             </div>
 
-            <div className="card-divider" />
+            {lead.notes && (
+              <div style={{ width:'100%', marginTop:8, fontSize:10, color:'var(--md-outline)', background:'var(--md-surface-low)', padding:'8px 10px', borderRadius:8, textAlign:'left' }}>
+                <div style={{fontSize:9,fontWeight:600,marginBottom:2}}>Notes</div>
+                {lead.notes}
+              </div>
+            )}
+          </div>
+        </div>
 
-            <div className="card-section-title">Actions</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowLogModal(true)}>Log a Call</button>
-              <label className="field" style={{ fontSize: 12, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        {/* Actions + Call History */}
+        <div className="bento-col-7">
+          <div className="bento-card">
+            <div className="bento-card-h"><h3>Actions</h3></div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+              <button onClick={() => setShowLogModal(true)}
+                style={{ padding:'5px 12px', border:'none', borderRadius:8, background:'var(--md-primary)', color:'#fff', fontSize:10, fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>
+                Log a Call
+              </button>
+              <label style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'var(--md-outline)' }}>
                 Update:
                 <select value={lead.status || 'hold'} onChange={e => handleStatusChange(e.target.value)} disabled={updating}
-                  style={{ padding: '5px 8px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', fontSize: 12, fontFamily: 'inherit', width: 'auto' }}>
+                  style={{ border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'3px 6px', fontSize:10, fontFamily:'inherit', outline:'none', width:'auto' }}>
                   <option value="hold">Hold</option>
                   <option value="scheduled">Scheduled</option>
                   <option value="selected">Selected</option>
@@ -140,42 +156,52 @@ export default function MyLeads() {
                 </select>
               </label>
             </div>
+          </div>
 
-            {lead.notes && (
-              <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--ink-soft)', background: 'var(--bg)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                <div className="card-section-title" style={{ marginBottom: 4 }}>Notes</div>
-                {lead.notes}
-              </div>
-            )}
-
-            <div className="card-section-title">Call History ({callLogs.length})</div>
+          <div className="bento-card" style={{ marginTop:8 }}>
+            <div className="bento-card-h"><h3>Call History ({callLogs.length})</h3></div>
             {callLogs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--ink-soft)', padding: '8px 0' }}>No calls logged yet.</div>
+              <div style={{ fontSize:10, color:'var(--md-outline)', padding:'6px 0' }}>No calls logged yet.</div>
             ) : (
-              <div className="compact-timeline">
+              <div className="bento-tl">
                 {callLogs.slice(0, 5).map(log => (
-                  <div key={log.id} className="compact-timeline-item">
-                    <div className={`status-dot ${log.status === 'connected' ? 'status-dot-green' : 'status-dot-red'}`} />
-                    <div className="time">{new Date(log.call_time).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
-                    <div className="info">
-                      <span className={`pill ${log.status === 'connected' ? 'pill-green' : 'pill-red'}`} style={{ fontSize: 9, marginRight: 4 }}>{log.status}</span>
-                      <span style={{ color: 'var(--ink-soft)', fontSize: 11 }}>{log.call_type}{log.duration_seconds > 0 ? ` · ${log.duration_seconds}s` : ''}</span>
-                      {log.notes && <div style={{ color: 'var(--ink-soft)', fontSize: 11, marginTop: 1 }}>{log.notes}</div>}
+                  <div key={log.id} className="bento-tl-item">
+                    <div className={`bento-pill ${log.status === 'connected' ? 'bento-pill-green' : 'bento-pill-red'}`} style={{fontSize:8, padding:'1px 5px'}}>{log.status}</div>
+                    <div className="t">{new Date(log.call_time).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+                    <div className="i">
+                      <span style={{color:'var(--md-outline)', fontSize:9}}>{log.call_type}{log.duration_seconds > 0 ? ` · ${log.duration_seconds}s` : ''}</span>
+                      {log.notes && <div className="s">{log.notes}</div>}
                     </div>
                   </div>
                 ))}
-                {callLogs.length > 5 && <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', padding: 4 }}>+{callLogs.length - 5} more</div>}
+                {callLogs.length > 5 && <div style={{ fontSize:9, color:'var(--md-outline)', textAlign:'center', padding:2 }}>+{callLogs.length - 5} more</div>}
               </div>
             )}
           </div>
 
-          <div className="card-view-nav">
-            <button className="btn btn-sm" disabled={index === 0} onClick={() => setIndex(i => i - 1)}
-              style={{ background: index === 0 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>← Prev</button>
-            <span className="counter">{index + 1} of {filtered.length}</span>
-            <button className="btn btn-sm" disabled={index === filtered.length - 1} onClick={() => setIndex(i => i + 1)}
-              style={{ background: index === filtered.length - 1 ? 'transparent' : 'var(--card-bg)', border: '1px solid var(--line)', minWidth: 90 }}>Next →</button>
+          <div className="bento-nav" style={{ marginTop:4 }}>
+            <button disabled={index === 0} onClick={() => setIndex(i => i - 1)}>← Prev</button>
+            <span className="cnt">{index + 1} of {filtered.length}</span>
+            <button disabled={index === filtered.length - 1} onClick={() => setIndex(i => i + 1)}>Next →</button>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bento-grid" style={{flex:1}}>
+      {filtered.length === 0 ? (
+        <div className="bento-col-12">
+          <div className="bento-card" style={{ alignItems:'center', padding:40 }}>
+            <div style={{ fontSize:32, marginBottom:8, opacity:.3 }}>📋</div>
+            <div style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>No leads found</div>
+            <div style={{ fontSize:11, color:'var(--md-outline)' }}>Leads assigned to you will appear here.</div>
+          </div>
+        </div>
+      ) : (
+        <div className="bento-col-12">
+          {leadContent()}
         </div>
       )}
 

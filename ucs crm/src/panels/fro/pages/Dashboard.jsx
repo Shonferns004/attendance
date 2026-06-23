@@ -20,38 +20,52 @@ export default function Dashboard() {
   const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
 
   return (
-    <div>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-num">{stats.total ?? 0}</div>
-          <div className="stat-lbl">Assigned Donors</div>
+    <div className="bento-grid">
+      <div className="bento-col-3">
+        <div className="bento-card">
+          <div className="m3-stat">
+            <div className="m3-stat-num">{stats.total ?? 0}</div>
+            <div className="m3-stat-lbl">Assigned Donors</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-num">{stats.contacted ?? 0}</div>
-          <div className="stat-lbl">Contacted</div>
+      </div>
+      <div className="bento-col-3">
+        <div className="bento-card">
+          <div className="m3-stat">
+            <div className="m3-stat-num">{stats.contacted ?? 0}</div>
+            <div className="m3-stat-lbl">Contacted</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-num">{stats.donation_collected ?? 0}</div>
-          <div className="stat-lbl">Donations</div>
+      </div>
+      <div className="bento-col-3">
+        <div className="bento-card">
+          <div className="m3-stat">
+            <div className="m3-stat-num">{stats.donation_collected ?? 0}</div>
+            <div className="m3-stat-lbl">Donations</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-num">₹{Number(collected || 0).toLocaleString('en-IN')}</div>
-          <div className="stat-lbl">Collected</div>
+      </div>
+      <div className="bento-col-3">
+        <div className="bento-card">
+          <div className="m3-stat">
+            <div className="m3-stat-num">₹{Number(collected || 0).toLocaleString('en-IN')}</div>
+            <div className="m3-stat-lbl">Collected</div>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h3>Monthly Progress</h3>
-          <span style={{ fontSize:13, color:'var(--ink-soft)' }}>
-            ₹{Number(collected || 0).toLocaleString('en-IN')} / ₹{Number(target || 0).toLocaleString('en-IN')}
-          </span>
-        </div>
-        <div className="card-pad">
-          <div className="progress-bar" style={{ height:10 }}>
-            <div className="progress-fill" style={{ width:`${progress}%` }}></div>
+      <div className="bento-col-12">
+        <div className="bento-card">
+          <div className="bento-card-h">
+            <h3>Monthly Progress</h3>
+            <span style={{ fontSize:11, color:'var(--md-outline)' }}>
+              ₹{Number(collected || 0).toLocaleString('en-IN')} / ₹{Number(target || 0).toLocaleString('en-IN')}
+            </span>
           </div>
-          <div style={{ marginTop:8, fontSize:12, color:'var(--ink-soft)' }}>
+          <div className="fro-progress">
+            <div className="fro-progress-fill" style={{ width:`${progress}%` }}></div>
+          </div>
+          <div style={{ marginTop:8, fontSize:11, color:'var(--md-outline)' }}>
             Target: ₹{Number(target || 0).toLocaleString('en-IN')}
             {months_employed < 3 && ` (Auto-calculated Month ${months_employed + 1})`}
           </div>

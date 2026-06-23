@@ -8,32 +8,12 @@ import MyDonors from './pages/MyDonors'
 import MyTarget from './pages/MyTarget'
 
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: '\u{1F4CA}' },
-  { id: 'leads', label: 'My Leads', icon: '\u{1F4CB}' },
-  { id: 'my-donors', label: 'My Donors', icon: '\u{1F46B}' },
-  { id: 'call-logs', label: 'Call Logs', icon: '\u{1F4DE}' },
-  { id: 'my-target', label: 'My Target', icon: '\u{1F3AF}' },
+  { id: 'dashboard', label: 'Home', icon: 'dashboard' },
+  { id: 'leads', label: 'Leads', icon: 'person_add' },
+  { id: 'my-donors', label: 'Donors', icon: 'diversity_3' },
+  { id: 'call-logs', label: 'Logs', icon: 'call_log' },
+  { id: 'my-target', label: 'Target', icon: 'track_changes' },
 ]
-
-function Sidebar({ active, setActive }) {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-mark">FRO</div>
-        <div><h1>UFS</h1><span>FRO Panel</span></div>
-      </div>
-      <nav className="sidebar-nav">
-        {NAV.map(n => (
-          <button key={n.id} className={`snav-item ${active === n.id ? 'active' : ''}`}
-            onClick={() => setActive(n.id)}>
-            <span className="ico">{n.icon}</span>
-            <span>{n.label}</span>
-          </button>
-        ))}
-      </nav>
-    </aside>
-  )
-}
 
 export default function FROPanel() {
   const { user, logout } = useUcs()
@@ -50,6 +30,13 @@ export default function FROPanel() {
       el.style.setProperty('--bg', t.sand)
       el.style.setProperty('--card-bg', t.paper)
       el.style.setProperty('--sage-light', t['sage-soft'])
+      const shell = document.querySelector('.fro-shell')
+      if (shell) {
+        shell.style.setProperty('--md-bg', t.sand || '#f7faf9')
+        shell.style.setProperty('--md-surface-low', t.sand || '#f1f3f2')
+        shell.style.setProperty('--md-primary', t.sage || '#006b56')
+        shell.style.setProperty('--md-primary-container', t['sage-soft'] || '#7af8d7')
+      }
     }
     localStorage.setItem('fro_theme', themeName)
   }, [themeName])
@@ -67,42 +54,47 @@ export default function FROPanel() {
   }, [])
 
   const userName = user?.name || 'User'
-  const userRole = 'FRO Worker'
   const initials = userName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-  const meta = NAV.find(n => n.id === active)
 
   return (
-    <div className="app">
-      <Sidebar active={active} setActive={handleNav} />
-      <div className="main">
-        <header className="topbar">
+    <div className="fro-shell">
+      <header className="fro-header">
+        <div className="fro-header-left">
+          <div className="fro-header-icon">U</div>
           <div>
-            <div className="eyebrow">{meta?.label || 'Dashboard'}</div>
-            <h2>{meta?.label || 'Dashboard'}</h2>
+            <h1>UFS</h1>
+            <span>FRO Panel</span>
           </div>
-          <div className="topbar-user" ref={menuRef} onClick={() => setShowMenu(!showMenu)}>
-            <div className="topbar-user-text">
-              <div className="topbar-name">{userName}</div>
-              <div className="topbar-role">{userRole}</div>
-            </div>
-            <div className="avatar">{initials}</div>
-            {showMenu && (
-              <div className="user-menu">
-                <div className="user-menu-item" style={{cursor:'default', fontSize:13, color:'#666'}}>
-                  Theme: <select value={themeName} onClick={e=>e.stopPropagation()} onChange={e=>setThemeName(e.target.value)} style={{marginLeft:8, border:'1px solid #ddd', borderRadius:6, padding:'2px 8px'}}>
-                    {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
-                  </select>
-                </div>
-                <div className="user-menu-divider" />
-                <button className="user-menu-item" onClick={() => { setShowMenu(false); logout() }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                  Sign out
-                </button>
+        </div>
+        <div className="fro-header-right" ref={menuRef}>
+          <div className="fro-header-avatar" onClick={() => setShowMenu(!showMenu)}>
+            {initials}
+          </div>
+          {showMenu && (
+            <div className="fro-dropdown">
+              <div style={{padding:'6px 12px', fontSize:11, color:'var(--md-outline)'}}>
+                {userName} · <span style={{textTransform:'lowercase'}}>FRO</span>
               </div>
-            )}
-          </div>
-        </header>
-        <div className="content-body">
+              <div className="fro-dropdown-divider" />
+              <div className="fro-dropdown-item" style={{cursor:'default', fontSize:11, color:'var(--md-outline)'}}>
+                Theme
+                <select value={themeName} onClick={e=>e.stopPropagation()} onChange={e=>setThemeName(e.target.value)}
+                  style={{marginLeft:'auto', border:'1px solid var(--md-outline-variant)', borderRadius:6, padding:'2px 6px', fontSize:11, fontFamily:'inherit'}}>
+                  {Object.keys(themes).map(k => <option key={k} value={k}>{themes[k].name}</option>)}
+                </select>
+              </div>
+              <div className="fro-dropdown-divider" />
+              <button className="fro-dropdown-item" onClick={() => { setShowMenu(false); logout() }}>
+                <span className="material-symbols-outlined" style={{fontSize:16}}>logout</span>
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="fro-main">
+        <div className="fro-content">
           {active === 'dashboard' ? (
             <Dashboard />
           ) : active === 'leads' ? (
@@ -118,6 +110,15 @@ export default function FROPanel() {
           )}
         </div>
       </div>
+
+      <nav className="fro-bottom-nav">
+        {NAV.map(n => (
+          <button key={n.id} className={`fro-nav-item ${active === n.id ? 'active' : ''}`}
+            onClick={() => handleNav(n.id)} title={n.label}>
+            <span className="nav-icon material-symbols-outlined">{n.icon}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
