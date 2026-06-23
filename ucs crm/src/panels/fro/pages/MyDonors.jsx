@@ -158,191 +158,248 @@ export default function MyDonors() {
 
   if (loading) return <div className="loading">Loading donors...</div>;
 
+  const timelineIcon = (log) => {
+    if (log.action === 'disposition') return log.disposition_category === 'connected' ? 'check_circle' : 'cancel';
+    const map = { call:'call', visit:'home', message:'mail', follow_up:'history', donation:'payments', note:'note' };
+    return map[log.action] || 'circle';
+  };
+
+  const formatTime = (d) => new Date(d).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).toUpperCase();
+
   const detailContent = () => {
     if (detailLoading) return <div className="bento-card-b"><div className="loading" style={{ padding:0 }}>Loading...</div></div>;
     if (!donor) return null;
 
     return (
-      <div className="bento-grid">
-        {/* Filter row */}
-        <div className="bento-col-12">
-          <div className="bento-card">
-            <div className="bento-card-h">
-              <h3>My Donors</h3>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                style={{ border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:11, fontFamily:'inherit', outline:'none' }}>
-                {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-              </select>
-            </div>
+      <div className="bento-grid" style={{flex:1, minHeight:0, overflow:'hidden', marginBottom:48}}>
+        {/* Filter bar */}
+        <div className="bento-col-12" style={{flexShrink:0}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+            <h3 style={{fontSize:14, fontWeight:700}}>My Donors</h3>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              style={{border:'1px solid var(--md-outline-variant)', borderRadius:8, padding:'4px 8px', fontSize:10, fontFamily:'inherit', outline:'none'}}>
+              {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
           </div>
         </div>
 
-        {/* Donor info card */}
-        <div className="bento-col-5">
-          <div className="bento-card" style={{ alignItems:'center', textAlign:'center' }}>
-            <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--md-primary-container)', color:'var(--md-on-primary-container)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, marginBottom:8 }}>
-              {initials(donor.donor_name)}
+        {/* LEFT COLUMN — Profile + Details (col-span-3) */}
+        <div className="bento-col-3" style={{display:'flex', flexDirection:'column', gap:10, minHeight:0}}>
+          {/* Profile card */}
+          <div style={{background:'#fff', borderRadius:12, border:'1px solid var(--md-outline-variant)', padding:12, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', flexShrink:0}}>
+            <div style={{width:44, height:44, borderRadius:'50%', background:'var(--md-surface-high)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:6}}>
+              <span style={{fontSize:16, fontWeight:800, color:'var(--md-on-bg)'}}>{initials(donor.donor_name)}</span>
             </div>
-            <div style={{ fontSize:16, fontWeight:600, lineHeight:1.2 }}>{donor.donor_name}</div>
-            <div style={{ fontSize:13, color:'var(--md-primary)', fontWeight:500, marginBottom:8 }}>{donor.donor_mobile || '—'}</div>
-
+            <h2 style={{fontSize:16, fontWeight:700, lineHeight:1.2}}>{donor.donor_name}</h2>
+            <p style={{fontSize:12, fontWeight:500, color:'var(--md-outline)', marginBottom:6}}>{donor.donor_mobile || '—'}</p>
+            <span style={{background:'var(--md-tertiary-fixed)', color:'var(--md-on-primary-container)', padding:'2px 8px', borderRadius:999, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
+              {donor.status || 'pending'}
+            </span>
             {nextSchedule && !nextSchedule.is_completed && (
-              <div style={{ width:'100%', padding:'5px 8px', marginBottom:6, borderRadius:6, fontSize:10, background: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error-container)' : '#e0f2fe', color: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error)' : '#0369a1', border:`1px solid ${new Date(nextSchedule.scheduled_at) < new Date() ? '#fecaca' : '#bae6fd'}` }}>
-                {new Date(nextSchedule.scheduled_at) < new Date()
-                  ? <>Overdue — {new Date(nextSchedule.scheduled_at).toLocaleString()}</>
-                  : <>Next: {new Date(nextSchedule.scheduled_at).toLocaleString()}</>}
-                {nextSchedule.notes && <span> ({nextSchedule.notes})</span>}
+              <div style={{width:'100%', marginTop:6, padding:'4px 8px', borderRadius:6, fontSize:10, background: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error-container)' : '#e0f2fe', color: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error)' : '#0369a1'}}>
+                {new Date(nextSchedule.scheduled_at) < new Date() ? 'Overdue schedule' : 'Next: ' + new Date(nextSchedule.scheduled_at).toLocaleString()}
               </div>
             )}
             {donor.status === 'payment_rejected' && (
-              <div style={{ width:'100%', padding:'5px 8px', marginBottom:6, borderRadius:6, fontSize:10, background:'var(--md-error-container)', color:'var(--md-error)', border:'1px solid #fecaca' }}>
-                Payment rejected — {donor.notes || 'No details'}
+              <div style={{width:'100%', marginTop:6, padding:'4px 8px', borderRadius:6, fontSize:10, background:'var(--md-error-container)', color:'var(--md-error)'}}>
+                Payment rejected
               </div>
             )}
-            {donor.is_overdue && (
-              <div style={{ color:'var(--md-error)', fontWeight:600, fontSize:11, marginBottom:6 }}>OVERDUE</div>
-            )}
+          </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 16px', width:'100%', textAlign:'left', marginTop:8 }}>
+          {/* Details card */}
+          <div style={{background:'#fff', borderRadius:12, border:'1px solid var(--md-outline-variant)', padding:12, flex:1, overflow:'hidden', display:'flex', flexDirection:'column'}}>
+            <p style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:8, textTransform:'uppercase', letterSpacing:.5}}>Donor Details</p>
+            <div style={{flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:6, paddingRight:2}}>
               {[
-                ['City', donor.donor_city], ['Amount', `₹${Number(donor.donor_amount || 0).toLocaleString('en-IN')}`],
-                ['Email', donor.donor_email], ['Project', donor.donor_project],
-                ['Status', donor.status ? donor.status.replace(/_/g,' ') : '—'],
-                ['Donations', `${donor.donation_count || 0} (₹${Number(donor.total_donated || 0).toLocaleString('en-IN')})`],
-                donor.donor_pan && ['PAN', donor.donor_pan],
-                donor.donor_address && ['Address', donor.donor_address],
-                donor.donor_dob && ['DOB', donor.donor_dob],
-                donor.next_follow_up && ['Next F/up', new Date(donor.next_follow_up).toLocaleDateString()],
-              ].filter(Boolean).map(([l, v]) => (
-                <div key={l}><div className="fro-label">{l}</div><div style={{fontSize:11,fontWeight:500}}>{v || '—'}</div></div>
+                ['City', donor.donor_city || 'NA'],
+                ['Amount', `₹${Number(donor.donor_amount || 0).toLocaleString('en-IN')}`],
+                ['Email', donor.donor_email || '—'],
+                ['Project', donor.donor_project || '—'],
+                ['Donations', `${donor.donation_count || 0} time${donor.donation_count !== 1 ? 's' : ''} (₹${Number(donor.total_donated || 0).toLocaleString('en-IN')})`],
+              ].map(([l, v]) => (
+                <div key={l} style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid var(--md-outline-variant)', paddingBottom:4}}>
+                  <span style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', textTransform:'uppercase'}}>{l}</span>
+                  <span style={{fontSize:11, fontWeight:600}}>{v}</span>
+                </div>
               ))}
+              {donor.donor_pan && (
+                <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid var(--md-outline-variant)', paddingBottom:4}}>
+                  <span style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', textTransform:'uppercase'}}>PAN</span>
+                  <span style={{fontSize:11, fontWeight:600}}>{donor.donor_pan}</span>
+                </div>
+              )}
+              <div style={{display:'flex', flexDirection:'column', gap:1}}>
+                <span style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', textTransform:'uppercase'}}>Address</span>
+                <span style={{fontSize:10, color:'var(--md-outline)', fontStyle:'italic'}}>{donor.donor_address || 'No address available'}</span>
+              </div>
+              {donor.donor_dob && (
+                <div style={{display:'flex', justifyContent:'space-between', paddingBottom:4}}>
+                  <span style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', textTransform:'uppercase'}}>DOB</span>
+                  <span style={{fontSize:11, fontWeight:600}}>{donor.donor_dob}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Disposition + timeline */}
-        <div className="bento-col-7">
-          <div className="bento-card">
-            <div className="bento-card-h"><h3>Log Disposition</h3></div>
+        {/* CENTER COLUMN — Status & Actions (col-span-6) */}
+        <div className="bento-col-6" style={{display:'flex', flexDirection:'column', minHeight:0}}>
+          <div style={{background:'#fff', borderRadius:12, border:'1px solid var(--md-outline-variant)', padding:14, flex:1, display:'flex', flexDirection:'column', minHeight:0}}>
+            {/* Current Status */}
+            <div style={{marginBottom:10}}>
+              <p style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5}}>Current Status</p>
+              {message && (
+                <div style={{padding:'5px 10px', borderRadius:6, fontSize:10, fontWeight:700, display:'flex', alignItems:'center', gap:6,
+                  background: message.type === 'error' ? 'var(--md-error-container)' : '#e8f5e9',
+                  color: message.type === 'error' ? 'var(--md-error)' : '#2e7d32',
+                  border: `1px solid ${message.type === 'error' ? '#fecaca' : '#c8e6c9'}`}}>
+                  <span className="material-symbols-outlined" style={{fontSize:14}}>{message.type === 'error' ? 'error' : 'check_circle'}</span>
+                  {message.text}
+                </div>
+              )}
+            </div>
 
-            {message && (
-              <div style={{ padding:'4px 8px', marginBottom:6, borderRadius:6, fontSize:10,
-                background: message.type === 'error' ? 'var(--md-error-container)' : '#dcfce7',
-                color: message.type === 'error' ? 'var(--md-error)' : '#166534',
-                border: `1px solid ${message.type === 'error' ? '#fecaca' : '#bbf7d0'}` }}>
-                {message.text}
+            {/* Scrollable area */}
+            <div style={{flex:1, overflowY:'auto', paddingRight:4, display:'flex', flexDirection:'column', gap:10}}>
+              {/* Not Connected */}
+              <div>
+                <p style={{fontSize:9, fontWeight:700, color:'var(--md-error)', letterSpacing:1, marginBottom:5, textTransform:'uppercase'}}>Not Connected</p>
+                <div style={{display:'flex', flexWrap:'wrap', gap:4}}>
+                  {NOT_CONNECTED.map(opt => (
+                    <button key={opt.id}
+                      style={{padding:'3px 9px', borderRadius:6, border:`1px solid ${selected === opt.id ? 'var(--md-error)' : 'var(--md-outline-variant)'}`, fontSize:10, fontWeight:700, fontFamily:'inherit', cursor:'pointer', transition:'all .15s',
+                        background: selected === opt.id ? 'var(--md-error-container)' : '#fff',
+                        color: selected === opt.id ? 'var(--md-error)' : 'var(--md-on-bg)'}}
+                      onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
+                  ))}
+                </div>
               </div>
-            )}
 
-            <div style={{ fontSize:10, fontWeight:600, color:'var(--md-error)', marginBottom:3 }}>NOT CONNECTED</div>
-            <div className="bento-chips" style={{ marginBottom:6 }}>
-              {NOT_CONNECTED.map(opt => (
-                <button key={opt.id} className={`bento-chip ${selected === opt.id ? 'selected-nc' : ''}`}
-                  onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
-              ))}
-            </div>
-
-            <div style={{ fontSize:10, fontWeight:600, color:'#16a34a', marginBottom:3 }}>CONNECTED</div>
-            <div className="bento-chips" style={{ marginBottom:8 }}>
-              {CONNECTED.map(opt => (
-                <button key={opt.id} className={`bento-chip ${selected === opt.id ? 'selected-c' : ''}`}
-                  onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
-              ))}
-            </div>
-
-            {selected === 'scheduled' && (
-              <div style={{ marginBottom:6 }}>
-                <label className="fro-label">Schedule Date & Time</label>
-                <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="fro-input" />
+              {/* Connected */}
+              <div>
+                <p style={{fontSize:9, fontWeight:700, color:'#2e7d32', letterSpacing:1, marginBottom:5, textTransform:'uppercase'}}>Connected</p>
+                <div style={{display:'flex', flexWrap:'wrap', gap:4}}>
+                  {CONNECTED.map(opt => (
+                    <button key={opt.id}
+                      style={{padding:'3px 9px', borderRadius:6, border:`1px solid ${selected === opt.id ? '#16a34a' : 'var(--md-outline-variant)'}`, fontSize:10, fontWeight:700, fontFamily:'inherit', cursor:'pointer', transition:'all .15s',
+                        background: selected === opt.id ? '#dcfce7' : '#fff',
+                        color: selected === opt.id ? '#16a34a' : 'var(--md-on-bg)'}}
+                      onClick={() => handleChipClick(opt.id)}>{opt.label}</button>
+                  ))}
+                </div>
               </div>
-            )}
 
-            {selected === 'lead_done' && (
-              <>
-                <div style={{ marginBottom:6 }}>
-                  <label className="fro-label">Amount (₹)</label>
-                  <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min="1" placeholder="Enter amount" className="fro-input" />
+              {/* Extra fields for lead_done */}
+              {selected === 'scheduled' && (
+                <div>
+                  <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:3, display:'block', textTransform:'uppercase', letterSpacing:.5}}>Schedule Date & Time</label>
+                  <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+                    style={{width:'100%', padding:'5px 8px', border:'1px solid var(--md-outline-variant)', borderRadius:6, fontSize:11, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}} />
                 </div>
-                <div style={{ marginBottom:6 }}>
-                  <label className="fro-label">Screenshot (optional)</label>
-                  <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize:11 }} />
-                  {paymentScreenshot && <span style={{ fontSize:9, color:'var(--md-primary)' }}> ✓ Selected</span>}
-                </div>
-                <div style={{ marginBottom:6 }}>
-                  <label className="fro-label">PAN</label>
-                  <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} className="fro-input" />
-                </div>
-                {!donor.donor_address && (
-                  <div style={{ marginBottom:6 }}>
-                    <label className="fro-label">Address</label>
-                    <input type="text" value={addressField} onChange={e => setAddressField(e.target.value)} placeholder="Donor address" className="fro-input" />
-                  </div>
-                )}
-                {!donor.donor_dob && (
-                  <div style={{ marginBottom:6 }}>
-                    <label className="fro-label">DOB</label>
-                    <input type="date" value={dobField} onChange={e => setDobField(e.target.value)} className="fro-input" />
-                  </div>
-                )}
-              </>
-            )}
+              )}
 
-            <div style={{ marginBottom:6 }}>
-              <label className="fro-label">Notes</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add any notes..."
-                className="fro-input" style={{ resize:'vertical', minHeight:36 }} />
+              {selected === 'lead_done' && (
+                <div style={{display:'flex', flexDirection:'column', gap:6}}>
+                  <div>
+                    <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:2, display:'block', textTransform:'uppercase'}}>Amount (₹)</label>
+                    <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min="1" placeholder="Enter amount"
+                      style={{width:'100%', padding:'5px 8px', border:'1px solid var(--md-outline-variant)', borderRadius:6, fontSize:11, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}} />
+                  </div>
+                  <div>
+                    <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:2, display:'block', textTransform:'uppercase'}}>Screenshot</label>
+                    <input type="file" accept="image/*" onChange={handleFileChange} style={{fontSize:10}} />
+                    {paymentScreenshot && <span style={{fontSize:9, color:'var(--md-primary)'}}> ✓ Selected</span>}
+                  </div>
+                  <div>
+                    <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:2, display:'block', textTransform:'uppercase'}}>PAN</label>
+                    <input type="text" value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10}
+                      style={{width:'100%', padding:'5px 8px', border:'1px solid var(--md-outline-variant)', borderRadius:6, fontSize:11, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}} />
+                  </div>
+                  {!donor.donor_address && (
+                    <div>
+                      <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:2, display:'block', textTransform:'uppercase'}}>Address</label>
+                      <input type="text" value={addressField} onChange={e => setAddressField(e.target.value)} placeholder="Donor address"
+                        style={{width:'100%', padding:'5px 8px', border:'1px solid var(--md-outline-variant)', borderRadius:6, fontSize:11, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}} />
+                    </div>
+                  )}
+                  {!donor.donor_dob && (
+                    <div>
+                      <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:2, display:'block', textTransform:'uppercase'}}>DOB</label>
+                      <input type="date" value={dobField} onChange={e => setDobField(e.target.value)}
+                        style={{width:'100%', padding:'5px 8px', border:'1px solid var(--md-outline-variant)', borderRadius:6, fontSize:11, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes */}
+              <div style={{display:'flex', flexDirection:'column', flex:1, minHeight:0}}>
+                <label style={{fontSize:9, fontWeight:700, color:'var(--md-outline)', marginBottom:3, textTransform:'uppercase', letterSpacing:.5}}>Quick Notes</label>
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add any notes here..."
+                  style={{width:'100%', background:'var(--md-surface-low)', border:'1px solid var(--md-outline-variant)', borderRadius:6, padding:'6px 8px', fontSize:10, fontFamily:'inherit', outline:'none', resize:'none', minHeight:40, boxSizing:'border-box'}} />
+              </div>
             </div>
 
+            {/* Update button */}
             <button onClick={handleSave} disabled={saving || uploading || !selected}
-              style={{ width:'100%', padding:'7px 0', border:'none', borderRadius:8, fontSize:11, fontWeight:600, fontFamily:'inherit', cursor:'pointer',
+              style={{width:'100%', padding:'7px 0', border:'none', borderRadius:8, fontSize:10, fontWeight:700, fontFamily:'inherit', cursor:'pointer', textTransform:'uppercase', letterSpacing:.5,
                 background: selected === 'lead_done' ? '#16a34a' : 'var(--md-primary)', color:'#fff',
-                opacity: (saving || uploading || !selected) ? .6 : 1 }}>
+                opacity: (saving || uploading || !selected) ? .6 : 1, marginTop:10}}>
               {uploading ? 'Uploading...' : saving ? 'Saving...' : !selected ? 'Select a disposition' : selected === 'lead_done' ? 'Send to Accounts' : `Log ${findDisp(selected)?.label || selected}`}
             </button>
-          </div>
 
-          {/* Timeline card */}
-          <div className="bento-card" style={{ marginTop:8 }}>
-            <div className="bento-card-h">
-              <h3>CRM Timeline</h3>
-              <span style={{ fontSize:10, color:'var(--md-outline)' }}>₹{totalCollected.toLocaleString('en-IN')}</span>
+            {/* Prev/Next */}
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:8, marginTop:8, borderTop:'1px solid var(--md-outline-variant)'}}>
+              <button disabled={index === 0} onClick={() => setIndex(i => i - 1)}
+                style={{padding:'3px 10px', border:'1px solid var(--md-outline-variant)', borderRadius:6, background:'#fff', fontSize:10, fontFamily:'inherit', cursor:'pointer', color:'var(--md-on-bg)', opacity: index === 0 ? .4 : 1}}>← Prev</button>
+              <span style={{fontSize:10, color:'var(--md-outline)', fontWeight:600}}>{index + 1} of {donors.length}</span>
+              <button disabled={index === donors.length - 1} onClick={() => setIndex(i => i + 1)}
+                style={{padding:'3px 10px', border:'1px solid var(--md-outline-variant)', borderRadius:6, background:'#fff', fontSize:10, fontFamily:'inherit', cursor:'pointer', color:'var(--md-on-bg)', opacity: index === donors.length - 1 ? .4 : 1}}>Next →</button>
             </div>
-            {logs.length === 0 ? (
-              <div style={{ fontSize:10, color:'var(--md-outline)', padding:'6px 0' }}>No activity yet.</div>
-            ) : (
-              <div className="bento-tl">
-                {logs.slice(0, 5).map(log => {
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN — Timeline (col-span-3) */}
+        <div className="bento-col-3" style={{display:'flex', flexDirection:'column', minHeight:0}}>
+          <div style={{background:'#fff', borderRadius:12, border:'1px solid var(--md-outline-variant)', display:'flex', flexDirection:'column', flex:1, minHeight:0}}>
+            <div style={{padding:'10px 12px', borderBottom:'1px solid var(--md-outline-variant)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0}}>
+              <h4 style={{fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>CRM Timeline</h4>
+              <span style={{fontSize:9, fontWeight:700, color:'var(--md-primary)'}}>TOTAL: ₹{totalCollected.toLocaleString('en-IN')}</span>
+            </div>
+            <div style={{flex:1, overflowY:'auto', padding:'10px 12px', display:'flex', flexDirection:'column', gap:8}}>
+              {logs.length === 0 ? (
+                <div style={{fontSize:10, color:'var(--md-outline)', textAlign:'center', padding:'12px 0'}}>No activity yet.</div>
+              ) : (
+                logs.slice(0, 8).map(log => {
                   const isDisp = log.action === 'disposition';
                   const cat = log.disposition_category;
-                  const icon = isDisp ? (cat === 'connected' ? '✅' : '❌') : {
-                    call: '📞', visit: '🏠', message: '✉️',
-                    follow_up: '🔄', donation: '💵', note: '📝',
-                  }[log.action] || '📋';
+                  const icon = timelineIcon(log);
+                  const isConnected = isDisp && cat === 'connected';
                   const lbl = isDisp ? (log.disposition_detail?.replace(/_/g, ' ') || '') : log.action.replace(/_/g, ' ');
+                  const dotBg = isDisp ? (isConnected ? 'var(--md-primary)' : 'var(--md-error)') : 'var(--md-outline-variant)';
                   return (
-                    <div key={log.id} className="bento-tl-item">
-                      <div className="t">{new Date(log.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
-                      <div className="i">
-                        <span className="l">{icon} {lbl}</span>
-                        {log.notes && <div className="s">{log.notes}</div>}
-                        {log.amount_collected && <div className="s" style={{color:'#16a34a'}}>₹{Number(log.amount_collected).toLocaleString('en-IN')}</div>}
-                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'verified' && <div className="s" style={{color:'#16a34a'}}>Accounts: Verified ✓</div>}
-                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'rejected' && <div className="s" style={{color:'var(--md-error)'}}>Accounts: Rejected</div>}
-                        {log.disposition_detail === 'lead_done' && log.accounts_status === 'pending' && <div className="s" style={{color:'#f59e0b'}}>Accounts: Pending</div>}
+                    <div key={log.id} style={{position:'relative', paddingLeft:16, borderLeft:'1px solid var(--md-outline-variant)', paddingBottom:2}}>
+                      <div style={{position:'absolute', left:-7, top:3, width:12, height:12, borderRadius:'50%', background:dotBg, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                        <span className="material-symbols-outlined" style={{fontSize:7, color:'#fff'}}>{icon}</span>
                       </div>
+                      <div style={{marginBottom:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                        <span style={{fontSize:9, fontWeight:700, color:'var(--md-outline)'}}>{formatTime(log.created_at)}</span>
+                        {log.amount_collected && <span style={{fontSize:10, fontWeight:700, color:'var(--md-primary)'}}>₹{Number(log.amount_collected).toLocaleString('en-IN')}</span>}
+                      </div>
+                      <p style={{fontSize:11, fontWeight:700, lineHeight:1.2, marginBottom:1}}>{lbl}</p>
+                      {log.notes && <p style={{fontSize:9, color:'var(--md-outline)'}}>{log.notes}</p>}
+                      {log.disposition_detail === 'lead_done' && (
+                        <span style={{fontSize:8, fontWeight:700, background:'var(--md-tertiary-fixed)', padding:'1px 4px', borderRadius:2, textTransform:'uppercase', display:'inline-block', marginTop:1}}>
+                          {log.accounts_status === 'verified' ? 'Verified' : log.accounts_status === 'rejected' ? 'Rejected' : 'Pending'}
+                        </span>
+                      )}
                     </div>
                   );
-                })}
-                {logs.length > 5 && <div style={{ fontSize:9, color:'var(--md-outline)', textAlign:'center', padding:2 }}>+{logs.length - 5} more</div>}
-              </div>
-            )}
-          </div>
-
-          {/* Prev/Next */}
-          <div className="bento-nav" style={{ marginTop:4 }}>
-            <button disabled={index === 0} onClick={() => setIndex(i => i - 1)}>← Prev</button>
-            <span className="cnt">{index + 1} of {donors.length}</span>
-            <button disabled={index === donors.length - 1} onClick={() => setIndex(i => i + 1)}>Next →</button>
+                })
+              )}
+              {logs.length > 8 && <div style={{fontSize:9, color:'var(--md-outline)', textAlign:'center'}}>+{logs.length - 8} more</div>}
+            </div>
           </div>
         </div>
       </div>
