@@ -192,9 +192,7 @@ export default function ReceiptHistory() {
             align-items: flex-start !important;
           }
           [data-receipt-print] {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: relative;
             width: 100%;
             margin: 0 !important;
             padding: 0 !important;
