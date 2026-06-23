@@ -18,6 +18,12 @@ const DB_TO_TEMPLATE = {
   bsct: 'beingsevak',
 };
 
+const PROJECT_LABELS = {
+  maan: 'Mann Care Foundation',
+  aflf: 'Ashray For Life Foundation',
+  bsct: 'Being Sevak Charitable Trust',
+};
+
 function getTemplateId(projectId) {
   return DB_TO_TEMPLATE[projectId] || 'beingsevak';
 }
@@ -127,6 +133,29 @@ export default function LeadDetail({ logId, onBack }) {
     try {
       const pdf = await generateReceiptPDF(receiptRef.current);
       pdf.save(`receipt_${(receipt?.receipt_no || 'download').replace(/[/\\]/g, '_')}.pdf`);
+    } catch (err) {
+      alert('Failed to generate PDF: ' + err.message);
+    }
+  };
+
+  const handleSendWhatsApp = async () => {
+    const phone = (l.donor_mobile || '').replace(/\D/g, '');
+    if (!phone) {
+      alert('Donor mobile number not available');
+      return;
+    }
+    if (!receiptRef.current) return;
+    try {
+      const pdf = await generateReceiptPDF(receiptRef.current);
+      pdf.save(`receipt_${(receipt?.receipt_no || 'download').replace(/[/\\]/g, '_')}.pdf`);
+      const foundationName = PROJECT_LABELS[projectId] || 'our foundation';
+      const amt = Number(receipt?.amount || 0).toLocaleString('en-IN');
+      const msg = encodeURIComponent(
+        `Thank you for your generous donation of ₹${amt} to ${foundationName}. ` +
+        `Your receipt (No: ${receipt?.receipt_no || ''}) has been generated. ` +
+        `Please find the PDF receipt attached.\n\nWith gratitude,\n${foundationName} Team`
+      );
+      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
     } catch (err) {
       alert('Failed to generate PDF: ' + err.message);
     }
@@ -257,6 +286,9 @@ export default function LeadDetail({ logId, onBack }) {
               <h3>Receipt Preview</h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-primary btn-sm" onClick={handleDownload}>Download PDF</button>
+                <button className="btn btn-sm" style={{ background: '#25D366', color: '#fff' }} onClick={handleSendWhatsApp}>
+                  Send via WhatsApp
+                </button>
                 <button className="btn btn-sm" onClick={() => setShowModal(false)}>Close</button>
               </div>
             </div>
