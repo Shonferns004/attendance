@@ -268,6 +268,18 @@ export async function generateReceiptPDF(element) {
   const printableW = pdfW - 2 * margin
   const printableH = pdfH - 2 * margin
   const pixelsPerMm = canvas.width / printableW
+  const fullRenderedHeight = canvas.height / pixelsPerMm
+  const onePageOverflowTolerance = 12
+
+  if (fullRenderedHeight <= printableH + onePageOverflowTolerance) {
+    const scaleToFit = Math.min(1, printableH / fullRenderedHeight)
+    const renderedW = printableW * scaleToFit
+    const renderedH = fullRenderedHeight * scaleToFit
+    const x = margin + (printableW - renderedW) / 2
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, margin, renderedW, renderedH)
+    return pdf
+  }
+
   const pageSliceHeight = Math.floor(printableH * pixelsPerMm)
 
   for (let offsetY = 0, page = 0; offsetY < canvas.height; offsetY += pageSliceHeight, page++) {
