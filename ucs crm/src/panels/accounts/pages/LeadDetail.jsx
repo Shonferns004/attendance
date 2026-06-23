@@ -139,9 +139,10 @@ export default function LeadDetail({ logId, onBack }) {
   };
 
   const handleSendWhatsApp = async () => {
-    const phone = (l.donor_mobile || '').replace(/\D/g, '');
-    if (!phone) {
-      alert('Donor mobile number not available');
+    const rawPhone = (l.donor_mobile || '').replace(/\D/g, '');
+    const phone = rawPhone.length === 10 ? '91' + rawPhone : rawPhone.startsWith('0') ? '91' + rawPhone.slice(1) : rawPhone;
+    if (!phone || phone.length < 10) {
+      alert('Donor mobile number not available or invalid');
       return;
     }
     if (!receiptRef.current) return;

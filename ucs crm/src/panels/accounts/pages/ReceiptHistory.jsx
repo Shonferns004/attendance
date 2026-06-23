@@ -89,9 +89,10 @@ export default function ReceiptHistory() {
 
   const handleWhatsApp = async () => {
     if (!preview) return;
-    const phone = (preview.donorMobile || '').replace(/\D/g, '');
-    if (!phone) {
-      alert('Donor mobile number not available');
+    const rawPhone = (preview.donorMobile || '').replace(/\D/g, '');
+    const phone = rawPhone.length === 10 ? '91' + rawPhone : rawPhone.startsWith('0') ? '91' + rawPhone.slice(1) : rawPhone;
+    if (!phone || phone.length < 10) {
+      alert('Donor mobile number not available or invalid');
       return;
     }
     try {
