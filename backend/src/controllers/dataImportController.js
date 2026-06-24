@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { insertNewDataBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById } from '../models/newDataModel.js';
+import { insertNewDataBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById, updateNewDataStatus } from '../models/newDataModel.js';
 import { upsertDonorProfile } from '../models/donorProfileModel.js';
 import supabase from '../config/supabase.js';
 import {
@@ -482,6 +482,8 @@ export const distributeToNgos = async (req, res) => {
         .update({ ngo: ngos[i].name })
         .in('mobile_number', batchMobiles)
         .is('ngo', null);
+
+      await updateNewDataStatus(batchMobiles, null, 'converted');
 
       totalCreated += created;
       results.push(`${created} donors → ${ngos[i].name}`);
