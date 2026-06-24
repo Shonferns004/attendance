@@ -5,6 +5,7 @@ import {
   updateAttendance,
   getMonthlyLateMinutes,
   getAttendanceHistory,
+  deleteAttendance,
 } from '../models/attendanceModel.js';
 import { getQRByCode } from '../models/qrModel.js';
 import { getSetting } from '../models/settingsModel.js';
@@ -303,6 +304,20 @@ export const myHistory = async (req, res) => {
     });
 
     return res.json(records);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteAttendanceRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await getAttendanceById(id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Attendance record not found' });
+    }
+    const result = await deleteAttendance(id);
+    return res.json({ message: 'Attendance deleted', attendance: result });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

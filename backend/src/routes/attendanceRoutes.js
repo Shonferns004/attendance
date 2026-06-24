@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { punchIn, punchOut, todayStatus, myHistory, listAll, updateAttendanceRecord, createAttendanceByHR } from '../controllers/attendanceController.js';
+import { punchIn, punchOut, todayStatus, myHistory, listAll, updateAttendanceRecord, createAttendanceByHR, deleteAttendanceRecord } from '../controllers/attendanceController.js';
 import { authenticateRole, authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.get('/history', authenticate, myHistory);
 router.get('/all', authenticateRole('super_admin', 'hoadmin', 'hr'), listAll);
 router.post('/', authenticateRole('super_admin', 'hoadmin', 'hr'), createAttendanceByHR);
 router.put('/:id', authenticateRole('super_admin', 'hoadmin', 'hr'), updateAttendanceRecord);
+router.delete('/:id', authenticateRole('super_admin', 'hoadmin', 'hr'), deleteAttendanceRecord);
 
 export default router;

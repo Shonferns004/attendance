@@ -562,6 +562,22 @@ export default function Attendance() {
               </label>
             </div>
             <div className="modal-foot">
+              <button className="btn btn-danger" onClick={async () => {
+                if (!confirm('Delete this attendance record? The worker will need to punch in again.')) return;
+                try {
+                  const res = await fetch(API_BASE + '/attendance/' + editingRecord.id, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + localStorage.getItem('ucs_token') },
+                  });
+                  if (!res.ok) throw new Error('Delete failed');
+                  fetchAttendance().then(setAttendance).catch(() => {});
+                  closeEdit();
+                } catch (err) {
+                  alert(err.message);
+                }
+              }} style={{ marginRight:'auto', background:'var(--danger)', color:'#fff', border:'none' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight:6, verticalAlign:'middle' }}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>Delete
+              </button>
               <button className="btn" onClick={closeEdit}>Cancel</button>
               <button className="btn btn-primary" onClick={saveEdit} disabled={editLoading}>
                 {editLoading ? 'Saving...' : 'Save'}

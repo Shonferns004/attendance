@@ -1829,6 +1829,22 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
               </label>
             </div>
             <div className="modal-foot">
+              <button className="btn btn-danger" onClick={async () => {
+                if (!confirm('Delete this attendance record? The worker will need to punch in again.')) return;
+                try {
+                  const res = await fetch(API_BASE + '/attendance/' + editingRecord.id, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + localStorage.getItem('ucs_token') },
+                  });
+                  if (!res.ok) throw new Error('Delete failed');
+                  fetchAttendance().then(setAttendance).catch(() => {});
+                  closeEdit();
+                } catch (err) {
+                  alert(err.message);
+                }
+              }} style={{ marginRight:'auto', background:'var(--danger)', color:'#fff', border:'none' }}>
+                <Trash width={14} style={{ marginRight:6, verticalAlign:'middle' }} />Delete
+              </button>
               <button className="btn" onClick={closeEdit}>Cancel</button>
               <button className="btn btn-primary" onClick={saveEdit} disabled={editLoading}>
                 {editLoading ? 'Saving...' : 'Save'}

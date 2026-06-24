@@ -104,3 +104,14 @@ export const getAllAttendance = async () => {
   if (error) throw error;
   return data;
 };
+
+export const deleteAttendance = async (id) => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
