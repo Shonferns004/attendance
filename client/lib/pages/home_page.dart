@@ -738,7 +738,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             child: Column(
                               children: [
                                 Text(
-                                  'ARRIVED',
+                                  'IN',
                                   style: TextStyle(
                                     fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
                                     color: sc.outline,
@@ -769,7 +769,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             child: Column(
                               children: [
                                 Text(
-                                  'LEFT',
+                                  'OUT',
                                   style: TextStyle(
                                     fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0,
                                     color: sc.outline,
@@ -871,9 +871,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceListPage())),
-                              child: Container(
+                            child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: sc.surface,
@@ -945,7 +943,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     ),
                                   ],
                                 ),
-                              ),
                             ),
                           ),
                         ],

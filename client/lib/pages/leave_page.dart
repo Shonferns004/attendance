@@ -257,7 +257,7 @@ class _LeavePageState extends State<LeavePage> {
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: Column(
+      body: SafeArea(child: Column(
         children: [
           const SizedBox(height: 12),
           Container(width: 48, height: 4,
@@ -291,7 +291,7 @@ class _LeavePageState extends State<LeavePage> {
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 

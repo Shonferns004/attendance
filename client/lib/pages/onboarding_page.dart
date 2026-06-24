@@ -15,7 +15,7 @@ class OnboardingPage extends StatefulWidget {
   State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends State<OnboardingPage> {
+class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentStep = 0;
   bool _submitting = false;
@@ -76,6 +76,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // Reference entries
   final List<_ReferenceEntry> _referenceList = [];
 
+  late final AnimationController _animCtrl;
+  late final Animation<double> _anim;
+
   final List<String> _steps = [
     'Personal Details',
     'Education',
@@ -93,6 +96,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 8));
+    _anim = Tween<double>(begin: 0, end: 1).animate(_animCtrl);
+    _animCtrl.repeat(reverse: true);
     _initOnboarding();
   }
 
@@ -142,6 +148,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     for (final f in _familyList) f.dispose();
     for (final r in _referenceList) r.dispose();
     _declarationPlaceCtrl.dispose();
+    _animCtrl.dispose();
     super.dispose();
   }
 
@@ -459,55 +466,136 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final scale = (screenWidth / 375).clamp(0.85, 1.3);
+
     if (_loadingData) {
       return Scaffold(
-        backgroundColor: const Color(0xFFf6fafe),
-        body: SafeArea(child: _buildLoadingSkeleton()),
+        body: _buildBackground(
+          child: SafeArea(child: _buildLoadingSkeleton()),
+        ),
       );
     }
 
     if (_alreadyCompleted) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFf6fafe),
-        body: SafeArea(child: SizedBox.shrink()),
+      return Scaffold(
+        body: _buildBackground(
+          child: const SafeArea(child: SizedBox.shrink()),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFf6fafe),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (i) => setState(() => _currentStep = i),
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildPersonalDetails(),
-                  _buildEducation(),
-                  _buildPreviousOrganizations(),
-                  _buildFamily(),
-                  _buildReferences(),
-                  _buildPhotoUpload(),
-                  _buildDocumentsBank(),
-                  _buildDeclaration(),
-                  _buildPolicies(),
-                  _buildReview(),
-                  _buildSuccessScreen(),
-            ],
-              ),
+      body: _buildBackground(
+        child: SafeArea(
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(scale),
             ),
-            if (_currentStep < _steps.length - 2)
-              _buildBottomNav()
-            else if (_currentStep == _steps.length - 2)
-              _buildSubmitButton()
-            else
-              _buildSuccessButtons(),
-          ],
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (i) => setState(() => _currentStep = i),
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildPersonalDetails(),
+                      _buildEducation(),
+                      _buildPreviousOrganizations(),
+                      _buildFamily(),
+                      _buildReferences(),
+                      _buildPhotoUpload(),
+                      _buildDocumentsBank(),
+                      _buildDeclaration(),
+                      _buildPolicies(),
+                      _buildReview(),
+                      _buildSuccessScreen(),
+                  ],
+                  ),
+                ),
+                if (_currentStep < _steps.length - 2)
+                  _buildBottomNav()
+                else if (_currentStep == _steps.length - 2)
+                  _buildSubmitButton()
+                else
+                  _buildSuccessButtons(),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBackground({required Widget child}) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.lerp(const Color(0xFF0f172a), const Color(0xFF1e3a8a), _anim.value)!,
+                Color.lerp(const Color(0xFF1e293b), const Color(0xFF2563eb), _anim.value)!,
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -40 + _anim.value * 20,
+                left: -30 + _anim.value * 15,
+                child: Container(
+                  width: 200, height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF3b82f6).withValues(alpha: 0.12),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 60 - _anim.value * 25,
+                right: -50 + _anim.value * 20,
+                child: Container(
+                  width: 260, height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF60a5fa).withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 200 + _anim.value * 30,
+                left: -60 + _anim.value * 10,
+                child: Container(
+                  width: 160, height: 160,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF2563eb).withValues(alpha: 0.10),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 80 - _anim.value * 15,
+                right: 20 - _anim.value * 10,
+                child: Container(
+                  width: 100, height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF93c5fd).withValues(alpha: 0.10),
+                  ),
+                ),
+              ),
+              child!,
+            ],
+          ),
+        );
+      },
+      child: child,
     );
   }
 
@@ -516,14 +604,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.hourglass_empty, size: 48, color: const Color(0xFFc3c6ce)),
-          const SizedBox(height: 16),
-          Text('Loading...', style: GoogleFonts.manrope(fontSize: 15, color: const Color(0xFF74777e))),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: 24, height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF00152a)),
-          ),
+          const CircularProgressIndicator(color: Colors.white),
+          const SizedBox(height: 20),
+          Text('Loading...', style: GoogleFonts.manrope(fontSize: 16, color: Colors.white.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -545,7 +628,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 child: Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
-                    color: _currentStep > 0 ? const Color(0xFF00152a) : Colors.transparent,
+                    color: _currentStep > 0 ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -559,23 +642,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
               Expanded(
                 child: Text(
                   _steps[_currentStep],
-                  style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF171c1f)),
+                  style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
               Text(
                 '${_currentStep + 1}/${_steps.length}',
-                style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF74777e)),
+                style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.6)),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: (_currentStep + 1) / _steps.length,
-              backgroundColor: const Color(0xFFdfe3e7),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00152a)),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               minHeight: 6,
             ),
           ),

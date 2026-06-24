@@ -105,7 +105,7 @@ class _ScannerPageState extends State<ScannerPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
+      body: SafeArea(child: Stack(
         children: [
           MobileScanner(
             controller: _controller,
@@ -159,7 +159,7 @@ class _ScannerPageState extends State<ScannerPage>
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 }

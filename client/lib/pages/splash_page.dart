@@ -44,7 +44,7 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
-      body: Center(
+      body: SafeArea(child: Center(
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
@@ -62,7 +62,7 @@ class _SplashPageState extends State<SplashPage>
             height: 120,
           ),
         ),
-      ),
+      )),
     );
   }
 }

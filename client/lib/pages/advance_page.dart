@@ -64,7 +64,7 @@ class _AdvancePageState extends State<AdvancePage> {
     final colors = Theme.of(context).extension<AppColors>()!;
 
     return Scaffold(
-      body: Column(
+      body: SafeArea(child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -101,7 +101,7 @@ class _AdvancePageState extends State<AdvancePage> {
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 
