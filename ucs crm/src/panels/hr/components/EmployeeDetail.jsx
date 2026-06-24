@@ -4,6 +4,42 @@ import { ArrowLeft, ArrowRight, Pencil, Trash } from '../icons';
 import { Dropdown, DatePicker } from './ui';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://attendance-roan-zeta.vercel.app/api';
+const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+
+function fmtTime(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function extractTime(iso) {
+  if (!iso) return '';
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function reconstructIso(originalIso, newTime) {
+  if (!originalIso || !newTime) return originalIso;
+  const [h, m] = newTime.split(':').map(Number);
+  const ist = new Date(new Date(originalIso).getTime() + IST_OFFSET);
+  ist.setUTCHours(h, m, 0, 0);
+  return new Date(ist.getTime() - IST_OFFSET).toISOString();
+}
+
+function Badge({ status }) {
+  const map = {
+    present: { cls: 'badge-present', lbl: 'Present' },
+    late: { cls: 'badge-late', lbl: 'Late' },
+    absent: { cls: 'badge-absent', lbl: 'Absent' },
+    leave: { cls: 'badge-leave', lbl: 'Leave' },
+  };
+  const { cls, lbl } = map[status] || { cls: 'badge-pending', lbl: status || '\u2014' };
+  return <span className={`badge ${cls}`}>{lbl}</span>;
+}
 
 export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const { fetchWorkerById, fetchAttendance, fetchLeaves, fetchWorkerLetters, updateWorker, fetchWorkerSalaries, addWorkerSalary, updateWorkerSalary, fetchWorkerTargetForMonth, setAchievement, fetchWorkerAchievements, fetchIncentiveSummary, fetchWorkerAllocations, fetchWorkerSalaryAllocations, setWorkerAllocations, DEPTS, fetchNGOs, fetchHolidays } = useHR();
@@ -38,6 +74,11 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
   const [achSaving, setAchSaving] = useState({});
   const [allocations, setAllocations] = useState([]);
   const [sundayBonus, setSundayBonus] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editPunchIn, setEditPunchIn] = useState('');
+  const [editPunchOut, setEditPunchOut] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -359,6 +400,47 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
 
   const fmtMonthYear = (d) => d.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
 
+  const openEdit = (record) => {
+    setEditingRecord(record);
+    setEditPunchIn(extractTime(record.punch_in_time));
+    setEditPunchOut(extractTime(record.punch_out_time));
+    setEditStatus(record.status);
+  };
+
+  const closeEdit = () => {
+    setEditingRecord(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingRecord) return;
+    setEditLoading(true);
+    try {
+      const body = {
+        punch_in_time: reconstructIso(editingRecord.punch_in_time, editPunchIn),
+        punch_out_time: reconstructIso(editingRecord.punch_out_time, editPunchOut),
+        status: editStatus,
+      };
+      const res = await fetch(API_BASE + '/attendance/' + editingRecord.id, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('ucs_token'),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to update' }));
+        throw new Error(err.message || 'Update failed');
+      }
+      fetchAttendance().then(setAttendance).catch(() => {});
+      closeEdit();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
     <>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
@@ -638,6 +720,46 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
                     {filteredAttendance.length > 0 && <AttendanceChart records={filteredAttendance} />}
                   </div>
                 </div>
+
+                {filteredAttendance.length > 0 && (
+                  <div style={{ marginTop:16 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                      <h4 style={{ margin:0, fontSize:13, color:'var(--ink-soft)', textTransform:'uppercase', letterSpacing:0.5 }}>
+                        Records ({filteredAttendance.length})
+                      </h4>
+                    </div>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Punch In</th>
+                            <th>Punch Out</th>
+                            <th>Late (min)</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredAttendance.map(r => (
+                            <tr key={r.id} className={r.status === 'late' ? 'row-late' : r.status === 'absent' ? 'row-absent' : ''}>
+                              <td>{r.date}</td>
+                              <td><Badge status={r.status} /></td>
+                              <td>{fmtTime(r.punch_in_time)}</td>
+                              <td>{fmtTime(r.punch_out_time)}</td>
+                              <td>{r.late_minutes > 0 ? r.late_minutes : '\u2014'}</td>
+                              <td>
+                                <button className="btn btn-sm" onClick={() => openEdit(r)} title="Edit Attendance">
+                                  <Pencil width={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {filteredAttendance.length === 0 && (
                   <div className="empty" style={{ marginTop:12 }}>No attendance records found.</div>
@@ -1668,9 +1790,52 @@ export default function EmployeeDetail({ worker, onBack, onOffboard }) {
             </div>
           )}
 
-
         </div>
       </div>
+
+      {editingRecord && (
+        <div className="modal-overlay" onClick={closeEdit}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Edit Attendance</h3>
+              <button className="btn btn-sm" onClick={closeEdit}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <label className="field">
+                <span>Worker</span>
+                <input type="text" value={data?.name || ''} disabled />
+              </label>
+              <label className="field">
+                <span>Date</span>
+                <input type="text" value={editingRecord.date} disabled />
+              </label>
+              <label className="field">
+                <span>Punch In Time</span>
+                <input type="time" value={editPunchIn} onChange={e => setEditPunchIn(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Punch Out Time</span>
+                <input type="time" value={editPunchOut} onChange={e => setEditPunchOut(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Status</span>
+                <select value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+                  <option value="present">Present</option>
+                  <option value="late">Late</option>
+                  <option value="absent">Absent</option>
+                  <option value="leave">Leave</option>
+                </select>
+              </label>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={closeEdit}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveEdit} disabled={editLoading}>
+                {editLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
