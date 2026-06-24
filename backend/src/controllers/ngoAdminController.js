@@ -106,6 +106,16 @@ export const getDonorDetail = async (req, res) => {
   }
 };
 
+export const getAccessibleNgos = async (req, res) => {
+  try {
+    const access = await getUserNgoAccess(req.user.id);
+    const ngos = access.map(a => ({ id: a.ngo_id, name: a.ngo_name })).filter(n => n.id);
+    return res.json(ngos);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getFroWorkers = async (req, res) => {
   try {
     const ngoIds = await getUserNgoIds(req.user);
@@ -116,6 +126,19 @@ export const getFroWorkers = async (req, res) => {
     }
     const seen = new Set();
     const froWorkers = allWorkers.filter(w => { const k = w.id; if (seen.has(k)) return false; seen.add(k); return true; });
+
+    const workerIds = froWorkers.map(w => w.id);
+    let allocMap = {};
+    if (workerIds.length > 0) {
+      const { data: allAllocs } = await supabase
+        .from('worker_ngo_allocations')
+        .select('worker_id, ngo_id')
+        .in('worker_id', workerIds);
+      for (const a of allAllocs || []) {
+        if (!allocMap[a.worker_id]) allocMap[a.worker_id] = [];
+        allocMap[a.worker_id].push(a.ngo_id);
+      }
+    }
 
     const result = await Promise.all(froWorkers.map(async (w) => {
       const salary = await getActiveSalaryByWorker(w.id);
@@ -131,6 +154,7 @@ export const getFroWorkers = async (req, res) => {
         created_at: w.created_at,
         salary: salary ? parseFloat(salary.salary) : 0,
         salary_from_month: salary ? salary.from_month : null,
+        allocated_ngo_ids: allocMap[w.id] || [],
       };
     }));
 
