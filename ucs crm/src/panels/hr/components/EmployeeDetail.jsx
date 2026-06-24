@@ -23,7 +23,8 @@ function extractTime(iso) {
 }
 
 function reconstructIso(originalIso, newTime) {
-  if (!originalIso || !newTime) return originalIso;
+  if (!newTime) return null;
+  if (!originalIso) return originalIso;
   const [h, m] = newTime.split(':').map(Number);
   const ist = new Date(new Date(originalIso).getTime() + IST_OFFSET);
   ist.setUTCHours(h, m, 0, 0);

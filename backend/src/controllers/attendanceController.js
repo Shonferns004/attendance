@@ -215,10 +215,15 @@ export const updateAttendanceRecord = async (req, res) => {
     if (date !== undefined) updates.date = date;
 
     if (punch_in_time !== undefined) {
-      const existing = await getAttendanceById(id);
-      if (existing) {
-        updates.late_minutes = await calculateLateMinutes(punch_in_time, existing.worker_id);
-        updates.status = updates.late_minutes > 0 ? 'late' : 'present';
+      if (punch_in_time === null) {
+        updates.late_minutes = 0;
+        if (status === undefined) updates.status = 'absent';
+      } else {
+        const existing = await getAttendanceById(id);
+        if (existing) {
+          updates.late_minutes = await calculateLateMinutes(punch_in_time, existing.worker_id);
+          updates.status = updates.late_minutes > 0 ? 'late' : 'present';
+        }
       }
     }
 
