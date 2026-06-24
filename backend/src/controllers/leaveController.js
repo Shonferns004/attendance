@@ -62,7 +62,7 @@ export const apply = async (req, res) => {
       if (isNaN(ld.getTime())) {
         return res.status(400).json({ message: 'Invalid leave date' });
       }
-      const diff = daysBetween(getIstNow(), ld);
+      const diff = daysBetween(new Date(today + 'T00:00:00+05:30'), ld);
       if (diff < 2) {
         return res.status(400).json({ message: 'Full day leave must be applied at least 2 days prior' });
       }
@@ -79,7 +79,7 @@ export const apply = async (req, res) => {
       if (isNaN(ld.getTime())) {
         return res.status(400).json({ message: 'Invalid leave date' });
       }
-      const diff = daysBetween(getIstNow(), ld);
+      const diff = daysBetween(new Date(today + 'T00:00:00+05:30'), ld);
       if (diff < 1) {
         return res.status(400).json({ message: 'Half day leave must be applied at least 1 day prior' });
       }
@@ -99,7 +99,7 @@ export const apply = async (req, res) => {
       if (ed < sd) {
         return res.status(400).json({ message: 'End date must be on or after start date' });
       }
-      const diff = daysBetween(getIstNow(), sd);
+      const diff = daysBetween(new Date(today + 'T00:00:00+05:30'), sd);
       if (diff < 30) {
         return res.status(400).json({ message: 'Vacational leave must be applied at least 1 month prior' });
       }
