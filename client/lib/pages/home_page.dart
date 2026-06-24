@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _isPunchedIn = false;
   bool _isPunchedOut = false;
   bool _loading = true;
+  bool _isPressing = false;
   int _lateUsed = 0;
   int _present = 0, _absent = 0, _late = 0, _leave = 0;
   String _workerName = '';
@@ -275,7 +276,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _updateWorked();
       });
       if (mounted) {
-        HapticFeedback.heavyImpact();
+        HapticFeedback.vibrate();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Punched in successfully'),
@@ -311,7 +312,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _updateWorked();
       });
       if (mounted) {
-        HapticFeedback.heavyImpact();
+        HapticFeedback.vibrate();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Punched out successfully'),
@@ -351,12 +352,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         initialChildSize: 0.85,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: sc.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        builder: (_, scrollController) => SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              color: sc.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: LeavePage(scrollController: scrollController),
           ),
-          child: LeavePage(scrollController: scrollController),
         ),
       ),
     );
@@ -602,29 +605,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFaff1ca).withValues(alpha: 0.3),
+                        color: const Color(0xFFbfdbfe).withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.access_time, size: 18, color: const Color(0xFF317051)),
+                          Icon(Icons.access_time, size: 18, color: const Color(0xFF1d4ed8)),
                           const SizedBox(width: 6),
                           Text(
                             '$_workedDisplay',
                             style: TextStyle(
                               fontSize: 14, fontWeight: FontWeight.w500,
-                              color: const Color(0xFF317051),
+                              color: const Color(0xFF1d4ed8),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40),
+                      const SizedBox(height: 40),
                     if (_isPunchedOut)
                       Column(
                         children: [
-                          Icon(Icons.check_circle, size: 72, color: const Color(0xFF2a6a4b)),
+                          Icon(Icons.check_circle, size: 72, color: const Color(0xFF2563eb)),
                           const SizedBox(height: 12),
                           Text('Today completed', style: GoogleFonts.hankenGrotesk(
                             fontSize: 18, fontWeight: FontWeight.w600, color: sc.onSurface,
@@ -657,7 +660,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                           shape: BoxShape.circle,
                                           border: Border.all(
                                             color: _isPunchedIn
-                                                ? const Color(0xFF2a6a4b).withValues(alpha: 0.5)
+                                                ? const Color(0xFF2563eb).withValues(alpha: 0.5)
                                                 : const Color(0xFF00152a).withValues(alpha: 0.5),
                                             width: 2,
                                           ),
@@ -667,8 +670,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   );
                                 },
                               ),
-                            GestureDetector(
+                            AnimatedScale(
+                              scale: _isPressing ? 0.92 : 1.0,
+                              duration: const Duration(milliseconds: 100),
+                              child: GestureDetector(
                               onTap: _isPunchedIn ? _punchOut : _punchIn,
+                              onTapDown: (_) => setState(() => _isPressing = true),
+                              onTapUp: (_) => setState(() => _isPressing = false),
+                              onTapCancel: () => setState(() => _isPressing = false),
                               child: Container(
                                 width: 192,
                                 height: 192,
@@ -677,14 +686,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: _isPunchedIn
-                                        ? [const Color(0xFF2a6a4b), const Color(0xFF1e4d36)]
+                                        ? [const Color(0xFF2563eb), const Color(0xFF1e40af)]
                                         : [const Color(0xFF00152a), const Color(0xFF102a43)],
                                   ),
                                   borderRadius: BorderRadius.circular(100),
                                   boxShadow: [
                                     BoxShadow(
                                       color: _isPunchedIn
-                                          ? const Color(0xFF2a6a4b).withValues(alpha: 0.4)
+                                          ? const Color(0xFF2563eb).withValues(alpha: 0.4)
                                           : const Color(0xFF00152a).withValues(alpha: 0.4),
                                       blurRadius: 40,
                                       offset: const Offset(0, 20),
@@ -711,6 +720,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ),
                               ),
                             ),
+                          ),
                           ],
                         ),
                       ),
@@ -812,10 +822,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         Container(
                                           width: 36, height: 36,
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF2a6a4b).withValues(alpha: 0.1),
+                                            color: const Color(0xFF2563eb).withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(8),
                                           ),
-                                          child: Icon(Icons.event_available, size: 20, color: const Color(0xFF2a6a4b)),
+                                          child: Icon(Icons.event_available, size: 20, color: const Color(0xFF2563eb)),
                                         ),
                                         const Spacer(),
                                         Icon(Icons.chevron_right, size: 18, color: sc.onSurfaceVariant),
@@ -850,7 +860,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       child: LinearProgressIndicator(
                                         value: _attendanceRate,
                                         backgroundColor: const Color(0xFFe0e4ea),
-                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2a6a4b)),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563eb)),
                                         minHeight: 4,
                                       ),
                                     ),
@@ -1007,12 +1017,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             initialChildSize: 0.6,
                             minChildSize: 0.4,
                             maxChildSize: 0.85,
-                            builder: (_, scrollController) => Container(
-                              decoration: BoxDecoration(
-                                color: sc.surface,
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                            builder: (_, scrollController) => SafeArea(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: sc.surface,
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                                ),
+                                child: AdvancePage(scrollController: scrollController),
                               ),
-                              child: AdvancePage(scrollController: scrollController),
                             ),
                           ),
                         ),
@@ -1021,10 +1033,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             Container(
                               width: 48, height: 48,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFaff1ca),
+                                color: const Color(0xFFbfdbfe),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Icon(Icons.account_balance_wallet, size: 22, color: Color(0xFF2a6a4b)),
+                              child: const Icon(Icons.account_balance_wallet, size: 22, color: Color(0xFF2563eb)),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -1077,7 +1089,7 @@ Color _notifColor(String? type, ColorScheme sc) {
     case 'birthday':
       return const Color(0xFFf43f5e);
     case 'event':
-      return const Color(0xFF2a6a4b);
+      return const Color(0xFF2563eb);
     case 'notice':
       return const Color(0xFF00152a);
     case 'achievement':
@@ -1210,7 +1222,7 @@ class _NotificationSheetState extends State<_NotificationSheet> {
                         alignment: Alignment.centerLeft,
                         padding: const EdgeInsets.only(left: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2a6a4b),
+                          color: const Color(0xFF2563eb),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(

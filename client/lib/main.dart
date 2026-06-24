@@ -175,12 +175,12 @@ class AppColors extends ThemeExtension<AppColors> {
     primaryFixedDim: Color(0xFFb0c9e8),
     onPrimaryFixed: Color(0xFF011d35),
     onPrimaryFixedVariant: Color(0xFF314863),
-    secondaryContainer: Color(0xFFaff1ca),
-    onSecondaryContainer: Color(0xFF317051),
-    secondaryFixed: Color(0xFFaff1ca),
-    secondaryFixedDim: Color(0xFF93d4af),
-    onSecondaryFixed: Color(0xFF002112),
-    onSecondaryFixedVariant: Color(0xFF0a5135),
+    secondaryContainer: Color(0xFFbfdbfe),
+    onSecondaryContainer: Color(0xFF1d4ed8),
+    secondaryFixed: Color(0xFFbfdbfe),
+    secondaryFixedDim: Color(0xFF93c5fd),
+    onSecondaryFixed: Color(0xFF172554),
+    onSecondaryFixedVariant: Color(0xFF1e3a8a),
     tertiary: Color(0xFF201100),
     tertiaryContainer: Color(0xFF3c2300),
     onTertiary: Color(0xFFffffff),
@@ -223,10 +223,10 @@ class UfsAttendApp extends StatelessWidget {
           onPrimary: Color(0xFFffffff),
           primaryContainer: Color(0xFF102a43),
           onPrimaryContainer: Color(0xFF7a92b0),
-          secondary: Color(0xFF2a6a4b),
+          secondary: Color(0xFF2563eb),
           onSecondary: Color(0xFFffffff),
-          secondaryContainer: Color(0xFFaff1ca),
-          onSecondaryContainer: Color(0xFF317051),
+          secondaryContainer: Color(0xFFbfdbfe),
+          onSecondaryContainer: Color(0xFF1d4ed8),
           surface: Color(0xFFf6fafe),
           onSurface: Color(0xFF171c1f),
           surfaceContainerHighest: Color(0xFFdfe3e7),
@@ -409,7 +409,7 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
-          height: 64,
+          height: 72,
           decoration: BoxDecoration(
             color: const Color(0xFFf6fafe),
             border: Border(top: BorderSide(color: const Color(0xFFc3c6ce).withValues(alpha: 0.5))),
@@ -465,30 +465,23 @@ class _NavItem extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFaff1ca) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                size: 22,
-                color: isActive ? const Color(0xFF317051) : const Color(0xFF43474d),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isActive ? activeIcon : icon,
+              size: 24,
+              color: isActive ? const Color(0xFF2563eb) : const Color(0xFF74777e),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600,
+                color: isActive ? const Color(0xFF2563eb) : const Color(0xFF74777e),
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: isActive ? const Color(0xFF317051) : const Color(0xFF43474d),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

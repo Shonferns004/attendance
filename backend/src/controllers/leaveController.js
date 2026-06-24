@@ -22,7 +22,9 @@ function istDateStr(date) {
 }
 
 function daysBetween(a, b) {
-  const diff = b.getTime() - a.getTime();
+  const aDate = new Date(istDateStr(a) + 'T00:00:00+05:30');
+  const bDate = new Date(istDateStr(b) + 'T00:00:00+05:30');
+  const diff = bDate.getTime() - aDate.getTime();
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
@@ -67,7 +69,7 @@ export const apply = async (req, res) => {
       if (currentHour < 12) {
         return res.status(400).json({ message: 'Full day leave can only be applied after 12 PM' });
       }
-      days = 1;
+      days = 2;
       record.leave_date = leave_date;
     } else if (type === 'half_day') {
       if (!leave_date || !half_start_time || !half_end_time) {
@@ -81,7 +83,7 @@ export const apply = async (req, res) => {
       if (diff < 1) {
         return res.status(400).json({ message: 'Half day leave must be applied at least 1 day prior' });
       }
-      days = 0.5;
+      days = 1;
       record.leave_date = leave_date;
       record.half_start_time = half_start_time;
       record.half_end_time = half_end_time;
@@ -112,7 +114,7 @@ export const apply = async (req, res) => {
       if (isNaN(ld.getTime())) {
         return res.status(400).json({ message: 'Invalid leave date' });
       }
-      days = 1;
+      days = 0;
       record.leave_date = leave_date;
     }
 

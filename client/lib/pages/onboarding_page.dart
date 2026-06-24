@@ -255,7 +255,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${documentType.replaceAll('_', ' ').toUpperCase()} uploaded'), backgroundColor: const Color(0xFF2a6a4b)),
+          SnackBar(content: Text('${documentType.replaceAll('_', ' ').toUpperCase()} uploaded'), backgroundColor: const Color(0xFF2563eb)),
         );
       }
     } catch (e) {
@@ -299,7 +299,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       setState(() => _uploadedPhotoUrl = result['photo_url']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo uploaded successfully'), backgroundColor: Color(0xFF2a6a4b)),
+          const SnackBar(content: Text('Photo uploaded successfully'), backgroundColor: Color(0xFF2563eb)),
         );
       }
     } catch (e) {
@@ -614,7 +614,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         child: ElevatedButton(
           onPressed: _submitting ? null : _submitOnboarding,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2a6a4b),
+            backgroundColor: const Color(0xFF2563eb),
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1104,7 +1104,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
-                  border: Border.all(color: _uploadedPhotoUrl != null ? const Color(0xFF2a6a4b) : const Color(0xFFc3c6ce), width: 3),
+                  border: Border.all(color: _uploadedPhotoUrl != null ? const Color(0xFF2563eb) : const Color(0xFFc3c6ce), width: 3),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
                   ],
@@ -1226,18 +1226,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isUploaded ? const Color(0xFF2a6a4b) : const Color(0xFFdfe3e7)),
+        border: Border.all(color: isUploaded ? const Color(0xFF2563eb) : const Color(0xFFdfe3e7)),
       ),
       child: Row(
         children: [
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: isUploaded ? const Color(0xFFaff1ca) : const Color(0xFFdfe3e7),
+              color: isUploaded ? const Color(0xFFbfdbfe) : const Color(0xFFdfe3e7),
               borderRadius: BorderRadius.circular(10),
             ),
             child: isUploaded
-                ? const Icon(Icons.check_circle, color: Color(0xFF2a6a4b), size: 24)
+                ? const Icon(Icons.check_circle, color: Color(0xFF2563eb), size: 24)
                 : Icon(icon, size: 22, color: const Color(0xFF74777e)),
           ),
           const SizedBox(width: 12),
@@ -1247,7 +1247,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               children: [
                 Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171c1f))),
                 Text(isUploaded ? 'Uploaded ✓' : subtitle,
-                  style: TextStyle(fontSize: 12, color: isUploaded ? const Color(0xFF2a6a4b) : const Color(0xFF74777e))),
+                  style: TextStyle(fontSize: 12, color: isUploaded ? const Color(0xFF2563eb) : const Color(0xFF74777e))),
               ],
             ),
           ),
@@ -1442,14 +1442,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _policiesAccepted ? const Color(0xFF2a6a4b) : const Color(0xFFdfe3e7)),
+              border: Border.all(color: _policiesAccepted ? const Color(0xFF2563eb) : const Color(0xFFdfe3e7)),
             ),
             child: Row(
               children: [
                 Checkbox(
                   value: _policiesAccepted,
                   onChanged: (v) => setState(() => _policiesAccepted = v ?? false),
-                  activeColor: const Color(0xFF2a6a4b),
+                  activeColor: const Color(0xFF2563eb),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
                 const SizedBox(width: 8),
@@ -1569,10 +1569,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: const Color(0xFFaff1ca),
+              color: const Color(0xFFbfdbfe),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle, size: 56, color: Color(0xFF2a6a4b)),
+            child: const Icon(Icons.check_circle, size: 56, color: Color(0xFF2563eb)),
           ),
           const SizedBox(height: 24),
           Text('Onboarding Complete!',
@@ -1645,7 +1645,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               child: ElevatedButton(
                 onPressed: widget.onComplete,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2a6a4b),
+                  backgroundColor: const Color(0xFF2563eb),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

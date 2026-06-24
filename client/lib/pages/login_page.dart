@@ -10,14 +10,25 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
   final _loginCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
+  late final AnimationController _animCtrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 8));
+    _anim = Tween<double>(begin: 0, end: 1).animate(_animCtrl);
+    _animCtrl.repeat(reverse: true);
+  }
 
   @override
   void dispose() {
+    _animCtrl.dispose();
     _loginCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
@@ -40,17 +51,71 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF00152a),
-              const Color(0xFF102a43),
-            ],
-          ),
-        ),
+      body: AnimatedBuilder(
+        animation: _anim,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(const Color(0xFF0f172a), const Color(0xFF1e3a8a), _anim.value)!,
+                  Color.lerp(const Color(0xFF1e293b), const Color(0xFF2563eb), _anim.value)!,
+                ],
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: -40 + _anim.value * 20,
+                  left: -30 + _anim.value * 15,
+                  child: Container(
+                    width: 200, height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF3b82f6).withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 60 - _anim.value * 25,
+                  right: -50 + _anim.value * 20,
+                  child: Container(
+                    width: 260, height: 260,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF60a5fa).withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 200 + _anim.value * 30,
+                  left: -60 + _anim.value * 10,
+                  child: Container(
+                    width: 160, height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF2563eb).withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 80 - _anim.value * 15,
+                  right: 20 - _anim.value * 10,
+                  child: Container(
+                    width: 100, height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF93c5fd).withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+                child!,
+              ],
+            ),
+          );
+        },
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -66,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('UFS Attendance', style: GoogleFonts.hankenGrotesk(
+                  Text('UCS Attendance', style: GoogleFonts.hankenGrotesk(
                     fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white,
                   )),
                   const SizedBox(height: 4),
@@ -81,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFffffff),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFc3c6ce)),
+                      border: Border.all(color: const Color(0xFF2563eb)),
                     ),
                     child: Column(
                       children: [
@@ -126,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: ElevatedButton(
                             onPressed: _loading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00152a),
+                              backgroundColor: const Color(0xFF2563eb),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
@@ -134,7 +199,14 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             child: _loading
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                ? const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                                      SizedBox(width: 10),
+                                      Text('Signing in...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                                    ],
+                                  )
                                 : Text('Sign In', style: GoogleFonts.hankenGrotesk(
                                     fontSize: 16, fontWeight: FontWeight.w700,
                                   )),

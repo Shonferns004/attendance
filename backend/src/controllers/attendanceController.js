@@ -168,7 +168,9 @@ export const todayStatus = async (req, res) => {
 
 function expandLeaveDates(leave) {
   const dates = [];
-  if (leave.type === 'full_day' && leave.leave_date) {
+  if ((leave.type === 'full_day' || leave.type === 'emergency') && leave.leave_date) {
+    dates.push(leave.leave_date);
+  } else if (leave.type === 'half_day' && leave.leave_date) {
     dates.push(leave.leave_date);
   } else if (leave.type === 'vacational' && leave.start_date && leave.end_date) {
     const start = new Date(leave.start_date + 'T00:00:00+05:30');
@@ -271,7 +273,6 @@ export const myHistory = async (req, res) => {
 
     const leaveByDate = {};
     for (const leave of approvedLeaves) {
-      if (leave.type === 'half_day') continue;
       for (const date of expandLeaveDates(leave)) {
         leaveByDate[date] = true;
       }

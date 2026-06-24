@@ -31,6 +31,14 @@ class _ScannerPageState extends State<ScannerPage>
     _scanLine = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scanAnim, curve: Curves.easeInOut),
     );
+    _controller.addListener(_onControllerUpdate);
+  }
+
+  void _onControllerUpdate() {
+    if (_controller.value.isInitialized && _controller.value.isRunning) {
+      _controller.setZoomScale(0.35);
+      _controller.removeListener(_onControllerUpdate);
+    }
   }
 
   @override
@@ -69,7 +77,7 @@ class _ScannerPageState extends State<ScannerPage>
       return;
     }
 
-    HapticFeedback.heavyImpact();
+    HapticFeedback.vibrate();
 
     try {
       final pos = await Geolocator.getCurrentPosition(
@@ -223,7 +231,7 @@ class _OverlayPainter extends CustomPainter {
 
     final lineY = scanRect.top + scanRect.height * scanLineValue;
     final linePaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.6)
+      ..color = const Color(0xFF2563eb).withValues(alpha: 0.6)
       ..strokeWidth = 2.0;
     canvas.drawLine(
       Offset(scanRect.left + 4, lineY),
@@ -232,7 +240,7 @@ class _OverlayPainter extends CustomPainter {
     );
 
     final cornerPaint = Paint()
-      ..color = const Color(0xFF00E676)
+      ..color = const Color(0xFF2563eb)
       ..strokeWidth = 3.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

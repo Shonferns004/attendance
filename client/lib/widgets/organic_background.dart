@@ -42,7 +42,7 @@ class OrganicBackground extends StatelessWidget {
               left: -40,
               child: CustomPaint(
                 size: Size(260, 260),
-                painter: _BlobPainter(const Color(0xFFaff1ca).withValues(alpha: 0.10)),
+                painter: _BlobPainter(const Color(0xFFbfdbfe).withValues(alpha: 0.10)),
               ),
             ),
             Positioned(

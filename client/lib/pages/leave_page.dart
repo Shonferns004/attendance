@@ -256,40 +256,42 @@ class _LeavePageState extends State<LeavePage> {
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Container(width: 48, height: 4,
-          decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(4))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Attendance', style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 40, height: 40,
-                  alignment: Alignment.center,
-                  child: Icon(Icons.close, color: scheme.onSurfaceVariant),
+    return Scaffold(
+      body: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(width: 48, height: 4,
+            decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(4))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Attendance', style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary)),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40, height: 40,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.close, color: scheme.onSurfaceVariant),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: ListView(
-            controller: widget.scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-            children: [
-              _buildForm(colors, scheme, tt),
-              const SizedBox(height: 16),
-              _buildHistory(colors, scheme, tt),
-            ],
+          Expanded(
+            child: ListView(
+              controller: widget.scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+              children: [
+                _buildForm(colors, scheme, tt),
+                const SizedBox(height: 16),
+                _buildHistory(colors, scheme, tt),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
