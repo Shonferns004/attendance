@@ -932,29 +932,29 @@ export const distributeNewData = async (req, res) => {
         const existingMap = {};
         for (const p of existingProfiles || []) existingMap[p.mobile_number] = p.id;
 
-        let convertedCount = 0;
+        const toInsert = [];
         for (const mobile of mobiles) {
           if (!existingMap[mobile]) {
             const row = latest[mobile];
-            const { data: newProfile } = await supabase
-              .from('donor_profiles')
-              .insert({
-                mobile_number: mobile,
-                name: row.name || null,
-                category: row.category || '',
-                amount: parseFloat(row.amount) || 0,
-                total_amount: parseFloat(row.amount) || 0,
-                donation_count: 1,
-                ngo: ngoName,
-              })
-              .select('id')
-              .single();
-            if (newProfile) newProfileIds.push(newProfile.id);
-            convertedCount++;
+            toInsert.push({
+              mobile_number: mobile,
+              name: row.name || null,
+              category: row.category || '',
+              amount: parseFloat(row.amount) || 0,
+              total_amount: parseFloat(row.amount) || 0,
+              donation_count: 1,
+              ngo: ngoName,
+            });
           }
         }
 
-        if (convertedCount > 0) {
+        if (toInsert.length > 0) {
+          const { data: newProfiles } = await supabase
+            .from('donor_profiles')
+            .insert(toInsert)
+            .select('id');
+          newProfileIds = (newProfiles || []).map(p => p.id);
+          const convertedCount = toInsert.length;
           await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
           totalConverted += convertedCount;
           messages.push(`${convertedCount} new donors converted to profiles (${ngoName})`);
@@ -1030,9 +1030,11 @@ export const distributeNewData = async (req, res) => {
       }
 
       // Batch update donor profiles with station
-      for (const [donorId, station] of Object.entries(donorStationMap)) {
-        await supabase.from('donor_profiles').update({ station }).eq('id', parseInt(donorId));
-      }
+      await Promise.all(
+        Object.entries(donorStationMap).map(([donorId, station]) =>
+          supabase.from('donor_profiles').update({ station }).eq('id', parseInt(donorId))
+        )
+      );
 
       // Step 5: Create FRO assignments for stations that have FROs
       const newAssignments = [];
