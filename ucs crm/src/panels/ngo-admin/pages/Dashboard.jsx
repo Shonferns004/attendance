@@ -22,17 +22,40 @@ const DISPOSITION_LABELS = {
   donation_collected: 'Donation Collected',
 };
 
-const STATUS_COLORS = {
-  green: new Set(['donation_collected', 'promise_to_pay', 'lead_done', 'visit_donate']),
-  blue: new Set(['transferred_senior', 'query_complaint', 'receipt_request', 'payment_pending', 'already_donated']),
-  amber: new Set(['pending', 'contacted', 'follow_up', 'scheduled']),
-};
+const STATUS_GROUPS = [
+  {
+    label: 'Active',
+    statuses: ['pending', 'contacted', 'follow_up', 'scheduled'],
+    colors: { bg: '#fffbeb', text: '#92400e', dot: '#f59e0b', cellBg: '#fefce8' },
+  },
+  {
+    label: 'Positive',
+    statuses: ['donation_collected', 'promise_to_pay', 'lead_done', 'visit_donate', 'payment_pending', 'already_donated'],
+    colors: { bg: '#f0fdf4', text: '#166534', dot: '#22c55e', cellBg: '#f0fdf4' },
+  },
+  {
+    label: 'Negative',
+    statuses: ['not_interested', 'not_interested_now', 'rejected', 'unreachable', 'switched_off', 'wrong_number', 'invalid_number', 'busy', 'ringing', 'language_barrier'],
+    colors: { bg: '#fef2f2', text: '#991b1b', dot: '#ef4444', cellBg: '#fef2f2' },
+  },
+  {
+    label: 'Other',
+    statuses: ['transferred_senior', 'query_complaint', 'receipt_request'],
+    colors: { bg: '#eff6ff', text: '#1e40af', dot: '#3b82f6', cellBg: '#eff6ff' },
+  },
+];
+
+const STATUS_GROUP_MAP = {};
+for (const g of STATUS_GROUPS) {
+  for (const s of g.statuses) {
+    STATUS_GROUP_MAP[s] = g;
+  }
+}
 
 const getStatusStyle = (status) => {
-  if (STATUS_COLORS.green.has(status)) return { bg: '#f0fdf4', text: '#166534', dot: '#22c55e' };
-  if (STATUS_COLORS.blue.has(status)) return { bg: '#eff6ff', text: '#1e40af', dot: '#3b82f6' };
-  if (STATUS_COLORS.amber.has(status)) return { bg: '#fffbeb', text: '#92400e', dot: '#f59e0b' };
-  return { bg: '#fef2f2', text: '#991b1b', dot: '#ef4444' };
+  const g = STATUS_GROUP_MAP[status];
+  if (!g) return { bg: '#f9fafb', text: '#374151', dot: '#6b7280', cellBg: '#f9fafb' };
+  return g.colors;
 };
 
 const STYLES = {
@@ -122,124 +145,198 @@ export default function Dashboard() {
       </div>
 
       {stationNames.length > 0 && (
-        <div className="card" style={{ overflowX: 'auto' }}>
-          <div className="card-head">
-            <h3>Station-wise Disposition Matrix</h3>
-            <span className="count">{stationNames.length} stations</span>
+        <div className="card" style={{ overflowX: 'auto', borderRadius: 12 }}>
+          <div className="card-head" style={{ borderBottom: '1px solid var(--line, #e5e7eb)', padding: '14px 20px' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Station-wise Disposition Matrix</h3>
+            <span className="count" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: '#f0fdf4', color: '#166534', fontWeight: 600 }}>{stationNames.length} stations</span>
           </div>
-          <div className="card-pad" style={{ overflowX: 'auto', padding: 0 }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 700, fontSize: 13 }}>
+          <div className="card-pad" style={{ padding: 0 }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 750 }}>
               <thead>
                 <tr>
                   <th style={{
-                    textAlign: 'left', padding: '12px 16px',
-                    borderBottom: '2px solid var(--line, #e5e7eb)',
+                    textAlign: 'left', padding: '14px 20px',
+                    borderBottom: '2px solid #e2e8f0',
                     background: '#f8fafc', position: 'sticky', left: 0, zIndex: 2,
-                    fontWeight: 700, fontSize: 12, textTransform: 'uppercase',
-                    letterSpacing: '0.04em', color: '#64748b', minWidth: 150,
+                    fontWeight: 700, fontSize: 11, textTransform: 'uppercase',
+                    letterSpacing: '0.05em', color: '#64748b', minWidth: 140,
                   }}>
                     Disposition
                   </th>
                   {stationNames.map(s => (
                     <th key={s} style={{
-                      textAlign: 'center', padding: '12px 8px',
-                      borderBottom: '2px solid var(--line, #e5e7eb)',
+                      textAlign: 'center', padding: '14px 6px',
+                      borderBottom: '2px solid #e2e8f0',
                       background: '#f8fafc',
-                      fontWeight: 700, fontSize: 12, textTransform: 'uppercase',
-                      letterSpacing: '0.03em', color: '#475569', whiteSpace: 'nowrap',
+                      fontWeight: 700, fontSize: 11, textTransform: 'uppercase',
+                      letterSpacing: '0.04em', color: '#475569', whiteSpace: 'nowrap',
                     }}>
                       {s}
                     </th>
                   ))}
                   <th style={{
-                    textAlign: 'center', padding: '12px 16px',
-                    borderBottom: '2px solid var(--line, #e5e7eb)',
+                    textAlign: 'center', padding: '14px 20px',
+                    borderBottom: '2px solid #e2e8f0',
                     background: '#eef2ff',
-                    fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                    letterSpacing: '0.04em', color: '#4338ca',
+                    fontWeight: 800, fontSize: 11, textTransform: 'uppercase',
+                    letterSpacing: '0.05em', color: '#4338ca',
                   }}>
                     Total
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {DISPOSITION_ORDER.map(status => {
-                  const rowTotal = summary[status] || 0;
-                  if (rowTotal === 0 && stationNames.every(s => getCell(s, status) === 0)) return null;
-                  const sc = getStatusStyle(status);
+                {STATUS_GROUPS.map(group => {
+                  const visibleStatuses = group.statuses.filter(status => {
+                    const rowTotal = summary[status] || 0;
+                    return rowTotal > 0 || stationNames.some(s => getCell(s, status) > 0);
+                  });
+                  if (visibleStatuses.length === 0) return null;
                   return (
-                    <tr key={status} style={{ transition: 'background 0.1s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                      <td style={{
-                        padding: '8px 16px',
-                        borderBottom: '1px solid var(--line, #e5e7eb)',
-                        fontWeight: 600, fontSize: 12,
-                        position: 'sticky', left: 0, background: '#fff',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 8,
-                          padding: '3px 10px', borderRadius: 20,
-                          background: sc.bg, color: sc.text, fontSize: 12, fontWeight: 600,
+                    <Fragment key={group.label}>
+                      <tr>
+                        <td colSpan={stationNames.length + 2} style={{
+                          padding: '8px 20px 4px',
+                          fontWeight: 700, fontSize: 11,
+                          textTransform: 'uppercase', letterSpacing: '0.08em',
+                          color: group.colors.text,
+                          background: group.colors.bg,
+                          borderBottom: '1px solid #e2e8f0',
                         }}>
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
-                          {DISPOSITION_LABELS[status] || status}
-                        </span>
-                      </td>
-                      {stationNames.map(s => {
-                        const val = getCell(s, status);
+                          {group.label}
+                        </td>
+                      </tr>
+                      {visibleStatuses.map(status => {
+                        const rowTotal = summary[status] || 0;
+                        const sc = getStatusStyle(status);
+                        const maxStation = Math.max(...stationNames.map(s => getCell(s, status)), 1);
                         return (
-                          <td key={s} style={{
-                            padding: '8px 8px',
-                            borderBottom: '1px solid var(--line, #e5e7eb)',
-                            textAlign: 'center',
-                            fontWeight: val > 0 ? 600 : 400,
-                            color: val > 0 ? sc.text : '#e2e8f0',
-                            fontSize: 14,
-                            background: val > 0 ? sc.bg : 'transparent',
-                            transition: 'background 0.1s',
-                          }}>
-                            {val || 0}
-                          </td>
+                          <tr key={status} style={{ transition: 'background 0.1s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
+                            <td style={{
+                              padding: '6px 20px',
+                              borderBottom: '1px solid #f1f5f9',
+                              fontWeight: 600, fontSize: 12,
+                              position: 'sticky', left: 0, background: '#fff',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 7,
+                                padding: '2px 10px', borderRadius: 20,
+                                background: sc.bg, color: sc.text, fontSize: 11, fontWeight: 600,
+                              }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
+                                {DISPOSITION_LABELS[status] || status}
+                              </span>
+                            </td>
+                            {stationNames.map(s => {
+                              const val = getCell(s, status);
+                              const pct = maxStation > 0 ? (val / maxStation) * 100 : 0;
+                              return (
+                                <td key={s} style={{
+                                  padding: '6px 4px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  position: 'relative',
+                                }}>
+                                  {val > 0 ? (
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      minWidth: 28, height: 26,
+                                      padding: '0 8px',
+                                      borderRadius: 8,
+                                      background: sc.cellBg,
+                                      color: sc.text,
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                      position: 'relative',
+                                      overflow: 'hidden',
+                                    }}>
+                                      <span style={{
+                                        position: 'absolute', left: 0, top: 0, bottom: 0,
+                                        width: `${Math.max(pct, 8)}%`,
+                                        background: sc.dot,
+                                        opacity: 0.1,
+                                        borderRadius: 8,
+                                      }} />
+                                      <span style={{ position: 'relative', zIndex: 1 }}>{val}</span>
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#e2e8f0', fontSize: 12 }}>—</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td style={{
+                              padding: '6px 20px',
+                              borderBottom: '1px solid #f1f5f9',
+                              textAlign: 'center',
+                              fontWeight: 700, fontSize: 13,
+                              background: sc.cellBg, color: sc.text,
+                            }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                minWidth: 28, height: 28,
+                                borderRadius: 8,
+                                fontWeight: 700, fontSize: 13,
+                              }}>
+                                {rowTotal}
+                              </span>
+                            </td>
+                          </tr>
                         );
                       })}
-                      <td style={{
-                        padding: '8px 16px',
-                        borderBottom: '1px solid var(--line, #e5e7eb)',
-                        textAlign: 'center',
-                        fontWeight: 700, fontSize: 14,
-                        background: sc.bg, color: sc.text,
-                      }}>
-                        {rowTotal}
-                      </td>
-                    </tr>
+                    </Fragment>
                   );
                 })}
                 <tr style={{ background: '#f0fdf4' }}>
                   <td style={{
-                    padding: '10px 16px',
-                    borderTop: '2px solid var(--line, #e5e7eb)',
+                    padding: '12px 20px',
+                    borderTop: '2px solid #bbf7d0',
                     fontWeight: 800, fontSize: 13,
                     position: 'sticky', left: 0, background: '#f0fdf4',
                     color: '#166534',
                   }}>
                     Total
                   </td>
-                  {stationNames.map(s => (
-                    <td key={s} style={{
-                      padding: '10px 8px',
-                      borderTop: '2px solid var(--line, #e5e7eb)',
-                      textAlign: 'center',
-                      fontWeight: 800, fontSize: 14,
-                      color: '#166534',
-                    }}>
-                      {getStationTotal(s)}
-                    </td>
-                  ))}
+                  {stationNames.map(s => {
+                    const total = getStationTotal(s);
+                    const grandTotal = stationNames.reduce((t, st) => t + getStationTotal(st), 0);
+                    const pct = grandTotal > 0 ? (total / grandTotal) * 100 : 0;
+                    return (
+                      <td key={s} style={{
+                        padding: '12px 4px',
+                        borderTop: '2px solid #bbf7d0',
+                        textAlign: 'center',
+                        position: 'relative',
+                      }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          minWidth: 32, height: 30,
+                          padding: '0 10px',
+                          borderRadius: 8,
+                          background: '#dcfce7',
+                          color: '#166534',
+                          fontWeight: 800, fontSize: 14,
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}>
+                          <span style={{
+                            position: 'absolute', left: 0, top: 0, bottom: 0,
+                            width: `${pct}%`,
+                            background: '#22c55e',
+                            opacity: 0.15,
+                            borderRadius: 8,
+                          }} />
+                          <span style={{ position: 'relative', zIndex: 1 }}>{total}</span>
+                        </span>
+                      </td>
+                    );
+                  })}
                   <td style={{
-                    padding: '10px 16px',
-                    borderTop: '2px solid var(--line, #e5e7eb)',
+                    padding: '12px 20px',
+                    borderTop: '2px solid #bbf7d0',
                     textAlign: 'center',
                     fontWeight: 800, fontSize: 15,
                     background: '#dcfce7', color: '#166534',
@@ -254,4 +351,8 @@ export default function Dashboard() {
       )}
     </div>
   );
+}
+
+function Fragment({ children }) {
+  return children;
 }
