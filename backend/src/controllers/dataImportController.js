@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { insertNewDataBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById, updateNewDataStatus } from '../models/newDataModel.js';
+import { insertNewDataBatch, getImportBatches, getBatchRecords, getBatchCount, getBatchById, updateNewDataStatus, getAllExistingMobiles } from '../models/newDataModel.js';
 import { upsertDonorProfile } from '../models/donorProfileModel.js';
 import supabase from '../config/supabase.js';
 import {
@@ -47,6 +47,11 @@ export const uploadImport = async (req, res) => {
 
     const { deduped, duplicatesRemoved } = dedupRows(extracted);
 
+    // Cross-batch dedup: remove mobiles already existing in any previous import
+    const existingMobiles = await getAllExistingMobiles();
+    const trulyNew = deduped.filter(r => !existingMobiles.has(r.mobile_number));
+    const crossBatchDups = deduped.length - trulyNew.length;
+
     const { data: ngos, error: nErr } = await supabase
       .from('ngos')
       .select('id, name')
@@ -55,55 +60,53 @@ export const uploadImport = async (req, res) => {
 
     const importBatchId = uuidv4();
 
-    // Distribute donors equally among NGOs
-    let ngoIndex = 0;
+    // Send each record to ALL active NGOs (one row per NGO)
     const ngoNames = ngos && ngos.length > 0 ? ngos.map(n => n.name) : ['Default'];
     const dbRows = [];
 
-    for (const r of deduped) {
-      const ngo = ngoNames[ngoIndex % ngoNames.length];
-      ngoIndex++;
-
-      const row = {
-        data_source_id,
-        import_date: date,
-        import_batch_id: importBatchId,
-        mobile_number: r.mobile_number,
-        name: r.name || null,
-        category: r.category || '',
-        amount: r.amount || 0,
-        ngo,
-      };
-      if (fullSheet) {
-        Object.assign(row, {
-          transaction_date: r.transaction_date || null,
-          bank_donor_name: r.bank_donor_name || null,
-          agent_donor_name: r.agent_donor_name || null,
-          mobile_2: r.mobile_2 || null,
-          address_1: r.address_1 || null,
-          address_2: r.address_2 || null,
-          city: r.city || null,
-          pin_code: r.pin_code || null,
-          pan_number: r.pan_number || null,
-          email: r.email || null,
-          birth_date: r.birth_date || null,
-          data_category: r.data_category || null,
-          team: r.team || null,
-          agent_name: r.agent_name || null,
-          mop: r.mop || null,
-          received_bank: r.received_bank || null,
-          payment_id_no: r.payment_id_no || null,
-          donors_bank_name: r.donors_bank_name || null,
-          receipt_no: r.receipt_no || null,
-          receipt_date: r.receipt_date || null,
-          receipt_time: r.receipt_time || null,
-          project_supported: r.project_supported || null,
-          account_of: r.account_of || null,
-          branch: r.branch || null,
-          station: r.station || null,
-        });
+    for (const r of trulyNew) {
+      for (const ngo of ngoNames) {
+        const row = {
+          data_source_id,
+          import_date: date,
+          import_batch_id: importBatchId,
+          mobile_number: r.mobile_number,
+          name: r.name || null,
+          category: r.category || '',
+          amount: r.amount || 0,
+          ngo,
+        };
+        if (fullSheet) {
+          Object.assign(row, {
+            transaction_date: r.transaction_date || null,
+            bank_donor_name: r.bank_donor_name || null,
+            agent_donor_name: r.agent_donor_name || null,
+            mobile_2: r.mobile_2 || null,
+            address_1: r.address_1 || null,
+            address_2: r.address_2 || null,
+            city: r.city || null,
+            pin_code: r.pin_code || null,
+            pan_number: r.pan_number || null,
+            email: r.email || null,
+            birth_date: r.birth_date || null,
+            data_category: r.data_category || null,
+            team: r.team || null,
+            agent_name: r.agent_name || null,
+            mop: r.mop || null,
+            received_bank: r.received_bank || null,
+            payment_id_no: r.payment_id_no || null,
+            donors_bank_name: r.donors_bank_name || null,
+            receipt_no: r.receipt_no || null,
+            receipt_date: r.receipt_date || null,
+            receipt_time: r.receipt_time || null,
+            project_supported: r.project_supported || null,
+            account_of: r.account_of || null,
+            branch: r.branch || null,
+            station: r.station || null,
+          });
+        }
+        dbRows.push(row);
       }
-      dbRows.push(row);
     }
 
     const inserted = await insertNewDataBatch(dbRows);
@@ -116,14 +119,16 @@ export const uploadImport = async (req, res) => {
     const distribution = Object.entries(ngoCounts).map(([name, count]) => `${count} → ${name}`);
 
     return res.status(201).json({
-      message: 'Data imported and distributed to NGOs successfully',
+      message: 'Data imported and replicated to all active NGOs successfully',
       batch_id: importBatchId,
       total_in_file: extracted.length,
       duplicates_removed: duplicatesRemoved,
+      cross_batch_duplicates: crossBatchDups,
       imported: inserted.length,
       distribution: distribution.join('; '),
       ngo_counts: ngoCounts,
       ngos_used: ngoNames.length,
+      per_ngo_count: trulyNew.length,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -154,58 +159,77 @@ export const uploadOldDataImport = async (req, res) => {
       }
     }
 
+    // Cross-batch dedup
+    const existingMobiles = await getAllExistingMobiles();
+    const trulyNew = extracted.filter(r => !existingMobiles.has(r.mobile_number));
+    const crossBatchDups = extracted.length - trulyNew.length;
+
+    const { data: ngos, error: nErr } = await supabase
+      .from('ngos')
+      .select('id, name')
+      .eq('is_active', true);
+    if (nErr) throw nErr;
+
     const importBatchId = uuidv4();
 
-    const dbRows = extracted.map((r) => {
-      const row = {
-        data_source_id,
-        import_date: date,
-        import_batch_id: importBatchId,
-        mobile_number: r.mobile_number,
-        name: r.name || null,
-        category: r.category || '',
-        amount: r.amount || 0,
-      };
-      if (fullSheet) {
-        Object.assign(row, {
-          transaction_date: r.transaction_date || null,
-          bank_donor_name: r.bank_donor_name || null,
-          agent_donor_name: r.agent_donor_name || null,
-          mobile_2: r.mobile_2 || null,
-          address_1: r.address_1 || null,
-          address_2: r.address_2 || null,
-          city: r.city || null,
-          pin_code: r.pin_code || null,
-          pan_number: r.pan_number || null,
-          email: r.email || null,
-          birth_date: r.birth_date || null,
-          data_category: r.data_category || null,
-          team: r.team || null,
-          agent_name: r.agent_name || null,
-          mop: r.mop || null,
-          received_bank: r.received_bank || null,
-          payment_id_no: r.payment_id_no || null,
-          donors_bank_name: r.donors_bank_name || null,
-          receipt_no: r.receipt_no || null,
-          receipt_date: r.receipt_date || null,
-          receipt_time: r.receipt_time || null,
-          project_supported: r.project_supported || null,
-          account_of: r.account_of || null,
-          branch: r.branch || null,
-          station: r.station || null,
-          ngo: r.ngo || null,
-        });
+    // Send to ALL active NGOs
+    const ngoNames = ngos && ngos.length > 0 ? ngos.map(n => n.name) : ['Default'];
+    const dbRows = [];
+
+    for (const r of trulyNew) {
+      for (const ngo of ngoNames) {
+        const row = {
+          data_source_id,
+          import_date: date,
+          import_batch_id: importBatchId,
+          mobile_number: r.mobile_number,
+          name: r.name || null,
+          category: r.category || '',
+          amount: r.amount || 0,
+          ngo,
+        };
+        if (fullSheet) {
+          Object.assign(row, {
+            transaction_date: r.transaction_date || null,
+            bank_donor_name: r.bank_donor_name || null,
+            agent_donor_name: r.agent_donor_name || null,
+            mobile_2: r.mobile_2 || null,
+            address_1: r.address_1 || null,
+            address_2: r.address_2 || null,
+            city: r.city || null,
+            pin_code: r.pin_code || null,
+            pan_number: r.pan_number || null,
+            email: r.email || null,
+            birth_date: r.birth_date || null,
+            data_category: r.data_category || null,
+            team: r.team || null,
+            agent_name: r.agent_name || null,
+            mop: r.mop || null,
+            received_bank: r.received_bank || null,
+            payment_id_no: r.payment_id_no || null,
+            donors_bank_name: r.donors_bank_name || null,
+            receipt_no: r.receipt_no || null,
+            receipt_date: r.receipt_date || null,
+            receipt_time: r.receipt_time || null,
+            project_supported: r.project_supported || null,
+            account_of: r.account_of || null,
+            branch: r.branch || null,
+            station: r.station || null,
+          });
+        }
+        dbRows.push(row);
       }
-      return row;
-    });
+    }
 
     const inserted = await insertNewDataBatch(dbRows);
 
     let profilesCreated = 0;
     const errors = [];
     const BATCH_SIZE = 10;
-    for (let i = 0; i < extracted.length; i += BATCH_SIZE) {
-      const batch = extracted.slice(i, i + BATCH_SIZE);
+    // Only create profiles for first NGO entry to avoid duplicates
+    const firstNgoName = ngoNames[0] || 'Default';
+    for (let i = 0; i < trulyNew.length; i += BATCH_SIZE) {
+      const batch = trulyNew.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(row => {
           const profile = {
@@ -234,7 +258,7 @@ export const uploadOldDataImport = async (req, res) => {
             amount: row.amount || 0,
             transaction_date: row.transaction_date || null,
             station: row.station || null,
-            ngo: row.ngo || null,
+            ngo: firstNgoName,
           };
           return upsertDonorProfile(profile);
         })
@@ -253,7 +277,8 @@ export const uploadOldDataImport = async (req, res) => {
       type: fullSheet ? 'full' : 'quick',
       batch_id: importBatchId,
       total_in_file: extracted.length,
-      valid_rows: extracted.length,
+      cross_batch_duplicates: crossBatchDups,
+      valid_rows: trulyNew.length,
       imported: inserted.length,
       profiles_created: profilesCreated,
       errors: errors.length > 0 ? errors : undefined,
@@ -404,96 +429,4 @@ export const downloadSample = async (req, res) => {
   }
 };
 
-export const distributeToNgos = async (req, res) => {
-  try {
-    const { data: ngos, error: nErr } = await supabase
-      .from('ngos')
-      .select('id, name')
-      .eq('is_active', true);
-    if (nErr) throw nErr;
-    if (!ngos || ngos.length < 2) {
-      return res.status(400).json({ message: 'Need at least 2 active NGOs to distribute' });
-    }
 
-    const { data: allRows, error: rErr } = await supabase
-      .from('new_data')
-      .select('name, mobile_number, category, amount')
-      .is('ngo', null)
-      .not('mobile_number', 'is', null)
-      .order('created_at', { ascending: false });
-    if (rErr) throw rErr;
-    if (!allRows || allRows.length === 0) {
-      return res.json({ message: 'No unassigned new data to distribute', count: 0 });
-    }
-
-    const latest = {};
-    for (const row of allRows) {
-      if (!latest[row.mobile_number]) {
-        latest[row.mobile_number] = row;
-      }
-    }
-
-    const mobiles = Object.keys(latest);
-
-    const { data: existingProfiles, error: pErr } = await supabase
-      .from('donor_profiles')
-      .select('mobile_number')
-      .in('mobile_number', mobiles);
-    if (pErr) throw pErr;
-
-    const existingSet = new Set(existingProfiles.map(p => p.mobile_number));
-    const newMobiles = mobiles.filter(m => !existingSet.has(m));
-
-    if (newMobiles.length === 0) {
-      return res.json({ message: 'All data already has donor profiles', count: 0 });
-    }
-
-    const shuffled = [...newMobiles].sort(() => Math.random() - 0.5);
-    const base = Math.floor(shuffled.length / ngos.length);
-    const remainder = shuffled.length % ngos.length;
-
-    let totalCreated = 0;
-    let idx = 0;
-    const results = [];
-
-    for (let i = 0; i < ngos.length; i++) {
-      const count = base + (i < remainder ? 1 : 0);
-      const batchMobiles = shuffled.slice(idx, idx + count);
-      idx += count;
-      if (batchMobiles.length === 0) continue;
-
-      let created = 0;
-      for (const mobile of batchMobiles) {
-        const row = latest[mobile];
-        await upsertDonorProfile({
-          mobile_number: mobile,
-          name: row.name || null,
-          category: row.category || '',
-          amount: parseFloat(row.amount) || 0,
-          total_amount: parseFloat(row.amount) || 0,
-          donation_count: 1,
-          ngo: ngos[i].name,
-        });
-        created++;
-      }
-
-      await supabase
-        .from('new_data')
-        .update({ ngo: ngos[i].name })
-        .in('mobile_number', batchMobiles)
-        .is('ngo', null);
-
-      await updateNewDataStatus(batchMobiles, null, 'converted');
-
-      totalCreated += created;
-      results.push(`${created} donors → ${ngos[i].name}`);
-    }
-
-    return res.json({
-      message: results.join('; '),
-      count: totalCreated,
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};

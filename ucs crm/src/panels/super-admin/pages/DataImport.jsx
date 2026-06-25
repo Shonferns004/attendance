@@ -271,23 +271,22 @@ export default function DataImport() {
                   <div className="sa-stat-value">{result.total_in_file}</div>
                 </div>
                 <div className="sa-stat-card" style={{borderLeftColor:'#f59e0b'}}>
-                  <div className="sa-stat-label">Duplicates Removed</div>
+                  <div className="sa-stat-label">Within-File Dups Removed</div>
                   <div className="sa-stat-value" style={{color:'#f59e0b'}}>{result.duplicates_removed}</div>
+                </div>
+                <div className="sa-stat-card" style={{borderLeftColor:'#eab308'}}>
+                  <div className="sa-stat-label">Cross-Batch Dups Removed</div>
+                  <div className="sa-stat-value" style={{color:'#eab308'}}>{result.cross_batch_duplicates_removed}</div>
                 </div>
                 <div className="sa-stat-card" style={{borderLeftColor:'#10b981'}}>
                   <div className="sa-stat-label">Imported</div>
                   <div className="sa-stat-value" style={{color:'#10b981'}}>{result.imported}</div>
                 </div>
                 <div className="sa-stat-card" style={{borderLeftColor:'#3b82f6'}}>
-                  <div className="sa-stat-label">NGOs Used</div>
+                  <div className="sa-stat-label">NGOs Replicated To</div>
                   <div className="sa-stat-value" style={{color:'#3b82f6'}}>{result.ngos_used}</div>
                 </div>
               </div>
-              {result.distribution && (
-                <div style={{marginTop:12, fontSize:13, color:'#374151'}}>
-                  <strong>Distribution:</strong> {result.distribution}
-                </div>
-              )}
             </div>
           )}
         </>
@@ -366,6 +365,10 @@ export default function DataImport() {
                 <div className="sa-stat-card">
                   <div className="sa-stat-label">Total in File</div>
                   <div className="sa-stat-value">{oldResult.total_in_file}</div>
+                </div>
+                <div className="sa-stat-card" style={{borderLeftColor:'#eab308'}}>
+                  <div className="sa-stat-label">Cross-Batch Dups Removed</div>
+                  <div className="sa-stat-value" style={{color:'#eab308'}}>{oldResult.cross_batch_duplicates_removed}</div>
                 </div>
                 <div className="sa-stat-card" style={{borderLeftColor:'#10b981'}}>
                   <div className="sa-stat-label">Imported to Donors</div>

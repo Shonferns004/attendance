@@ -110,6 +110,68 @@ export const getUnassignedDonorIds = async (ngoId, ngoName) => {
   return allIds.filter(id => !assignedSet.has(id));
 };
 
+export const getUnassignedDonorIdsByStation = async (ngoName, stations) => {
+  const { data: allDonors, error: dErr } = await supabase
+    .from('donor_profiles')
+    .select('id')
+    .eq('ngo', ngoName)
+    .in('station', stations);
+  if (dErr) throw dErr;
+  if (!allDonors || allDonors.length === 0) return [];
+
+  const allIds = allDonors.map(d => d.id);
+  const { data: assigned, error: aErr } = await supabase
+    .from('fro_assignments')
+    .select('donor_id')
+    .in('donor_id', allIds)
+    .not('status', 'eq', 'reassigned');
+  if (aErr) throw aErr;
+
+  const assignedSet = new Set(assigned.map(a => a.donor_id));
+  return allIds.filter(id => !assignedSet.has(id));
+};
+
+export const reassignStationDonors = async (ngoId, ngoName, station, newFroWorkerId, assignedBy) => {
+  const { data: donors, error: dErr } = await supabase
+    .from('donor_profiles')
+    .select('id')
+    .eq('ngo', ngoName)
+    .eq('station', station);
+  if (dErr) throw dErr;
+  if (!donors || donors.length === 0) return [];
+
+  const donorIds = donors.map(d => d.id);
+
+  // Mark old assignments as reassigned
+  const { error: updErr } = await supabase
+    .from('fro_assignments')
+    .update({ status: 'reassigned', updated_at: new Date().toISOString() })
+    .in('donor_id', donorIds)
+    .eq('ngo_id', ngoId)
+    .not('status', 'eq', 'reassigned');
+  if (updErr) throw updErr;
+
+  // Create new assignments
+  const newAssignments = donorIds.map(donor_id => ({
+    donor_id,
+    fro_worker_id: newFroWorkerId,
+    ngo_id: ngoId,
+    assigned_by: assignedBy,
+    status: 'pending',
+    assigned_at: new Date().toISOString(),
+  }));
+
+  if (newAssignments.length > 0) {
+    const { data, error } = await supabase
+      .from('fro_assignments')
+      .insert(newAssignments)
+      .select();
+    if (error) throw error;
+    return data;
+  }
+  return [];
+};
+
 export const getAssignmentCountByWorker = async (ngoId) => {
   const { data, error } = await supabase
     .from('fro_assignments')
@@ -148,6 +210,26 @@ export const getDashboardStats = async (workerId) => {
     if (key && stats[key] !== undefined) stats[key]++;
   }
   return stats;
+};
+
+export const getStationDispositionStats = async (ngoId, ngoName) => {
+  const { data, error } = await supabase
+    .from('fro_assignments')
+    .select(`
+      status,
+      donor_profiles!inner(station)
+    `)
+    .eq('ngo_id', ngoId)
+    .not('status', 'eq', 'reassigned');
+  if (error) throw error;
+
+  const stationMap = {};
+  for (const a of data || []) {
+    const station = a.donor_profiles?.station || 'Unassigned';
+    if (!stationMap[station]) stationMap[station] = {};
+    stationMap[station][a.status] = (stationMap[station][a.status] || 0) + 1;
+  }
+  return stationMap;
 };
 
 export const createScheduledContact = async (data) => {

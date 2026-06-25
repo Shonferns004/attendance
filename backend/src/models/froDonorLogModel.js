@@ -37,6 +37,57 @@ export const getTotalCollectedByWorker = async (workerId, monthStart, monthEnd) 
   return total;
 };
 
+export const findLogsByDonorAndWorker = async (donorId, workerId) => {
+  const { data, error } = await supabase
+    .from('fro_donor_logs')
+    .select('*')
+    .eq('donor_id', donorId)
+    .eq('fro_worker_id', workerId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    // fallback to assignment-based lookup
+    const { data: assignment } = await supabase
+      .from('fro_assignments')
+      .select('id')
+      .eq('donor_id', donorId)
+      .eq('fro_worker_id', workerId)
+      .not('status', 'eq', 'reassigned')
+      .maybeSingle();
+    if (assignment) {
+      return findLogsByAssignment(assignment.id);
+    }
+    return [];
+  }
+  return data || [];
+};
+
+export const getTotalCollectedByDonorAndWorker = async (donorId, workerId) => {
+  const { data, error } = await supabase
+    .from('fro_donor_logs')
+    .select('amount_collected')
+    .eq('donor_id', donorId)
+    .eq('fro_worker_id', workerId)
+    .or('action.eq.donation,and(disposition_detail.eq.lead_done,action.eq.disposition,accounts_status.eq.verified)');
+  if (error) {
+    const { data: assignment } = await supabase
+      .from('fro_assignments')
+      .select('id')
+      .eq('donor_id', donorId)
+      .eq('fro_worker_id', workerId)
+      .not('status', 'eq', 'reassigned')
+      .maybeSingle();
+    if (assignment) {
+      return getTotalCollectedByAssignment(assignment.id);
+    }
+    return 0;
+  }
+  let total = 0;
+  for (const d of data || []) {
+    total += parseFloat(d.amount_collected || 0);
+  }
+  return total;
+};
+
 export const getTotalCollectedByAssignment = async (assignmentId) => {
   const { data, error } = await supabase
     .from('fro_donor_logs')

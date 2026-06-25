@@ -5,10 +5,7 @@ import {
   getDonorDetail,
   getFroWorkers,
   getAccessibleNgos,
-  createAssignmentHandler,
   getAssignments,
-  distributeEqually,
-  distributeByCapacity,
   setTarget,
   getTargets,
   getDashboard,
@@ -17,7 +14,9 @@ import {
   getStations,
   saveStationAssignment,
   removeStationAssignment,
-  distributeByStation,
+  createStationHandler,
+  reassignStationFro,
+  getStationStats,
   getNewData,
   distributeNewData,
 } from '../controllers/ngoAdminController.js';
@@ -27,23 +26,22 @@ const router = Router();
 router.use(authenticateRole('hoadmin'));
 
 router.get('/dashboard', getDashboard);
+router.get('/dashboard/station-stats', getStationStats);
 router.get('/ngos', getAccessibleNgos);
 router.get('/donors', getDonors);
 router.get('/donors/:mobile', getDonorDetail);
 router.get('/fro-workers', getFroWorkers);
 router.get('/assignments', getAssignments);
-router.post('/assignments', createAssignmentHandler);
-router.post('/assignments/distribute-equally', distributeEqually);
-router.post('/assignments/distribute-by-capacity', distributeByCapacity);
 router.get('/targets', getTargets);
 router.post('/targets', setTarget);
 router.get('/accounts/pending', getAccountsPending);
 router.post('/accounts/:logId/verify', verifyLeadDone);
 
 router.get('/stations', getStations);
+router.post('/stations', createStationHandler);
 router.post('/station-assignments', saveStationAssignment);
 router.delete('/station-assignments/:id', removeStationAssignment);
-router.post('/station-assignments/distribute', distributeByStation);
+router.put('/station-assignments/:id/reassign', reassignStationFro);
 
 router.get('/new-data', getNewData);
 router.post('/new-data/distribute', distributeNewData);

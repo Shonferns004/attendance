@@ -5,14 +5,13 @@ import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 import { getUserNgoAccess } from '../models/userNgoAccessModel.js';
 import { updateNewDataStatusByNgoAndMobiles } from '../models/newDataModel.js';
 import {
-  createAssignment,
   batchCreateAssignments,
   findAssignmentsByNgo,
-  getUnassignedDonorIds,
-  getAssignmentCountByWorker,
+  getStationDispositionStats,
 } from '../models/froAssignmentModel.js';
 import {
   upsertStationAssignment,
+  createStation,
   getStationAssignmentsByNgo,
   deleteStationAssignment,
 } from '../models/froStationAssignmentModel.js';
@@ -164,35 +163,7 @@ export const getFroWorkers = async (req, res) => {
   }
 };
 
-export const createAssignmentHandler = async (req, res) => {
-  try {
-    const { donor_ids, fro_worker_id } = req.body;
-    const ngoIds = await getUserNgoIds(req.user);
-    const ngoId = ngoIds[0];
 
-    if (!donor_ids || !Array.isArray(donor_ids) || donor_ids.length === 0) {
-      return res.status(400).json({ message: 'donor_ids array is required' });
-    }
-    if (!fro_worker_id) {
-      return res.status(400).json({ message: 'fro_worker_id is required' });
-    }
-    if (!ngoId) {
-      return res.status(400).json({ message: 'No NGO assigned to your account' });
-    }
-
-    const assignments = donor_ids.map(id => ({
-      donor_id: id,
-      fro_worker_id,
-      ngo_id: ngoId,
-      assigned_by: req.user.id,
-    }));
-
-    const result = await batchCreateAssignments(assignments);
-    return res.json({ message: `${result.length} donors assigned successfully`, data: result });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
 
 export const getAssignments = async (req, res) => {
   try {
@@ -228,165 +199,7 @@ export const getAssignments = async (req, res) => {
   }
 };
 
-export const distributeEqually = async (req, res) => {
-  try {
-    const access = await getUserNgoAccess(req.user.id);
-    const ngoEntries = access.map(a => ({ ngoId: a.ngo_id, ngoName: a.ngo_name })).filter(e => e.ngoId);
-    if (ngoEntries.length === 0 && req.user.ngo_id) {
-      const { data: ngo } = await supabase.from('ngos').select('name').eq('id', req.user.ngo_id).single();
-      if (ngo) ngoEntries.push({ ngoId: req.user.ngo_id, ngoName: ngo.name });
-    }
 
-    let totalAssigned = 0;
-    let totalConverted = 0;
-    let skippedNgos = [];
-    const messages = [];
-
-    for (const { ngoId, ngoName } of ngoEntries) {
-      // Step 1: Always convert new_data to donor_profiles (regardless of FRO workers)
-      const { data: importedRows } = await supabase
-        .from('new_data')
-        .select('name, mobile_number, category, amount')
-        .eq('ngo', ngoName)
-        .not('mobile_number', 'is', null);
-
-      let convertedCount = 0;
-      if (importedRows && importedRows.length > 0) {
-        const latest = {};
-        for (const row of importedRows) {
-          if (!latest[row.mobile_number]) latest[row.mobile_number] = row;
-        }
-        const mobiles = Object.keys(latest);
-        const { data: existingProfiles } = await supabase
-          .from('donor_profiles')
-          .select('id, mobile_number')
-          .in('mobile_number', mobiles);
-
-        const existingMap = {};
-        for (const p of existingProfiles || []) existingMap[p.mobile_number] = p.id;
-
-        for (const mobile of mobiles) {
-          if (!existingMap[mobile]) {
-            const row = latest[mobile];
-            await supabase.from('donor_profiles').insert({
-              mobile_number: mobile,
-              name: row.name || null,
-              category: row.category || '',
-              amount: parseFloat(row.amount) || 0,
-              total_amount: parseFloat(row.amount) || 0,
-              donation_count: 1,
-              ngo: ngoName,
-            });
-            convertedCount++;
-          }
-        }
-
-        if (convertedCount > 0) {
-          await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
-          totalConverted += convertedCount;
-          messages.push(`${convertedCount} new donors converted to profiles (${ngoName})`);
-        }
-      }
-
-      // Step 2: Check for FRO workers — skip assignment if none
-      const allFroWorkers = await getFroWorkersByNgo(ngoId);
-      const froWorkers = allFroWorkers.filter(w => w.is_active !== false);
-
-      if (froWorkers.length === 0) {
-        skippedNgos.push(ngoName);
-        continue;
-      }
-
-      let unassignedIds = await getUnassignedDonorIds(ngoId, ngoName);
-
-      if (unassignedIds.length === 0) continue;
-
-      // Old data re-routing: check previous FRO connections
-      const { data: prevAssignments } = await supabase
-        .from('fro_assignments')
-        .select('donor_id, fro_worker_id')
-        .in('donor_id', unassignedIds);
-
-      const reAssignments = [];
-      const remainingIds = [];
-      const reRouted = new Set();
-
-      if (prevAssignments) {
-        for (const a of prevAssignments) {
-          if (!reRouted.has(a.donor_id)) {
-            reRouted.add(a.donor_id);
-            reAssignments.push({
-              donor_id: a.donor_id,
-              fro_worker_id: a.fro_worker_id,
-              ngo_id: ngoId,
-              assigned_by: req.user.id,
-            });
-          }
-        }
-      }
-
-      for (const id of unassignedIds) {
-        if (!reRouted.has(id)) remainingIds.push(id);
-      }
-
-      if (reAssignments.length > 0) {
-        await batchCreateAssignments(reAssignments);
-        totalAssigned += reAssignments.length;
-        messages.push(`${reAssignments.length} old donors re-routed to previous FROs (${ngoName})`);
-      }
-
-      if (remainingIds.length === 0) continue;
-
-      // Equal distribution of remaining new donors
-      const shuffled = [...remainingIds].sort(() => Math.random() - 0.5);
-      const base = Math.floor(shuffled.length / froWorkers.length);
-      const remainder = shuffled.length % froWorkers.length;
-
-      const existingCounts = await getAssignmentCountByWorker(ngoId);
-
-      const sortedWorkers = [...froWorkers].sort((a, b) =>
-        (existingCounts[a.id] || 0) - (existingCounts[b.id] || 0)
-      );
-
-      const allAssignments = [];
-      let idx = 0;
-      for (let i = 0; i < sortedWorkers.length; i++) {
-        const count = base + (i < remainder ? 1 : 0);
-        for (let j = 0; j < count; j++) {
-          allAssignments.push({
-            donor_id: shuffled[idx++],
-            fro_worker_id: sortedWorkers[i].id,
-            ngo_id: ngoId,
-            assigned_by: req.user.id,
-          });
-        }
-      }
-
-      if (allAssignments.length > 0) {
-        await batchCreateAssignments(allAssignments);
-        totalAssigned += allAssignments.length;
-        messages.push(`${allAssignments.length} donors distributed equally among ${froWorkers.length} workers (${ngoName})`);
-      }
-    }
-
-    let finalMessage = messages.join('; ');
-    if (skippedNgos.length > 0) {
-      finalMessage += `; ${skippedNgos.join(', ')} skipped (no active FRO workers). Converted donors are in "Ready to Assign" section.`;
-    }
-
-    if (totalConverted === 0 && totalAssigned === 0) {
-      return res.json({ message: 'No unassigned data found for your NGOs', count: 0 });
-    }
-
-    return res.json({
-      message: finalMessage,
-      count: totalAssigned,
-      converted: totalConverted,
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
 
 export const setTarget = async (req, res) => {
   try {
@@ -749,8 +562,8 @@ export const getStations = async (req, res) => {
 export const saveStationAssignment = async (req, res) => {
   try {
     const { station, fro_worker_id } = req.body;
-    if (!station || !fro_worker_id) {
-      return res.status(400).json({ message: 'station and fro_worker_id are required' });
+    if (!station) {
+      return res.status(400).json({ message: 'station is required' });
     }
 
     const trimmedStation = station.trim();
@@ -782,7 +595,7 @@ export const saveStationAssignment = async (req, res) => {
     if (!ngoId) ngoId = ngoIds[0] || req.user.ngo_id || null;
     if (!ngoId) return res.status(400).json({ message: 'No NGO assigned to your account' });
 
-    const result = await upsertStationAssignment(fro_worker_id, ngoId, trimmedStation, req.user.id);
+    const result = await upsertStationAssignment(fro_worker_id || null, ngoId, trimmedStation, req.user.id);
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -799,7 +612,65 @@ export const removeStationAssignment = async (req, res) => {
   }
 };
 
-export const distributeByStation = async (req, res) => {
+export const createStationHandler = async (req, res) => {
+  try {
+    const { station } = req.body;
+    if (!station) {
+      return res.status(400).json({ message: 'station name is required' });
+    }
+    const access = await getUserNgoAccess(req.user.id);
+    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
+    const ngoId = ngoIds[0] || req.user.ngo_id;
+    if (!ngoId) return res.status(400).json({ message: 'No NGO assigned' });
+
+    const result = await createStation(ngoId, station.trim(), req.user.id);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const reassignStationFro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fro_worker_id } = req.body;
+    if (!fro_worker_id) {
+      return res.status(400).json({ message: 'fro_worker_id is required' });
+    }
+
+    const access = await getUserNgoAccess(req.user.id);
+    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
+    const ngoId = ngoIds[0] || req.user.ngo_id;
+    if (!ngoId) return res.status(400).json({ message: 'No NGO assigned' });
+
+    // Get station info
+    const { data: stationAssign } = await supabase
+      .from('fro_station_assignments')
+      .select('station')
+      .eq('id', id)
+      .single();
+    if (!stationAssign) return res.status(404).json({ message: 'Station assignment not found' });
+
+    const ngoNames = access.map(a => a.ngo_name).filter(Boolean);
+    const ngoName = ngoNames[0] || stationAssign.ngo_id;
+
+    // Update station assignment
+    await upsertStationAssignment(fro_worker_id, ngoId, stationAssign.station, req.user.id);
+
+    // Reassign donors in this station
+    const { reassignStationDonors } = await import('../models/froAssignmentModel.js');
+    const newAssignments = await reassignStationDonors(ngoId, ngoName, stationAssign.station, fro_worker_id, req.user.id);
+
+    return res.json({
+      message: `Station reassigned. ${newAssignments.length} donors assigned to new FRO.`,
+      count: newAssignments.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getStationStats = async (req, res) => {
   try {
     const access = await getUserNgoAccess(req.user.id);
     const ngoNames = access.map(a => a.ngo_name).filter(Boolean);
@@ -810,63 +681,38 @@ export const distributeByStation = async (req, res) => {
       if (ngo) { ngoNames.push(ngo.name); ngoIds.push(req.user.ngo_id); }
     }
 
-    if (ngoIds.length === 0) return res.json({ message: 'No NGOs found', count: 0 });
+    if (ngoIds.length === 0) return res.json({ stations: {}, summary: {} });
 
-    const assignments = await getStationAssignmentsByNgo(ngoIds);
-    if (assignments.length === 0) {
-      return res.json({ message: 'No station-to-FRO mappings found. Assign FROs to stations first.', count: 0 });
+    const stationMap = {};
+    const summary = {};
+
+    for (const ngoId of ngoIds) {
+      const ngoName = ngoNames[ngoIds.indexOf(ngoId)] || '';
+      const stats = await getStationDispositionStats(ngoId, ngoName);
+      for (const [station, statuses] of Object.entries(stats)) {
+        if (!stationMap[station]) stationMap[station] = {};
+        for (const [status, count] of Object.entries(statuses)) {
+          stationMap[station][status] = (stationMap[station][status] || 0) + count;
+          summary[status] = (summary[status] || 0) + count;
+        }
+      }
     }
 
-    let totalAssigned = 0;
-    const messages = [];
-
-    for (const sa of assignments) {
-      const ngoName = ngoNames[ngoIds.indexOf(sa.ngo_id)] || '';
-
-      const { data: donors, error: dErr } = await supabase
-        .from('donor_profiles')
-        .select('id')
-        .eq('station', sa.station)
-        .eq('ngo', ngoName);
-
-      if (dErr) throw dErr;
-      if (!donors || donors.length === 0) continue;
-
-      const donorIds = donors.map(d => d.id);
-
-      const { data: alreadyAssigned, error: aErr } = await supabase
-        .from('fro_assignments')
-        .select('donor_id')
-        .in('donor_id', donorIds);
-
-      if (aErr) throw aErr;
-
-      const assignedSet = new Set(alreadyAssigned.map(a => a.donor_id));
-      const unassignedIds = donorIds.filter(id => !assignedSet.has(id));
-
-      if (unassignedIds.length === 0) continue;
-
-      const newAssignments = unassignedIds.map(donor_id => ({
-        donor_id,
-        fro_worker_id: sa.fro_worker_id,
-        ngo_id: sa.ngo_id,
-        assigned_by: req.user.id,
-      }));
-
-      await batchCreateAssignments(newAssignments);
-      totalAssigned += unassignedIds.length;
-      messages.push(`${unassignedIds.length} donors of station "${sa.station}" → ${sa.workers?.name || 'FRO'}`);
+    // Get all stations for this NGO (including empty ones)
+    const stationAssigns = await getStationAssignmentsByNgo(ngoIds);
+    for (const sa of stationAssigns) {
+      if (!stationMap[sa.station]) {
+        stationMap[sa.station] = {};
+      }
     }
 
-    if (totalAssigned === 0) {
-      return res.json({ message: 'All station donors already assigned', count: 0 });
-    }
-
-    return res.json({ message: messages.join('; '), count: totalAssigned });
+    return res.json({ stations: stationMap, summary });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 export const getNewData = async (req, res) => {
   try {
@@ -944,161 +790,11 @@ export const getNewData = async (req, res) => {
   }
 };
 
-export const distributeByCapacity = async (req, res) => {
-  try {
-    const { capacities } = req.body;
-    if (!capacities || !Array.isArray(capacities) || capacities.length === 0) {
-      return res.status(400).json({ message: 'capacities array is required [{ fro_worker_id, count }]' });
-    }
 
-    const access = await getUserNgoAccess(req.user.id);
-    const ngoEntries = access.map(a => ({ ngoId: a.ngo_id, ngoName: a.ngo_name })).filter(e => e.ngoId);
-    if (ngoEntries.length === 0 && req.user.ngo_id) {
-      const { data: ngo } = await supabase.from('ngos').select('name').eq('id', req.user.ngo_id).single();
-      if (ngo) ngoEntries.push({ ngoId: req.user.ngo_id, ngoName: ngo.name });
-    }
-    if (ngoEntries.length === 0) {
-      return res.json({ message: 'No NGO assigned to your account', count: 0 });
-    }
-
-    let totalAssigned = 0;
-    const messages = [];
-    const allRemainingIds = [];
-
-    for (const { ngoId, ngoName } of ngoEntries) {
-      // Convert new_data to donor_profiles if needed
-      const { data: importedRows } = await supabase
-        .from('new_data')
-        .select('name, mobile_number, category, amount')
-        .eq('ngo', ngoName)
-        .not('mobile_number', 'is', null);
-
-      if (importedRows && importedRows.length > 0) {
-        const latest = {};
-        for (const row of importedRows) {
-          if (!latest[row.mobile_number]) latest[row.mobile_number] = row;
-        }
-        const mobiles = Object.keys(latest);
-        const { data: existingProfiles } = await supabase
-          .from('donor_profiles')
-          .select('id, mobile_number')
-          .in('mobile_number', mobiles);
-
-        const existingMap = {};
-        for (const p of existingProfiles || []) existingMap[p.mobile_number] = p.id;
-
-        for (const mobile of mobiles) {
-          if (!existingMap[mobile]) {
-            const row = latest[mobile];
-            await supabase.from('donor_profiles').insert({
-              mobile_number: mobile,
-              name: row.name || null,
-              category: row.category || '',
-              amount: parseFloat(row.amount) || 0,
-              total_amount: parseFloat(row.amount) || 0,
-              donation_count: 1,
-              ngo: ngoName,
-            });
-          }
-        }
-
-        await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
-      }
-
-      // Get unassigned donor_profiles for this NGO
-      const { data: ngoProfiles } = await supabase
-        .from('donor_profiles')
-        .select('id, mobile_number')
-        .eq('ngo', ngoName);
-
-      const allIds = (ngoProfiles || []).map(p => p.id);
-      if (allIds.length === 0) continue;
-
-      const { data: froAsgn } = await supabase
-        .from('fro_assignments')
-        .select('donor_id')
-        .in('donor_id', allIds);
-
-      const assignedSet = new Set(froAsgn ? froAsgn.map(a => a.donor_id) : []);
-      let unassignedIds = allIds.filter(id => !assignedSet.has(id));
-
-      if (unassignedIds.length === 0) continue;
-
-      // Prioritize old data re-routing: check previous FRO connections
-      const { data: prevAssignments } = await supabase
-        .from('fro_assignments')
-        .select('donor_id, fro_worker_id')
-        .in('donor_id', unassignedIds);
-
-      const reAssignments = [];
-      const reRouted = new Set();
-
-      if (prevAssignments) {
-        for (const a of prevAssignments) {
-          if (!reRouted.has(a.donor_id)) {
-            reRouted.add(a.donor_id);
-            reAssignments.push({
-              donor_id: a.donor_id,
-              fro_worker_id: a.fro_worker_id,
-              ngo_id: ngoId,
-              assigned_by: req.user.id,
-            });
-          }
-        }
-      }
-
-      if (reAssignments.length > 0) {
-        await batchCreateAssignments(reAssignments);
-        totalAssigned += reAssignments.length;
-        messages.push(`${reAssignments.length} old donors re-routed to previous FROs (${ngoName})`);
-      }
-
-      // Collect remaining (non-rerouted) IDs with their NGO
-      for (const id of unassignedIds) {
-        if (!reRouted.has(id)) {
-          allRemainingIds.push({ donor_id: id, ngo_id: ngoId });
-        }
-      }
-    }
-
-    // Distribute ALL remaining donors by capacity in a single pass
-    if (allRemainingIds.length > 0) {
-      const shuffled = [...allRemainingIds].sort(() => Math.random() - 0.5);
-      let idx = 0;
-      const newAssignments = [];
-
-      for (const cap of capacities) {
-        const count = Math.min(cap.count, shuffled.length - idx);
-        if (count <= 0) continue;
-        for (let j = 0; j < count; j++) {
-          newAssignments.push({
-            donor_id: shuffled[idx].donor_id,
-            fro_worker_id: cap.fro_worker_id,
-            ngo_id: shuffled[idx].ngo_id,
-            assigned_by: req.user.id,
-          });
-          idx++;
-        }
-      }
-
-      if (newAssignments.length > 0) {
-        await batchCreateAssignments(newAssignments);
-        totalAssigned += newAssignments.length;
-        messages.push(`${newAssignments.length} donors distributed by capacity`);
-      }
-    }
-
-    if (totalAssigned === 0) {
-      return res.json({ message: 'No unassigned data found for your NGOs', count: 0 });
-    }
-    return res.json({ message: messages.join('; '), count: totalAssigned });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
 
 export const distributeNewData = async (req, res) => {
   try {
+    const { stations: selectedStations } = req.body;
     const access = await getUserNgoAccess(req.user.id);
     const ngoEntries = access.map(a => ({ ngoId: a.ngo_id, ngoName: a.ngo_name })).filter(e => e.ngoId);
     if (ngoEntries.length === 0 && req.user.ngo_id) {
@@ -1115,7 +811,7 @@ export const distributeNewData = async (req, res) => {
     const messages = [];
 
     for (const { ngoId, ngoName } of ngoEntries) {
-      // Step 1: Create donor_profiles from new_data (UNCONDITIONAL — even without FRO workers)
+      // Step 1: Create donor_profiles from new_data
       const { data: importedRows } = await supabase
         .from('new_data')
         .select('name, mobile_number, category, amount')
@@ -1168,20 +864,36 @@ export const distributeNewData = async (req, res) => {
         }
       }
 
-      // Step 2: Check for FRO workers — skip assignment if none
-      const allFroWorkers = await getFroWorkersByNgo(ngoId);
-      const activeWorkers = allFroWorkers.filter(w => w.is_active !== false);
-      if (activeWorkers.length === 0) {
+      // Step 2: Determine which stations to use
+      const stationAssigns = await getStationAssignmentsByNgo([ngoId]);
+
+      let targetStations;
+      if (selectedStations && selectedStations.length > 0) {
+        targetStations = stationAssigns.filter(sa => selectedStations.includes(sa.station));
+      } else {
+        targetStations = stationAssigns;
+      }
+
+      // If no stations exist, auto-create U-stations based on active FROs
+      if (targetStations.length === 0) {
+        const allFroWorkers = await getFroWorkersByNgo(ngoId);
+        const activeWorkers = allFroWorkers.filter(w => w.is_active !== false);
+        if (activeWorkers.length === 0) {
+          skippedNgos.push(ngoName);
+          continue;
+        }
+        for (let i = 0; i < activeWorkers.length; i++) {
+          await upsertStationAssignment(activeWorkers[i].id, ngoId, `U-${i + 1}`, req.user.id);
+        }
+        targetStations = await getStationAssignmentsByNgo([ngoId]);
+      }
+
+      if (targetStations.length === 0) {
         skippedNgos.push(ngoName);
         continue;
       }
 
-      // Step 3: Ensure U-stations exist (U-1, U-2, U-3...) one per FRO worker
-      for (let i = 0; i < activeWorkers.length; i++) {
-        await upsertStationAssignment(activeWorkers[i].id, ngoId, `U-${i + 1}`, req.user.id);
-      }
-
-      // Step 4: Find all NGO donor_profiles without FRO assignment
+      // Step 3: Find unassigned donor profiles for this NGO
       const { data: ngoProfiles } = await supabase
         .from('donor_profiles')
         .select('id')
@@ -1193,85 +905,49 @@ export const distributeNewData = async (req, res) => {
       const { data: froAsgn } = await supabase
         .from('fro_assignments')
         .select('donor_id')
-        .in('donor_id', allIds);
+        .in('donor_id', allIds)
+        .not('status', 'eq', 'reassigned');
 
       const assignedSet = new Set(froAsgn ? froAsgn.map(a => a.donor_id) : []);
       let unassignedIds = allIds.filter(id => !assignedSet.has(id));
       if (unassignedIds.length === 0) continue;
 
-      // Step 5: Old data re-routing — check previous FRO connections
-      const { data: prevAssignments } = await supabase
-        .from('fro_assignments')
-        .select('donor_id, fro_worker_id')
-        .in('donor_id', unassignedIds);
+      // Step 4: Assign stations round-robin to unassigned donors
+      const shuffled = [...unassignedIds].sort(() => Math.random() - 0.5);
+      const base = Math.floor(shuffled.length / targetStations.length);
+      const remainder = shuffled.length % targetStations.length;
 
-      const reAssignments = [];
-      const remainingIds = [];
-      const reRouted = new Set();
+      const stationNames = targetStations.map(sa => sa.station);
+      const stationFroMap = {};
+      for (const sa of targetStations) {
+        stationFroMap[sa.station] = sa.fro_worker_id;
+      }
 
-      if (prevAssignments) {
-        for (const a of prevAssignments) {
-          if (!reRouted.has(a.donor_id)) {
-            reRouted.add(a.donor_id);
-            reAssignments.push({
-              donor_id: a.donor_id,
-              fro_worker_id: a.fro_worker_id,
-              ngo_id: ngoId,
-              assigned_by: req.user.id,
-            });
-          }
+      const donorStationMap = {};
+      let donorIdx = 0;
+      for (let i = 0; i < targetStations.length; i++) {
+        const count = base + (i < remainder ? 1 : 0);
+        for (let j = 0; j < count; j++) {
+          donorStationMap[shuffled[donorIdx++]] = stationNames[i];
         }
       }
 
-      for (const id of unassignedIds) {
-        if (!reRouted.has(id)) remainingIds.push(id);
+      // Batch update donor profiles with station
+      for (const [donorId, station] of Object.entries(donorStationMap)) {
+        await supabase.from('donor_profiles').update({ station }).eq('id', parseInt(donorId));
       }
 
-      if (reAssignments.length > 0) {
-        await batchCreateAssignments(reAssignments);
-        totalAssigned += reAssignments.length;
-        messages.push(`${reAssignments.length} old donors re-routed to previous FROs (${ngoName})`);
-      }
-
-      // Step 6: Assign U-stations to remaining new donors
-      if (remainingIds.length > 0) {
-        const { data: unassignedDonors } = await supabase
-          .from('donor_profiles')
-          .select('id, station')
-          .in('id', remainingIds);
-
-        const noStationIds = (unassignedDonors || []).filter(d => !d.station).map(d => d.id);
-
-        const stationNames = activeWorkers.map((_, i) => `U-${i + 1}`);
-        let stationIdx = 0;
-        for (const id of noStationIds) {
-          await supabase.from('donor_profiles').update({ station: stationNames[stationIdx % stationNames.length] }).eq('id', id);
-          stationIdx++;
-        }
-      }
-
-      // Step 7: Get U-station-to-FRO mapping
-      const stationAssignments = await getStationAssignmentsByNgo([ngoId]);
-      const uStationMap = {};
-      for (const sa of stationAssignments) {
-        if (sa.station.startsWith('U-')) uStationMap[sa.station] = sa.fro_worker_id;
-      }
-
-      // Step 8: Create FRO assignments for remaining (non-re-routed) donors via station mapping
-      const { data: finalDonors } = await supabase
-        .from('donor_profiles')
-        .select('id, station')
-        .in('id', remainingIds);
-
+      // Step 5: Create FRO assignments for stations that have FROs
       const newAssignments = [];
-      for (const d of finalDonors || []) {
-        const workerId = d.station ? uStationMap[d.station] : null;
+      for (const [donorId, station] of Object.entries(donorStationMap)) {
+        const workerId = stationFroMap[station];
         if (workerId) {
           newAssignments.push({
-            donor_id: d.id,
+            donor_id: parseInt(donorId),
             fro_worker_id: workerId,
             ngo_id: ngoId,
             assigned_by: req.user.id,
+            status: 'pending',
           });
         }
       }
@@ -1279,13 +955,21 @@ export const distributeNewData = async (req, res) => {
       if (newAssignments.length > 0) {
         await batchCreateAssignments(newAssignments);
         totalAssigned += newAssignments.length;
-        messages.push(`${newAssignments.length} new donors → U-stations (${ngoName})`);
       }
+
+      const stationCounts = {};
+      for (const st of Object.values(donorStationMap)) {
+        stationCounts[st] = (stationCounts[st] || 0) + 1;
+      }
+      const perStation = Object.entries(stationCounts)
+        .map(([st, cnt]) => `${cnt} → ${st}`)
+        .join(', ');
+      messages.push(`Distributed ${Object.keys(donorStationMap).length} donors: ${perStation} (${ngoName})`);
     }
 
     let finalMessage = messages.join('; ');
     if (skippedNgos.length > 0) {
-      finalMessage += `; ${skippedNgos.join(', ')} skipped (no active FRO workers). Converted donors are in "Ready to Assign" section.`;
+      finalMessage += `; ${skippedNgos.join(', ')} skipped (no stations).`;
     }
 
     if (totalConverted === 0 && totalAssigned === 0) {

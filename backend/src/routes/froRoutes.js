@@ -31,11 +31,13 @@ router.put('/donors/:id/status', updateDonorStatus);
 router.put('/donors/:id/mark-seen', async (req, res) => {
   try {
     const { id } = req.params;
+    const donorId = parseInt(id);
     const { error } = await supabase
       .from('fro_assignments')
       .update({ is_new: false })
-      .eq('id', parseInt(id))
-      .eq('fro_worker_id', req.user.id);
+      .eq('donor_id', donorId)
+      .eq('fro_worker_id', req.user.id)
+      .not('status', 'eq', 'reassigned');
     if (error) throw error;
     return res.json({ message: 'Marked as seen' });
   } catch (error) {
