@@ -52,7 +52,7 @@ function StationSelectModal({ stations, onClose, onDistribute }) {
                 <input type="checkbox" checked={selected.has(s.station)} onChange={() => toggle(s.station)} />
                 <span style={{ fontWeight: 600, flex: 1 }}>{s.station}</span>
                 <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
-                  {s.fro_worker ? s.fro_worker : 'No FRO'}
+                  {s.fro_worker_name ? s.fro_worker_name : 'No FRO'}
                 </span>
                 <span className="pill pill-blue" style={{ fontSize: 11 }}>{s.donor_count}</span>
               </label>
