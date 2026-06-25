@@ -55,10 +55,11 @@ async function findOrCreateAssignment(donorId, workerId, ngoId) {
 }
 
 async function getMyStationNames(workerId) {
-  const { data: stationAssigns } = await supabase
+  const { data: stationAssigns, error } = await supabase
     .from('fro_station_assignments')
     .select('station')
     .eq('fro_worker_id', workerId);
+  if (error) console.error('getMyStationNames query error:', error.message);
   return (stationAssigns || []).map(s => s.station);
 }
 
@@ -170,7 +171,7 @@ export const getMyDonors = async (req, res) => {
     const donorIds = (donors || []).map(d => d.id);
     const { data: assignments } = await supabase
       .from('fro_assignments')
-      .select('*, ngos!fro_assignments_ngo_id_fkey(name)')
+      .select('*, ngos(name)')
       .in('donor_id', donorIds)
       .eq('fro_worker_id', workerId)
       .not('status', 'eq', 'reassigned');
@@ -253,6 +254,7 @@ export const getMyDonors = async (req, res) => {
 
     return res.json(result);
   } catch (error) {
+    console.error('getMyDonors error for worker', req.user?.id, ':', error.message);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -552,6 +554,56 @@ export const getMyTarget = async (req, res) => {
       stats,
     });
   } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const debugMyStations = async (req, res) => {
+  try {
+    const workerId = req.user.id;
+    const stationNames = await getMyStationNames(workerId);
+
+    const { data: stations, error: stErr } = await supabase
+      .from('fro_station_assignments')
+      .select('station, ngo_id')
+      .eq('fro_worker_id', workerId);
+    if (stErr) throw stErr;
+
+    const { data: donors, error: dErr } = stationNames.length > 0
+      ? await supabase.from('donor_profiles').select('id, name, mobile_number, station, ngo').in('station', stationNames)
+      : { data: [] };
+    if (dErr) throw dErr;
+
+    const donorIds = (donors || []).map(d => d.id);
+    const { data: froAsgn } = donorIds.length > 0
+      ? await supabase.from('fro_assignments').select('id, donor_id, status, ngo_id').in('donor_id', donorIds).eq('fro_worker_id', workerId)
+      : { data: [] };
+
+    const froAsgnByDonor = {};
+    for (const a of froAsgn || []) {
+      if (!froAsgnByDonor[a.donor_id]) froAsgnByDonor[a.donor_id] = [];
+      froAsgnByDonor[a.donor_id].push(a);
+    }
+
+    return res.json({
+      worker_id: workerId,
+      station_count: stationNames.length,
+      stations: stationNames,
+      station_rows: stations,
+      donor_count: (donors || []).length,
+      fro_assignments_count: (froAsgn || []).length,
+      donor_detail: (donors || []).slice(0, 10).map(d => ({
+        id: d.id,
+        name: d.name,
+        mobile: d.mobile_number,
+        station: d.station,
+        ngo: d.ngo,
+        has_assignment: !!froAsgnByDonor[d.id],
+        assignments: froAsgnByDonor[d.id] || [],
+      })),
+    });
+  } catch (error) {
+    console.error('debugMyStations error:', error.message);
     return res.status(500).json({ message: error.message });
   }
 };

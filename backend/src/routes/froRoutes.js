@@ -10,6 +10,7 @@ import {
   getMyTarget,
   scheduleContact,
   uploadPaymentScreenshot,
+  debugMyStations,
 } from '../controllers/froController.js';
 
 const router = Router();
@@ -52,5 +53,6 @@ router.post('/donors/:id/logs', createDonorLogHandler);
 router.post('/donors/:id/schedule', scheduleContact);
 router.post('/upload-payment-screenshot', uploadPaymentScreenshot);
 router.get('/target', getMyTarget);
+router.get('/debug/my-stations', debugMyStations);
 
 export default router;

@@ -77,7 +77,7 @@ export default function MyDonors() {
 
   useEffect(() => {
     setLoading(true);
-    getMyDonors(filterStatus).then(setDonors).catch(() => {}).finally(() => setLoading(false));
+    getMyDonors(filterStatus).then(r => { setDonors(r); setMessage(null); }).catch(err => setMessage({ type: 'error', text: err.message })).finally(() => setLoading(false));
   }, [filterStatus]);
 
   useEffect(() => { setIndex(0); }, [donors.length]);
@@ -95,9 +95,9 @@ export default function MyDonors() {
         setDonors(prev => prev.map(d =>
           d.id === donor.id && d.ngo_id === donor.ngo_id ? { ...d, is_new: false } : d
         ));
-      }).catch(() => {});
+      }).catch(err => console.error('markDonorSeen error:', err));
     }
-    getDonorDetail(donor.id, donor.ngo_id).then(setDetail).catch(() => {}).finally(() => setDetailLoading(false));
+    getDonorDetail(donor.id, donor.ngo_id).then(setDetail).catch(err => console.error('getDonorDetail error:', err)).finally(() => setDetailLoading(false));
   }, [donor?.id, donor?.ngo_id]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
