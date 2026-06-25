@@ -19,6 +19,7 @@ import {
   reassignStationFro,
   updateStationNgos,
   getStationStats,
+  getDonorsByStation,
   getNewData,
   distributeNewData,
 } from '../controllers/ngoAdminController.js';
@@ -32,6 +33,7 @@ router.get('/dashboard/station-stats', getStationStats);
 router.get('/ngos', getAccessibleNgos);
 router.get('/donors', getDonors);
 router.get('/donors/:mobile', getDonorDetail);
+router.get('/donors-by-station', getDonorsByStation);
 router.get('/fro-workers', getFroWorkers);
 router.get('/assignments', getAssignments);
 router.get('/targets', getTargets);

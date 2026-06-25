@@ -212,6 +212,23 @@ export const getDashboardStats = async (workerId) => {
   return stats;
 };
 
+export const getDonorsByStationAndStatus = async (ngoId, station, status) => {
+  let query = supabase
+    .from('fro_assignments')
+    .select('*, donor_profiles(*), workers!fro_assignments_fro_worker_id_fkey(id, name, login_id)')
+    .eq('ngo_id', ngoId)
+    .eq('station', station)
+    .not('status', 'eq', 'reassigned');
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+};
+
 export const getStationDispositionStats = async (ngoId) => {
   const { data, error } = await supabase
     .from('fro_assignments')

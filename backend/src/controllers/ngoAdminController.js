@@ -8,6 +8,7 @@ import {
   batchCreateAssignments,
   findAssignmentsByNgo,
   getStationDispositionStats,
+  getDonorsByStationAndStatus,
 } from '../models/froAssignmentModel.js';
 import {
   upsertStationAssignment,
@@ -810,6 +811,54 @@ export const getStationStats = async (req, res) => {
 };
 
 
+
+export const getDonorsByStation = async (req, res) => {
+  try {
+    const { station, status } = req.query;
+    if (!station) {
+      return res.status(400).json({ message: 'station query param is required' });
+    }
+
+    const access = await getUserNgoAccess(req.user.id);
+    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
+
+    if (ngoIds.length === 0 && req.user.ngo_id) {
+      ngoIds.push(req.user.ngo_id);
+    }
+
+    if (ngoIds.length === 0) {
+      return res.json([]);
+    }
+
+    const allDonors = [];
+    for (const ngoId of ngoIds) {
+      const donors = await getDonorsByStationAndStatus(ngoId, station, status || null);
+      allDonors.push(...donors);
+    }
+
+    const seen = new Set();
+    const unique = allDonors.filter(a => { const k = a.id; if (seen.has(k)) return false; seen.add(k); return true; });
+
+    const result = unique.map(a => ({
+      id: a.id,
+      donor_id: a.donor_id,
+      donor_mobile: a.donor_profiles?.mobile_number || '',
+      donor_name: a.donor_profiles?.name || 'Unknown',
+      donor_city: a.donor_profiles?.city || '',
+      fro_worker_id: a.fro_worker_id,
+      fro_name: a.workers?.name || 'Unassigned',
+      status: a.status,
+      notes: a.notes || '',
+      last_contacted_at: a.last_contacted_at,
+      next_follow_up: a.next_follow_up,
+      assigned_at: a.assigned_at,
+    }));
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 
 export const getNewData = async (req, res) => {
   try {
