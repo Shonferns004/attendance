@@ -30,7 +30,7 @@ async function getFroWorkersByNgo(ngoId) {
   const { data, error } = await supabase
     .from('workers')
     .select('*')
-    .ilike('department', 'fro')
+    .eq('department', 'FRO')
     .or(conditions.join(','));
 
   if (error) throw error;
