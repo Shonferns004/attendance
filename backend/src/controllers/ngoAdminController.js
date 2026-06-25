@@ -493,6 +493,10 @@ export const getStations = async (req, res) => {
 
     if (ngoIds.length === 0) return res.json([]);
 
+    // Get all stations from fro_station_assignments (including empty ones)
+    const assignments = await getStationAssignmentsByNgo(ngoIds);
+
+    // Get donor counts per station from donor_profiles
     const { data: donorData, error: dErr } = await supabase
       .from('donor_profiles')
       .select('station, ngo')
@@ -508,12 +512,6 @@ export const getStations = async (req, res) => {
       stationCountMap[key] = (stationCountMap[key] || 0) + 1;
     }
 
-    const assignments = await getStationAssignmentsByNgo(ngoIds);
-    const assignMap = {};
-    for (const a of assignments) {
-      assignMap[`${a.station.trim()}||${a.ngo_id}`] = a;
-    }
-
     const ngoIdToName = {};
     for (const a of access) {
       ngoIdToName[a.ngo_id] = a.ngo_name;
@@ -523,21 +521,46 @@ export const getStations = async (req, res) => {
       if (ngo) ngoIdToName[req.user.ngo_id] = ngo.name;
     }
 
-    const result = [];
-    for (const [key, count] of Object.entries(stationCountMap)) {
-      const [station, ngoName] = key.split('||');
-      const ngoId = Object.keys(ngoIdToName).find(id => ngoIdToName[id] === ngoName);
-      const assign = ngoId ? assignMap[`${station}||${ngoId}`] : null;
-      result.push({
-        station,
-        ngo_name: ngoName,
-        ngo_id: ngoId || null,
-        donor_count: count,
-        fro_worker_id: assign?.fro_worker_id || null,
-        fro_worker_name: assign?.workers?.name || null,
-        assignment_id: assign?.id || null,
-      });
+    const ngoNameToId = {};
+    for (const [id, name] of Object.entries(ngoIdToName)) {
+      ngoNameToId[name] = id;
     }
+
+    const resultMap = {};
+
+    // Add stations from fro_station_assignments (with 0 donor count if not in donor_profiles)
+    for (const a of assignments) {
+      const ngoName = ngoIdToName[a.ngo_id] || 'Unknown';
+      const key = `${a.station.trim()}||${ngoName}`;
+      resultMap[key] = {
+        station: a.station.trim(),
+        ngo_name: ngoName,
+        ngo_id: a.ngo_id,
+        donor_count: stationCountMap[key] || 0,
+        fro_worker_id: a.fro_worker_id || null,
+        fro_worker_name: a.workers?.name || null,
+        assignment_id: a.id || null,
+      };
+    }
+
+    // Also add stations from donor_profiles that aren't in fro_station_assignments
+    for (const [key, count] of Object.entries(stationCountMap)) {
+      if (!resultMap[key]) {
+        const [station, ngoName] = key.split('||');
+        const ngoId = ngoNameToId[ngoName] || null;
+        resultMap[key] = {
+          station,
+          ngo_name: ngoName,
+          ngo_id: ngoId,
+          donor_count: count,
+          fro_worker_id: null,
+          fro_worker_name: null,
+          assignment_id: null,
+        };
+      }
+    }
+
+    const result = Object.values(resultMap);
 
     result.sort((a, b) => {
       const parseStation = (s) => {
