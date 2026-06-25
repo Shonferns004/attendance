@@ -120,6 +120,10 @@ export default function StationManagement() {
     }
   };
 
+  const assignedFroIds = new Set(
+    stations.map(s => s.fro_worker_id).filter(Boolean)
+  );
+
   return (
     <div>
       <div className="card" style={{ marginBottom: 16 }}>
@@ -182,7 +186,7 @@ export default function StationManagement() {
                         style={{ fontSize: 13, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--line, #e5e7eb)', maxWidth: 200 }}
                       >
                         <option value="">-- No FRO --</option>
-                        {froWorkers.map(w => (
+                        {froWorkers.filter(w => !assignedFroIds.has(w.id) || w.id === s.fro_worker_id).map(w => (
                           <option key={w.id} value={w.id}>{w.name}</option>
                         ))}
                       </select>
