@@ -4,6 +4,7 @@ import {
   getDonors,
   getDonorDetail,
   getFroWorkers,
+  getAccessibleNgos,
   createAssignmentHandler,
   getAssignments,
   distributeEqually,
@@ -26,6 +27,7 @@ const router = Router();
 router.use(authenticateRole('hoadmin'));
 
 router.get('/dashboard', getDashboard);
+router.get('/ngos', getAccessibleNgos);
 router.get('/donors', getDonors);
 router.get('/donors/:mobile', getDonorDetail);
 router.get('/fro-workers', getFroWorkers);
