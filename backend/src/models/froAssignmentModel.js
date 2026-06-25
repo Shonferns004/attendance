@@ -212,20 +212,18 @@ export const getDashboardStats = async (workerId) => {
   return stats;
 };
 
-export const getStationDispositionStats = async (ngoId, ngoName) => {
+export const getStationDispositionStats = async (ngoId) => {
   const { data, error } = await supabase
     .from('fro_assignments')
-    .select(`
-      status,
-      donor_profiles!inner(station)
-    `)
+    .select('status, station')
     .eq('ngo_id', ngoId)
+    .not('station', 'is', null)
     .not('status', 'eq', 'reassigned');
   if (error) throw error;
 
   const stationMap = {};
   for (const a of data || []) {
-    const station = a.donor_profiles?.station || 'Unassigned';
+    const station = a.station || 'Unassigned';
     if (!stationMap[station]) stationMap[station] = {};
     stationMap[station][a.status] = (stationMap[station][a.status] || 0) + 1;
   }

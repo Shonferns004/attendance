@@ -785,8 +785,7 @@ export const getStationStats = async (req, res) => {
     const summary = {};
 
     for (const ngoId of ngoIds) {
-      const ngoName = ngoNames[ngoIds.indexOf(ngoId)] || '';
-      const stats = await getStationDispositionStats(ngoId, ngoName);
+      const stats = await getStationDispositionStats(ngoId);
       for (const [station, statuses] of Object.entries(stats)) {
         if (!stationMap[station]) stationMap[station] = {};
         for (const [status, count] of Object.entries(statuses)) {
