@@ -496,18 +496,19 @@ export const getStations = async (req, res) => {
     // Get all station assignments (including unassigned)
     const assignments = await getStationAssignmentsByNgo(ngoIds, true);
 
-    // Get donor counts per station from donor_profiles
-    const { data: donorData, error: dErr } = await supabase
-      .from('donor_profiles')
-      .select('station, ngo')
-      .in('ngo', ngoNames)
+    // Get donor counts per station from fro_assignments (not donor_profiles.station,
+    // since donor_profiles are mobile-unique and station gets overwritten per-NGO)
+    const { data: faData, error: faErr } = await supabase
+      .from('fro_assignments')
+      .select('station, ngo_id')
+      .in('ngo_id', ngoIds)
       .not('station', 'is', null);
 
-    if (dErr) throw dErr;
+    if (faErr) throw faErr;
 
     // Build total donor count per station (across all NGOs)
     const totalDonorCount = {};
-    for (const d of donorData || []) {
+    for (const d of faData || []) {
       const s = d.station.trim();
       totalDonorCount[s] = (totalDonorCount[s] || 0) + 1;
     }
@@ -1049,26 +1050,18 @@ export const distributeNewData = async (req, res) => {
         }
       }
 
-      // Batch update donor profiles with station
-      await Promise.all(
-        Object.entries(donorStationMap).map(([donorId, station]) =>
-          supabase.from('donor_profiles').update({ station }).eq('id', parseInt(donorId))
-        )
-      );
-
-      // Step 5: Create FRO assignments for stations that have FROs
+      // Step 5: Create FRO assignments for each donor (with station, even if no FRO)
       const newAssignments = [];
       for (const [donorId, station] of Object.entries(donorStationMap)) {
         const workerId = stationFroMap[station];
-        if (workerId) {
-          newAssignments.push({
-            donor_id: parseInt(donorId),
-            fro_worker_id: workerId,
-            ngo_id: ngoId,
-            assigned_by: req.user.id,
-            status: 'pending',
-          });
-        }
+        newAssignments.push({
+          donor_id: parseInt(donorId),
+          fro_worker_id: workerId || null,
+          ngo_id: ngoId,
+          station: station,
+          assigned_by: req.user.id,
+          status: 'pending',
+        });
       }
 
       if (newAssignments.length > 0) {

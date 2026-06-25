@@ -103,16 +103,14 @@ export const getDashboard = async (req, res) => {
   try {
     const workerId = req.user.id;
 
-    // Count donors by station assignment
-    const stationNames = await getMyStationNames(workerId);
-    let totalDonors = 0;
-    if (stationNames.length > 0) {
-      const { count } = await supabase
-        .from('donor_profiles')
-        .select('id', { count: 'exact', head: true })
-        .in('station', stationNames);
-      totalDonors = count || 0;
-    }
+    // Count donors by fro_assignments for this FRO
+    const { count } = await supabase
+      .from('fro_assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('fro_worker_id', workerId)
+      .not('station', 'is', null)
+      .not('status', 'eq', 'reassigned');
+    let totalDonors = count || 0;
 
     const stats = await getDashboardStats(workerId);
     stats.total = totalDonors;
@@ -159,22 +157,22 @@ export const getDashboard = async (req, res) => {
 export const getMyDonors = async (req, res) => {
   try {
     const workerId = req.user.id;
-    const stationNames = await getMyStationNames(workerId);
-    if (stationNames.length === 0) return res.json([]);
 
-    const { data: donors } = await supabase
-      .from('donor_profiles')
-      .select('*')
-      .in('station', stationNames)
-      .order('first_imported_at', { ascending: false });
-
-    const donorIds = (donors || []).map(d => d.id);
+    // Query fro_assignments directly by this FRO worker (includes station per NGO)
     const { data: assignments } = await supabase
       .from('fro_assignments')
       .select('*, ngos(name)')
-      .in('donor_id', donorIds)
       .eq('fro_worker_id', workerId)
+      .not('station', 'is', null)
       .not('status', 'eq', 'reassigned');
+
+    if (!assignments || assignments.length === 0) return res.json([]);
+
+    const donorIds = [...new Set(assignments.map(a => a.donor_id))];
+    const { data: donors } = await supabase
+      .from('donor_profiles')
+      .select('*')
+      .in('id', donorIds);
 
     const donorMap = {};
     for (const d of donors || []) donorMap[d.id] = d;
@@ -193,6 +191,7 @@ export const getMyDonors = async (req, res) => {
         assignment_id: a.id,
         ngo_id: a.ngo_id,
         ngo_name: a.ngos?.name || 'Unknown',
+        station: a.station || '',
         donor_mobile: d.mobile_number || '',
         donor_name: d.name || 'Unknown',
         donor_city: d.city || '',
@@ -215,41 +214,6 @@ export const getMyDonors = async (req, res) => {
         schedule_id: null,
         schedule_notes: null,
       });
-    }
-
-    // Donors without any assignment (fallback)
-    const assignedIds = new Set((assignments || []).map(a => a.donor_id));
-    for (const d of donors || []) {
-      if (!assignedIds.has(d.id)) {
-        result.push({
-          id: d.id,
-          donor_id: d.id,
-          assignment_id: null,
-          ngo_id: null,
-          ngo_name: null,
-          donor_mobile: d.mobile_number || '',
-          donor_name: d.name || 'Unknown',
-          donor_city: d.city || '',
-          donor_address: d.address_1 || '',
-          donor_amount: d.amount || 0,
-          donor_email: d.email || '',
-          donor_pan: d.pan_number || '',
-          donor_project: d.project_supported || '',
-          donor_dob: d.birth_date || '',
-          donation_count: d.donation_count || 0,
-          total_donated: d.total_amount || 0,
-          status: 'pending',
-          notes: null,
-          last_contacted_at: null,
-          next_follow_up: null,
-          assigned_at: null,
-          is_new: true,
-          next_scheduled_at: null,
-          is_overdue: false,
-          schedule_id: null,
-          schedule_notes: null,
-        });
-      }
     }
 
     return res.json(result);
@@ -561,7 +525,6 @@ export const getMyTarget = async (req, res) => {
 export const debugMyStations = async (req, res) => {
   try {
     const workerId = req.user.id;
-    const stationNames = await getMyStationNames(workerId);
 
     const { data: stations, error: stErr } = await supabase
       .from('fro_station_assignments')
@@ -569,15 +532,18 @@ export const debugMyStations = async (req, res) => {
       .eq('fro_worker_id', workerId);
     if (stErr) throw stErr;
 
-    const { data: donors, error: dErr } = stationNames.length > 0
-      ? await supabase.from('donor_profiles').select('id, name, mobile_number, station, ngo').in('station', stationNames)
+    const { data: froAsgn } = await supabase
+      .from('fro_assignments')
+      .select('id, donor_id, status, ngo_id, station')
+      .eq('fro_worker_id', workerId)
+      .not('station', 'is', null)
+      .not('status', 'eq', 'reassigned');
+
+    const donorIds = [...new Set((froAsgn || []).map(a => a.donor_id))];
+    const { data: donors, error: dErr } = donorIds.length > 0
+      ? await supabase.from('donor_profiles').select('id, name, mobile_number').in('id', donorIds)
       : { data: [] };
     if (dErr) throw dErr;
-
-    const donorIds = (donors || []).map(d => d.id);
-    const { data: froAsgn } = donorIds.length > 0
-      ? await supabase.from('fro_assignments').select('id, donor_id, status, ngo_id').in('donor_id', donorIds).eq('fro_worker_id', workerId)
-      : { data: [] };
 
     const froAsgnByDonor = {};
     for (const a of froAsgn || []) {
@@ -587,8 +553,8 @@ export const debugMyStations = async (req, res) => {
 
     return res.json({
       worker_id: workerId,
-      station_count: stationNames.length,
-      stations: stationNames,
+      station_count: stations.length,
+      stations: stations.map(s => s.station),
       station_rows: stations,
       donor_count: (donors || []).length,
       fro_assignments_count: (froAsgn || []).length,
@@ -596,9 +562,6 @@ export const debugMyStations = async (req, res) => {
         id: d.id,
         name: d.name,
         mobile: d.mobile_number,
-        station: d.station,
-        ngo: d.ngo,
-        has_assignment: !!froAsgnByDonor[d.id],
         assignments: froAsgnByDonor[d.id] || [],
       })),
     });
