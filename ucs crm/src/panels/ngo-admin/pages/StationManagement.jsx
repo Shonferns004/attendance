@@ -6,7 +6,6 @@ export default function StationManagement() {
   const [froWorkers, setFroWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newStation, setNewStation] = useState('');
-  const [newFro, setNewFro] = useState('');
   const [adding, setAdding] = useState(false);
 
   const load = () => {
@@ -54,12 +53,8 @@ export default function StationManagement() {
     if (!newStation.trim()) return;
     setAdding(true);
     try {
-      await apiPost('/ngo-admin/stations', {
-        station: newStation.trim(),
-        ...(newFro ? { fro_worker_id: newFro } : {}),
-      });
+      await apiPost('/ngo-admin/stations', { station: newStation.trim() });
       setNewStation('');
-      setNewFro('');
       load();
     } catch (err) {
       alert(err.message);
@@ -86,17 +81,8 @@ export default function StationManagement() {
               <input value={newStation} onChange={e => setNewStation(e.target.value)}
                 placeholder="e.g. ND-3, NZB, BKT-1" />
             </label>
-            <label className="field" style={{ flex: 1 }}>
-              FRO Worker (optional)
-              <select value={newFro} onChange={e => setNewFro(e.target.value)}>
-                <option value="">-- No FRO assigned --</option>
-                {froWorkers.map(w => (
-                  <option key={w.id} value={w.id}>{w.name} ({w.login_id})</option>
-                ))}
-              </select>
-            </label>
             <button className="btn btn-primary" onClick={handleAddStation} disabled={adding || !newStation.trim()} style={{ alignSelf: 'flex-end' }}>
-              {adding ? 'Adding...' : '+ Add Station'}
+              {adding ? 'Adding...' : 'Create'}
             </button>
           </div>
         </div>
