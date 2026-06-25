@@ -103,14 +103,17 @@ export const getDashboard = async (req, res) => {
   try {
     const workerId = req.user.id;
 
-    // Count donors by fro_assignments for this FRO
-    const { count } = await supabase
-      .from('fro_assignments')
-      .select('id', { count: 'exact', head: true })
-      .eq('fro_worker_id', workerId)
-      .not('station', 'is', null)
-      .not('status', 'eq', 'reassigned');
-    let totalDonors = count || 0;
+    // Count donors by this FRO's stations (from fro_assignments)
+    const stationNames = await getMyStationNames(workerId);
+    let totalDonors = 0;
+    if (stationNames.length > 0) {
+      const { count } = await supabase
+        .from('fro_assignments')
+        .select('id', { count: 'exact', head: true })
+        .in('station', stationNames)
+        .not('status', 'eq', 'reassigned');
+      totalDonors = count || 0;
+    }
 
     const stats = await getDashboardStats(workerId);
     stats.total = totalDonors;
@@ -158,12 +161,15 @@ export const getMyDonors = async (req, res) => {
   try {
     const workerId = req.user.id;
 
-    // Query fro_assignments directly by this FRO worker (includes station per NGO)
+    // Query fro_assignments by this FRO's station names (not fro_worker_id,
+    // since stations may not have an FRO assigned)
+    const stationNames = await getMyStationNames(workerId);
+    if (stationNames.length === 0) return res.json([]);
+
     const { data: assignments } = await supabase
       .from('fro_assignments')
       .select('*, ngos(name)')
-      .eq('fro_worker_id', workerId)
-      .not('station', 'is', null)
+      .in('station', stationNames)
       .not('status', 'eq', 'reassigned');
 
     if (!assignments || assignments.length === 0) return res.json([]);
