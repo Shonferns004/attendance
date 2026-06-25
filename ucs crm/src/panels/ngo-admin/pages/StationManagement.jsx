@@ -48,7 +48,19 @@ export default function StationManagement() {
   const [adding, setAdding] = useState(false);
   const [editNgoStation, setEditNgoStation] = useState(null);
 
-  const load = () => {
+  const fetchData = () => {
+    Promise.all([
+      apiGet('/ngo-admin/stations'),
+      apiGet('/ngo-admin/ngos'),
+      apiGet('/ngo-admin/fro-workers'),
+    ]).then(([s, n, f]) => {
+      setStations(Array.isArray(s) ? s : []);
+      setAllNgos(Array.isArray(n) ? n : []);
+      setFroWorkers(Array.isArray(f) ? f : []);
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
     setLoading(true);
     Promise.all([
       apiGet('/ngo-admin/stations'),
@@ -59,9 +71,7 @@ export default function StationManagement() {
       setAllNgos(Array.isArray(n) ? n : []);
       setFroWorkers(Array.isArray(f) ? f : []);
     }).catch(() => {}).finally(() => setLoading(false));
-  };
-
-  useEffect(load, []);
+  }, []);
 
   const handleAddStation = async () => {
     if (!newStation.trim()) return;
@@ -69,7 +79,7 @@ export default function StationManagement() {
     try {
       await apiPost('/ngo-admin/stations', { station: newStation.trim() });
       setNewStation('');
-      load();
+      fetchData();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -80,7 +90,7 @@ export default function StationManagement() {
   const handleNgoChange = async (station, ngoIds) => {
     try {
       await apiPut(`/ngo-admin/stations/${encodeURIComponent(station)}/update-ngos`, { ngo_ids: ngoIds });
-      load();
+      fetchData();
     } catch (err) {
       alert(err.message);
     }
@@ -94,7 +104,7 @@ export default function StationManagement() {
         ngo_ids: s.ngos.map(n => n.ngo_id),
         fro_worker_id: froWorkerId,
       });
-      load();
+      fetchData();
     } catch (err) {
       alert(err.message);
     }
@@ -104,7 +114,7 @@ export default function StationManagement() {
     if (!confirm(`Delete station "${station}"?`)) return;
     try {
       await apiDelete(`/ngo-admin/stations/${encodeURIComponent(station)}`);
-      load();
+      fetchData();
     } catch (err) {
       alert(err.message);
     }
