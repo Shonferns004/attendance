@@ -20,31 +20,31 @@ import {
   getTotalCollectedByDonorAndWorker,
 } from '../models/froDonorLogModel.js';
 
-async function findOrCreateAssignment(donorId, workerId) {
-  const { data: existing } = await supabase
+async function findOrCreateAssignment(donorId, workerId, ngoId) {
+  let query = supabase
     .from('fro_assignments')
     .select('id')
     .eq('donor_id', donorId)
     .eq('fro_worker_id', workerId)
-    .not('status', 'eq', 'reassigned')
-    .maybeSingle();
+    .not('status', 'eq', 'reassigned');
+  if (ngoId) query = query.eq('ngo_id', ngoId);
+  const { data: existing } = await query.maybeSingle();
   if (existing) return existing;
 
-  // Get donor's NGO from profile
-  const { data: donor } = await supabase
-    .from('donor_profiles')
-    .select('ngo')
-    .eq('id', donorId)
-    .single();
-  if (!donor) return null;
-
-  // Get NGO id from name
-  const { data: ngo } = await supabase
-    .from('ngos')
-    .select('id')
-    .eq('name', donor.ngo)
-    .maybeSingle();
-  const ngoId = ngo?.id || null;
+  if (!ngoId) {
+    const { data: donor } = await supabase
+      .from('donor_profiles')
+      .select('ngo')
+      .eq('id', donorId)
+      .single();
+    if (!donor) return null;
+    const { data: ngo } = await supabase
+      .from('ngos')
+      .select('id')
+      .eq('name', donor.ngo)
+      .maybeSingle();
+    ngoId = ngo?.id || null;
+  }
 
   const { data: created } = await supabase
     .from('fro_assignments')
@@ -158,42 +158,40 @@ export const getDashboard = async (req, res) => {
 export const getMyDonors = async (req, res) => {
   try {
     const workerId = req.user.id;
-
-    // Get stations assigned to this FRO
     const stationNames = await getMyStationNames(workerId);
-    if (stationNames.length === 0) {
-      return res.json([]);
-    }
+    if (stationNames.length === 0) return res.json([]);
 
-    // Get donors in those stations
-    const { data: donors, error: dErr } = await supabase
+    const { data: donors } = await supabase
       .from('donor_profiles')
       .select('*')
       .in('station', stationNames)
       .order('first_imported_at', { ascending: false });
-    if (dErr) throw dErr;
 
-    // Get current fro_assignments for these donors + this FRO
     const donorIds = (donors || []).map(d => d.id);
     const { data: assignments } = await supabase
       .from('fro_assignments')
-      .select('*')
+      .select('*, ngos!fro_assignments_ngo_id_fkey(name)')
       .in('donor_id', donorIds)
       .eq('fro_worker_id', workerId)
       .not('status', 'eq', 'reassigned');
 
-    const assignmentByDonor = {};
-    for (const a of assignments || []) {
-      if (!assignmentByDonor[a.donor_id] || a.assigned_at > assignmentByDonor[a.donor_id].assigned_at) {
-        assignmentByDonor[a.donor_id] = a;
-      }
-    }
+    const donorMap = {};
+    for (const d of donors || []) donorMap[d.id] = d;
 
-    const result = (donors || []).map(d => {
-      const a = assignmentByDonor[d.id];
-      return {
-        id: d.id,
-        donor_id: d.id,
+    const result = [];
+    const seen = new Set();
+    for (const a of assignments || []) {
+      const d = donorMap[a.donor_id];
+      if (!d) continue;
+      const key = `${a.donor_id}-${a.ngo_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({
+        id: a.donor_id,
+        donor_id: a.donor_id,
+        assignment_id: a.id,
+        ngo_id: a.ngo_id,
+        ngo_name: a.ngos?.name || 'Unknown',
         donor_mobile: d.mobile_number || '',
         donor_name: d.name || 'Unknown',
         donor_city: d.city || '',
@@ -205,18 +203,53 @@ export const getMyDonors = async (req, res) => {
         donor_dob: d.birth_date || '',
         donation_count: d.donation_count || 0,
         total_donated: d.total_amount || 0,
-        status: a?.status || 'pending',
-        notes: a?.notes || null,
-        last_contacted_at: a?.last_contacted_at || null,
-        next_follow_up: a?.next_follow_up || null,
-        assigned_at: a?.assigned_at || null,
-        is_new: a ? (a.is_new !== false) : true,
+        status: a.status || 'pending',
+        notes: a.notes || null,
+        last_contacted_at: a.last_contacted_at || null,
+        next_follow_up: a.next_follow_up || null,
+        assigned_at: a.assigned_at || null,
+        is_new: a.is_new !== false,
         next_scheduled_at: null,
         is_overdue: false,
         schedule_id: null,
         schedule_notes: null,
-      };
-    });
+      });
+    }
+
+    // Donors without any assignment (fallback)
+    const assignedIds = new Set((assignments || []).map(a => a.donor_id));
+    for (const d of donors || []) {
+      if (!assignedIds.has(d.id)) {
+        result.push({
+          id: d.id,
+          donor_id: d.id,
+          assignment_id: null,
+          ngo_id: null,
+          ngo_name: null,
+          donor_mobile: d.mobile_number || '',
+          donor_name: d.name || 'Unknown',
+          donor_city: d.city || '',
+          donor_address: d.address_1 || '',
+          donor_amount: d.amount || 0,
+          donor_email: d.email || '',
+          donor_pan: d.pan_number || '',
+          donor_project: d.project_supported || '',
+          donor_dob: d.birth_date || '',
+          donation_count: d.donation_count || 0,
+          total_donated: d.total_amount || 0,
+          status: 'pending',
+          notes: null,
+          last_contacted_at: null,
+          next_follow_up: null,
+          assigned_at: null,
+          is_new: true,
+          next_scheduled_at: null,
+          is_overdue: false,
+          schedule_id: null,
+          schedule_notes: null,
+        });
+      }
+    }
 
     return res.json(result);
   } catch (error) {
@@ -228,21 +261,13 @@ export const updateDonorStatus = async (req, res) => {
   try {
     const workerId = req.user.id;
     const donorId = parseInt(req.params.id);
-    const { status, notes, next_follow_up } = req.body;
+    const { status, notes, next_follow_up, ngo_id } = req.body;
+    if (!status) return res.status(400).json({ message: 'status is required' });
 
-    if (!status) {
-      return res.status(400).json({ message: 'status is required' });
-    }
+    const assignment = await findOrCreateAssignment(donorId, workerId, ngo_id);
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
 
-    const assignment = await findOrCreateAssignment(donorId, workerId);
-    if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
-    }
-
-    const updates = {
-      status,
-      last_contacted_at: new Date().toISOString(),
-    };
+    const updates = { status, last_contacted_at: new Date().toISOString() };
     if (notes !== undefined) updates.notes = notes;
     if (next_follow_up !== undefined) updates.next_follow_up = next_follow_up;
 
@@ -255,33 +280,43 @@ export const updateDonorStatus = async (req, res) => {
 
 export const getDonorLogs = async (req, res) => {
   try {
-    const { id } = req.params;
     const workerId = req.user.id;
-    const donorId = parseInt(id);
+    const donorId = parseInt(req.params.id);
+    const { ngo_id } = req.query;
 
-    // Try station-based lookup first
-    const logs = await findLogsByDonorAndWorker(donorId, workerId);
-    const totalCollected = await getTotalCollectedByDonorAndWorker(donorId, workerId);
+    let assignment = null;
+    if (ngo_id) {
+      const { data } = await supabase
+        .from('fro_assignments')
+        .select('id')
+        .eq('donor_id', donorId)
+        .eq('fro_worker_id', workerId)
+        .eq('ngo_id', ngo_id)
+        .not('status', 'eq', 'reassigned')
+        .maybeSingle();
+      assignment = data;
+    }
+    if (!assignment) {
+      const { data } = await supabase
+        .from('fro_assignments')
+        .select('id')
+        .eq('donor_id', donorId)
+        .eq('fro_worker_id', workerId)
+        .not('status', 'eq', 'reassigned')
+        .maybeSingle();
+      assignment = data;
+    }
 
-    // Try to get schedule from assignment
-    const { data: assignment } = await supabase
-      .from('fro_assignments')
-      .select('id')
-      .eq('donor_id', donorId)
-      .eq('fro_worker_id', workerId)
-      .not('status', 'eq', 'reassigned')
-      .maybeSingle();
-
+    let logs = [];
+    let totalCollected = 0;
     let nextSchedule = null;
     if (assignment) {
+      logs = await findLogsByAssignment(assignment.id);
+      totalCollected = await getTotalCollectedByAssignment(assignment.id);
       nextSchedule = await getScheduledByAssignment(assignment.id);
     }
 
-    return res.json({
-      logs,
-      total_collected: totalCollected,
-      next_schedule: nextSchedule,
-    });
+    return res.json({ logs, total_collected: totalCollected, next_schedule: nextSchedule });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -289,25 +324,16 @@ export const getDonorLogs = async (req, res) => {
 
 export const createDonorLogHandler = async (req, res) => {
   try {
-    const { id } = req.params;
     const workerId = req.user.id;
-    const donorId = parseInt(id);
-    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url, pan_number, donor_address, donor_dob } = req.body;
+    const donorId = parseInt(req.params.id);
+    const { action, notes, outcome, amount_collected, disposition_category, disposition_detail, scheduled_at, payment_screenshot_url, pan_number, donor_address, donor_dob, ngo_id } = req.body;
 
-    if (!action) {
-      return res.status(400).json({ message: 'action is required' });
-    }
-
+    if (!action) return res.status(400).json({ message: 'action is required' });
     const allowedActions = ['call', 'visit', 'message', 'follow_up', 'donation', 'note', 'disposition'];
-    if (!allowedActions.includes(action)) {
-      return res.status(400).json({ message: `Invalid action. Must be one of: ${allowedActions.join(', ')}` });
-    }
+    if (!allowedActions.includes(action)) return res.status(400).json({ message: `Invalid action. Must be one of: ${allowedActions.join(', ')}` });
 
-    // Find or create fro_assignment for this donor+worker
-    const assignment = await findOrCreateAssignment(donorId, workerId);
-    if (!assignment) {
-      return res.status(404).json({ message: 'Donor not found or no NGO assigned' });
-    }
+    const assignment = await findOrCreateAssignment(donorId, workerId, ngo_id);
+    if (!assignment) return res.status(404).json({ message: 'Donor not found or no NGO assigned' });
 
     const logData = {
       assignment_id: assignment.id,
@@ -453,19 +479,13 @@ function dispositionDetailToStatus(detail) {
 
 export const scheduleContact = async (req, res) => {
   try {
-    const { id } = req.params;
     const workerId = req.user.id;
-    const donorId = parseInt(id);
-    const { scheduled_at, notes } = req.body;
+    const donorId = parseInt(req.params.id);
+    const { scheduled_at, notes, ngo_id } = req.body;
+    if (!scheduled_at) return res.status(400).json({ message: 'scheduled_at is required' });
 
-    if (!scheduled_at) {
-      return res.status(400).json({ message: 'scheduled_at is required' });
-    }
-
-    const assignment = await findOrCreateAssignment(donorId, workerId);
-    if (!assignment) {
-      return res.status(404).json({ message: 'Donor not found' });
-    }
+    const assignment = await findOrCreateAssignment(donorId, workerId, ngo_id);
+    if (!assignment) return res.status(404).json({ message: 'Donor not found' });
 
     // Clear any existing pending schedules
     await completeAllScheduledByAssignment(assignment.id);

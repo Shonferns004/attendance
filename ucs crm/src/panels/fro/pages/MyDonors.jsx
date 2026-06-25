@@ -91,12 +91,14 @@ export default function MyDonors() {
     if (!donor) return;
     setDetailLoading(true);
     if (donor.is_new) {
-      markDonorSeen(donor.id).then(() => {
-        setDonors(prev => prev.map(d => d.id === donor.id ? { ...d, is_new: false } : d));
+      markDonorSeen(donor.id, donor.ngo_id).then(() => {
+        setDonors(prev => prev.map(d =>
+          d.id === donor.id && d.ngo_id === donor.ngo_id ? { ...d, is_new: false } : d
+        ));
       }).catch(() => {});
     }
-    getDonorDetail(donor.id).then(setDetail).catch(() => {}).finally(() => setDetailLoading(false));
-  }, [donor?.id]);
+    getDonorDetail(donor.id, donor.ngo_id).then(setDetail).catch(() => {}).finally(() => setDetailLoading(false));
+  }, [donor?.id, donor?.ngo_id]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
 
@@ -142,6 +144,7 @@ export default function MyDonors() {
         disposition_category: isConnected(selected) ? 'connected' : 'not_connected',
         disposition_detail: selected,
         notes: notes || null,
+        ngo_id: donor.ngo_id,
       };
       if (selected === 'scheduled') logData.scheduled_at = new Date(scheduledAt + ':00').toISOString();
       if (selected === 'lead_done') {
@@ -212,6 +215,11 @@ export default function MyDonors() {
             <span style={{background:'var(--md-tertiary-fixed)', color:'var(--md-on-primary-container)', padding:'2px 8px', borderRadius:999, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
               {donor.status || 'pending'}
             </span>
+            {donor.ngo_name && (
+              <span style={{marginTop:4, background:'#e0e7ff', color:'#4338ca', padding:'1px 7px', borderRadius:999, fontSize:8, fontWeight:700}}>
+                {donor.ngo_name}
+              </span>
+            )}
             {nextSchedule && !nextSchedule.is_completed && (
               <div style={{width:'100%', marginTop:6, padding:'4px 8px', borderRadius:6, fontSize:10, background: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error-container)' : '#e0f2fe', color: new Date(nextSchedule.scheduled_at) < new Date() ? 'var(--md-error)' : '#0369a1'}}>
                 {new Date(nextSchedule.scheduled_at) < new Date() ? 'Overdue schedule' : 'Next: ' + new Date(nextSchedule.scheduled_at).toLocaleString()}
