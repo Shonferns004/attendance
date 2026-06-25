@@ -23,7 +23,7 @@ import {
 async function findOrCreateAssignment(donorId, workerId, ngoId) {
   let query = supabase
     .from('fro_assignments')
-    .select('id')
+    .select('id, station')
     .eq('donor_id', donorId)
     .eq('fro_worker_id', workerId)
     .not('status', 'eq', 'reassigned');
@@ -46,10 +46,22 @@ async function findOrCreateAssignment(donorId, workerId, ngoId) {
     ngoId = ngo?.id || null;
   }
 
+  // Look up FRO's station from fro_station_assignments
+  let station = null;
+  if (ngoId) {
+    const { data: sa } = await supabase
+      .from('fro_station_assignments')
+      .select('station')
+      .eq('fro_worker_id', workerId)
+      .eq('ngo_id', ngoId)
+      .maybeSingle();
+    station = sa?.station || null;
+  }
+
   const { data: created } = await supabase
     .from('fro_assignments')
-    .insert([{ donor_id: donorId, fro_worker_id: workerId, ngo_id: ngoId, status: 'pending' }])
-    .select('id')
+    .insert([{ donor_id: donorId, fro_worker_id: workerId, ngo_id: ngoId, status: 'pending', station }])
+    .select('id, station')
     .single();
   return created;
 }
@@ -236,8 +248,22 @@ export const updateDonorStatus = async (req, res) => {
     const { status, notes, next_follow_up, ngo_id } = req.body;
     if (!status) return res.status(400).json({ message: 'status is required' });
 
-    const assignment = await findOrCreateAssignment(donorId, workerId, ngo_id);
+    let assignment = await findOrCreateAssignment(donorId, workerId, ngo_id);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+    // Fill in station if missing (old rows created before station tracking)
+    if (!assignment.station && ngo_id) {
+      const { data: sa } = await supabase
+        .from('fro_station_assignments')
+        .select('station')
+        .eq('fro_worker_id', workerId)
+        .eq('ngo_id', ngo_id)
+        .maybeSingle();
+      if (sa?.station) {
+        await supabase.from('fro_assignments').update({ station: sa.station }).eq('id', assignment.id);
+        assignment.station = sa.station;
+      }
+    }
 
     const updates = { status, last_contacted_at: new Date().toISOString() };
     if (notes !== undefined) updates.notes = notes;
