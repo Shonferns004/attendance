@@ -3,6 +3,7 @@ import { getDonorByMobile, getDonorProfilesByImportNgo } from '../models/donorPr
 import { getWorkerById } from '../models/workerModel.js';
 import { getActiveSalaryByWorker } from '../models/salaryModel.js';
 import { getUserNgoAccess } from '../models/userNgoAccessModel.js';
+import { updateNewDataStatusByNgoAndMobiles } from '../models/newDataModel.js';
 import {
   createAssignment,
   batchCreateAssignments,
@@ -256,6 +257,8 @@ export const distributeEqually = async (req, res) => {
             });
           }
         }
+
+        await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
       }
 
       let unassignedIds = await getUnassignedDonorIds(ngoId, ngoName);
@@ -837,12 +840,13 @@ export const getNewData = async (req, res) => {
       return res.json({ unassigned: [], ngo_data: [] });
     }
 
-    // 1. new_data for admin's NGOs that don't have donor_profiles yet
+    // 1. new_data for admin's NGOs that are still pending conversion
     const { data: importedRows, error: iErr } = await supabase
       .from('new_data')
       .select('name, mobile_number, category, amount, created_at, ngo')
       .in('ngo', ngoNames)
       .not('mobile_number', 'is', null)
+      .or('status.eq.pending,status.is.null')
       .order('created_at', { ascending: false });
 
     if (iErr) throw iErr;
@@ -857,6 +861,7 @@ export const getNewData = async (req, res) => {
       const entries = Object.values(latest);
       const mobiles = [...new Set(entries.map(e => e.mobile_number))];
 
+      // Safety check: also exclude if donor_profile already exists (backward compat)
       const { data: existingProfiles, error: pErr } = await supabase
         .from('donor_profiles')
         .select('mobile_number')
@@ -954,6 +959,8 @@ export const distributeByCapacity = async (req, res) => {
             });
           }
         }
+
+        await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
       }
 
       // Get unassigned donor_profiles for this NGO
@@ -1116,6 +1123,8 @@ export const distributeNewData = async (req, res) => {
             if (newProfile) newProfileIds.push(newProfile.id);
           }
         }
+
+        await updateNewDataStatusByNgoAndMobiles(ngoName, mobiles, 'converted');
       }
 
       // Step 3: Find all NGO donor_profiles without FRO assignment

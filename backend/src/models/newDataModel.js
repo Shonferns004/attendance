@@ -53,6 +53,29 @@ export const getBatchCount = async (batchId) => {
   return count || 0;
 };
 
+export const updateNewDataStatus = async (mobiles, ngoName, status) => {
+  const query = supabase
+    .from('new_data')
+    .update({ status })
+    .in('mobile_number', mobiles);
+  if (ngoName) {
+    query.eq('ngo', ngoName);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+};
+
+export const updateNewDataStatusByNgoAndMobiles = async (ngoName, mobiles, status) => {
+  const { data, error } = await supabase
+    .from('new_data')
+    .update({ status })
+    .eq('ngo', ngoName)
+    .in('mobile_number', mobiles);
+  if (error) throw error;
+  return data;
+};
+
 export const getBatchById = async (batchId) => {
   const { data, error } = await supabase
     .from('new_data')
