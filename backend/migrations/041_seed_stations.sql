@@ -5,7 +5,7 @@
 
 DO $$
 DECLARE
-  ngo_id_val INTEGER := 1;  -- <-- CHANGE THIS to your NGO's id
+  ngo_id_val UUID := 'REPLACE_WITH_YOUR_NGO_UUID';  -- <-- CHANGE THIS to your NGO's UUID
   i INTEGER;
 BEGIN
   FOR i IN 1..37 LOOP
