@@ -493,7 +493,7 @@ export const getStations = async (req, res) => {
 
     if (ngoIds.length === 0) return res.json([]);
 
-    // Get all stations from fro_station_assignments (including empty ones)
+    // Get all station assignments
     const assignments = await getStationAssignmentsByNgo(ngoIds);
 
     // Get donor counts per station from donor_profiles
@@ -505,11 +505,11 @@ export const getStations = async (req, res) => {
 
     if (dErr) throw dErr;
 
-    const stationCountMap = {};
+    // Build total donor count per station (across all NGOs)
+    const totalDonorCount = {};
     for (const d of donorData || []) {
-      const trimmedStation = d.station.trim();
-      const key = `${trimmedStation}||${d.ngo}`;
-      stationCountMap[key] = (stationCountMap[key] || 0) + 1;
+      const s = d.station.trim();
+      totalDonorCount[s] = (totalDonorCount[s] || 0) + 1;
     }
 
     const ngoIdToName = {};
@@ -521,46 +521,47 @@ export const getStations = async (req, res) => {
       if (ngo) ngoIdToName[req.user.ngo_id] = ngo.name;
     }
 
-    const ngoNameToId = {};
-    for (const [id, name] of Object.entries(ngoIdToName)) {
-      ngoNameToId[name] = id;
-    }
+    // Group by station name — one row per station
+    const stationMap = {};
 
-    const resultMap = {};
-
-    // Add stations from fro_station_assignments (with 0 donor count if not in donor_profiles)
     for (const a of assignments) {
-      const ngoName = ngoIdToName[a.ngo_id] || 'Unknown';
-      const key = `${a.station.trim()}||${ngoName}`;
-      resultMap[key] = {
-        station: a.station.trim(),
-        ngo_name: ngoName,
+      const s = a.station.trim();
+      if (!stationMap[s]) {
+        stationMap[s] = {
+          station: s,
+          ngos: [],
+          fro_worker_id: a.fro_worker_id || null,
+          fro_worker_name: a.workers?.name || null,
+        };
+      }
+      stationMap[s].ngos.push({
         ngo_id: a.ngo_id,
-        donor_count: stationCountMap[key] || 0,
-        fro_worker_id: a.fro_worker_id || null,
-        fro_worker_name: a.workers?.name || null,
-        assignment_id: a.id || null,
-      };
+        ngo_name: ngoIdToName[a.ngo_id] || 'Unknown',
+        assignment_id: a.id,
+      });
+      // Update FRO if this assignment has one (first non-null wins)
+      if (!stationMap[s].fro_worker_id && a.fro_worker_id) {
+        stationMap[s].fro_worker_id = a.fro_worker_id;
+        stationMap[s].fro_worker_name = a.workers?.name || null;
+      }
     }
 
-    // Also add stations from donor_profiles that aren't in fro_station_assignments
-    for (const [key, count] of Object.entries(stationCountMap)) {
-      if (!resultMap[key]) {
-        const [station, ngoName] = key.split('||');
-        const ngoId = ngoNameToId[ngoName] || null;
-        resultMap[key] = {
-          station,
-          ngo_name: ngoName,
-          ngo_id: ngoId,
-          donor_count: count,
+    // Also add stations from donor_profiles not in fro_station_assignments
+    for (const s of Object.keys(totalDonorCount)) {
+      if (!stationMap[s]) {
+        stationMap[s] = {
+          station: s,
+          ngos: [],
           fro_worker_id: null,
           fro_worker_name: null,
-          assignment_id: null,
         };
       }
     }
 
-    const result = Object.values(resultMap);
+    const result = Object.values(stationMap).map(s => ({
+      ...s,
+      donor_count: totalDonorCount[s.station] || 0,
+    }));
 
     result.sort((a, b) => {
       const parseStation = (s) => {
@@ -635,6 +636,25 @@ export const removeStationAssignment = async (req, res) => {
   }
 };
 
+export const removeStationByName = async (req, res) => {
+  try {
+    const { station } = req.params;
+    const access = await getUserNgoAccess(req.user.id);
+    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
+
+    const { error } = await supabase
+      .from('fro_station_assignments')
+      .delete()
+      .eq('station', station.trim())
+      .in('ngo_id', ngoIds);
+    if (error) throw error;
+
+    return res.json({ message: 'Station deleted' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const createStationHandler = async (req, res) => {
   try {
     const { station } = req.body;
@@ -648,6 +668,49 @@ export const createStationHandler = async (req, res) => {
 
     const result = await createStation(ngoId, station.trim(), req.user.id);
     return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateStationNgos = async (req, res) => {
+  try {
+    const { station } = req.params;
+    const { ngo_ids, fro_worker_id } = req.body;
+    if (!ngo_ids || !Array.isArray(ngo_ids) || ngo_ids.length === 0) {
+      return res.status(400).json({ message: 'ngo_ids array is required' });
+    }
+
+    const access = await getUserNgoAccess(req.user.id);
+    const allowedNgoIds = new Set(access.map(a => a.ngo_id));
+
+    // Only allow assigning NGOs the user has access to
+    const validNgoIds = ngo_ids.filter(id => allowedNgoIds.has(id));
+    if (validNgoIds.length === 0) {
+      return res.status(400).json({ message: 'No valid NGOs selected' });
+    }
+
+    // Delete existing assignments for this station (only for user's accessible NGOs)
+    const { error: delErr } = await supabase
+      .from('fro_station_assignments')
+      .delete()
+      .eq('station', station.trim())
+      .in('ngo_id', Array.from(allowedNgoIds));
+    if (delErr) throw delErr;
+
+    // Insert new assignments for selected NGOs
+    const rows = validNgoIds.map(ngo_id => ({
+      ngo_id,
+      station: station.trim(),
+      assigned_by: req.user.id,
+      fro_worker_id: fro_worker_id || null,
+    }));
+    const { error: insErr } = await supabase
+      .from('fro_station_assignments')
+      .insert(rows);
+    if (insErr) throw insErr;
+
+    return res.json({ message: 'Station NGOs updated' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

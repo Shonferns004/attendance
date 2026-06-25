@@ -1,6 +1,17 @@
 import supabase from '../config/supabase.js';
 
 export const getUserNgoAccess = async (userId) => {
+  // Check if user is global admin (hoadmin) — they see all NGOs
+  const { data: user } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  if (user?.role === 'hoadmin') {
+    const { data: allNgos } = await supabase.from('ngos').select('id, name');
+    return (allNgos || []).map(n => ({ ngo_id: n.id, ngo_name: n.name }));
+  }
+
   const { data, error } = await supabase
     .from('user_ngo_access')
     .select('ngo_id, ngos!inner(name)')

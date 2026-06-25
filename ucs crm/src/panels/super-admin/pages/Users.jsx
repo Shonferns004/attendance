@@ -35,7 +35,7 @@ export default function Users() {
       email: u.email || '',
       password: '',
       role: u.role || 'hoadmin',
-      ngo_ids: u.ngo_access || (u.ngo_id ? [u.ngo_id] : []),
+      ngo_ids: u.role === 'hoadmin' ? [] : (u.ngo_access || (u.ngo_id ? [u.ngo_id] : [])),
     })
     setShowForm(true)
   }
@@ -153,25 +153,20 @@ export default function Users() {
               </label>
             )}
 
-            <label className="field">
-              <span>NGO {form.role === 'hoadmin' && !editingHr ? <span className="sa-muted" style={{fontWeight:400}}>(select multiple)</span> : ''}</span>
-              {form.role === 'hoadmin' && !editingHr ? (
-                <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:6,padding:'4px 8px'}}>
-                  {ngos.length === 0 && <p className="sa-muted" style={{padding:8}}>No NGOs available</p>}
-                  {ngos.map(n => (
-                    <label key={n.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 4px',cursor:'pointer',fontWeight:400,fontSize:13}}>
-                      <input type="checkbox" checked={form.ngo_ids.includes(n.id)} onChange={() => toggleNgo(n.id)} />
-                      {n.name}
-                    </label>
-                  ))}
-                </div>
-              ) : (
+            {form.role !== 'hoadmin' && (
+              <label className="field">
+                <span>NGO</span>
                 <select value={form.ngo_ids[0] || ''} onChange={e => setForm({...form, ngo_ids: e.target.value ? [e.target.value] : []})}>
                   <option value="">— None —</option>
                   {ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
                 </select>
-              )}
-            </label>
+              </label>
+            )}
+            {form.role === 'hoadmin' && !editingUser && (
+              <p style={{fontSize:13,color:'var(--ink-soft)',marginTop:4}}>
+                NGO Admin has access to all NGOs automatically.
+              </p>
+            )}
             <div className="sa-modal-actions">
               <button className="btn" onClick={closeForm}>Cancel</button>
               <button className="btn btn-primary" onClick={save}>{isEditing ? 'Update' : 'Create'}</button>
@@ -201,7 +196,7 @@ export default function Users() {
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td><span className="sa-badge">{u.role}</span></td>
-                  <td className="sa-muted" style={{maxWidth:200}}>{u.ngo_names || (u.ngo_id ? ngos.find(n => n.id === u.ngo_id)?.name || u.ngo_id : '—')}</td>
+                  <td className="sa-muted" style={{maxWidth:200}}>{u.role === 'hoadmin' ? 'All NGOs' : (u.ngo_names || (u.ngo_id ? ngos.find(n => n.id === u.ngo_id)?.name || u.ngo_id : '—'))}</td>
                   <td><span className={`sa-badge ${u.is_active !== false ? 'active' : 'inactive'}`}>
                     {u.is_active !== false ? 'Active' : 'Inactive'}
                   </span></td>

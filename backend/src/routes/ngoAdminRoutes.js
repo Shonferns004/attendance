@@ -14,8 +14,10 @@ import {
   getStations,
   saveStationAssignment,
   removeStationAssignment,
+  removeStationByName,
   createStationHandler,
   reassignStationFro,
+  updateStationNgos,
   getStationStats,
   getNewData,
   distributeNewData,
@@ -42,6 +44,8 @@ router.post('/stations', createStationHandler);
 router.post('/station-assignments', saveStationAssignment);
 router.delete('/station-assignments/:id', removeStationAssignment);
 router.put('/station-assignments/:id/reassign', reassignStationFro);
+router.put('/stations/:station/update-ngos', updateStationNgos);
+router.delete('/stations/:station', removeStationByName);
 
 router.get('/new-data', getNewData);
 router.post('/new-data/distribute', distributeNewData);

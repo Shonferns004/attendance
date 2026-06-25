@@ -1,20 +1,62 @@
 import { useState, useEffect } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../api/auth';
 
+function NgoSelectModal({ allNgos, selectedIds, onSave, onClose }) {
+  const [selected, setSelected] = useState(() => new Set(selectedIds));
+
+  const toggle = (id) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+        <div className="modal-head">
+          <h3>Select NGOs</h3>
+          <button className="btn btn-sm btn-outline" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {allNgos.map(n => (
+              <label key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', padding: '6px 8px', borderRadius: 4, background: selected.has(n.id) ? '#f0fdf4' : 'transparent' }}>
+                <input type="checkbox" checked={selected.has(n.id)} onChange={() => toggle(n.id)} />
+                {n.name}
+              </label>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={() => onSave(Array.from(selected))}>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StationManagement() {
   const [stations, setStations] = useState([]);
+  const [allNgos, setAllNgos] = useState([]);
   const [froWorkers, setFroWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newStation, setNewStation] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editNgoStation, setEditNgoStation] = useState(null);
 
   const load = () => {
     setLoading(true);
     Promise.all([
       apiGet('/ngo-admin/stations'),
+      apiGet('/ngo-admin/ngos'),
       apiGet('/ngo-admin/fro-workers'),
-    ]).then(([s, f]) => {
+    ]).then(([s, n, f]) => {
       setStations(Array.isArray(s) ? s : []);
+      setAllNgos(Array.isArray(n) ? n : []);
       setFroWorkers(Array.isArray(f) ? f : []);
     }).catch(() => {}).finally(() => setLoading(false));
   };
@@ -35,23 +77,33 @@ export default function StationManagement() {
     }
   };
 
-  const handleFroChange = async (station, froWorkerId, assignmentId) => {
+  const handleNgoChange = async (station, ngoIds) => {
     try {
-      if (assignmentId) {
-        await apiPut(`/ngo-admin/station-assignments/${assignmentId}/reassign`, { fro_worker_id: froWorkerId });
-      } else {
-        await apiPost('/ngo-admin/station-assignments', { station, fro_worker_id: froWorkerId });
-      }
+      await apiPut(`/ngo-admin/stations/${encodeURIComponent(station)}/update-ngos`, { ngo_ids: ngoIds });
       load();
     } catch (err) {
       alert(err.message);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this station?')) return;
+  const handleFroChange = async (station, froWorkerId) => {
+    const s = stations.find(st => st.station === station);
+    if (!s) return;
     try {
-      await apiDelete(`/ngo-admin/station-assignments/${id}`);
+      await apiPut(`/ngo-admin/stations/${encodeURIComponent(station)}/update-ngos`, {
+        ngo_ids: s.ngos.map(n => n.ngo_id),
+        fro_worker_id: froWorkerId,
+      });
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteStation = async (station) => {
+    if (!confirm(`Delete station "${station}"?`)) return;
+    try {
+      await apiDelete(`/ngo-admin/stations/${encodeURIComponent(station)}`);
       load();
     } catch (err) {
       alert(err.message);
@@ -69,7 +121,7 @@ export default function StationManagement() {
             <label className="field" style={{ flex: 1 }}>
               Station Name
               <input value={newStation} onChange={e => setNewStation(e.target.value)}
-                placeholder="e.g. U-1, U-2, U-3" />
+                placeholder="e.g. new_ucs-1" />
             </label>
             <button className="btn btn-primary" onClick={handleAddStation} disabled={adding || !newStation.trim()} style={{ alignSelf: 'flex-end' }}>
               {adding ? 'Adding...' : 'Create'}
@@ -95,6 +147,7 @@ export default function StationManagement() {
               <thead>
                 <tr>
                   <th>Station</th>
+                  <th>NGOs</th>
                   <th>FRO Worker</th>
                   <th>Donors</th>
                   <th></th>
@@ -102,15 +155,20 @@ export default function StationManagement() {
               </thead>
               <tbody>
                 {stations.map((s, i) => (
-                  <tr key={`${s.station}-${i}`}>
+                  <tr key={s.station}>
                     <td><strong>{s.station}</strong></td>
+                    <td>
+                      <span onClick={() => setEditNgoStation(s.station)}
+                        style={{ cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
+                        {s.ngos.length > 0
+                          ? s.ngos.map(n => n.ngo_name).join(', ')
+                          : <span style={{ color: '#9ca3af' }}>No NGO</span>}
+                      </span>
+                    </td>
                     <td>
                       <select
                         value={s.fro_worker_id || ''}
-                        onChange={e => {
-                          if (!e.target.value) return;
-                          handleFroChange(s.station, e.target.value, s.assignment_id);
-                        }}
+                        onChange={e => handleFroChange(s.station, e.target.value)}
                         style={{ fontSize: 13, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--line, #e5e7eb)', maxWidth: 200 }}
                       >
                         <option value="">-- No FRO --</option>
@@ -121,12 +179,10 @@ export default function StationManagement() {
                     </td>
                     <td><span className="pill pill-blue">{s.donor_count}</span></td>
                     <td>
-                      {s.assignment_id && (
-                        <button className="btn btn-sm btn-outline" onClick={() => handleDelete(s.assignment_id)}
-                          style={{ color: 'var(--danger)' }}>
-                          Delete
-                        </button>
-                      )}
+                      <button className="btn btn-sm btn-outline" onClick={() => handleDeleteStation(s.station)}
+                        style={{ color: 'var(--danger)' }}>
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -135,6 +191,15 @@ export default function StationManagement() {
           )}
         </div>
       </div>
+
+      {editNgoStation && (
+        <NgoSelectModal
+          allNgos={allNgos}
+          selectedIds={stations.find(s => s.station === editNgoStation)?.ngos.map(n => n.ngo_id) || []}
+          onSave={(ids) => { handleNgoChange(editNgoStation, ids); setEditNgoStation(null); }}
+          onClose={() => setEditNgoStation(null)}
+        />
+      )}
     </div>
   );
 }

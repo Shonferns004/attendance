@@ -42,6 +42,23 @@ export const addUser = async (req, res) => {
       return res.status(400).json({ message: 'Name, email, and role are required' });
     }
 
+    // hoadmin (NGO Admin) is global — no NGO binding
+    if (role === 'hoadmin') {
+      const user = await createUser({
+        ngo_id: null,
+        name, email,
+        password_hash: await bcrypt.hash(DEFAULT_PASSWORD, await bcrypt.genSalt(10)),
+        role, department: department || null,
+        created_by: req.user.id || null,
+      });
+      const { password_hash: _, ...safeUser } = user;
+      const access = await getNgoAccess(user.id);
+      return res.status(201).json({
+        message: 'User created successfully',
+        user: { ...safeUser, ngo_access: access.map(a => a.ngo_id), generated_password: DEFAULT_PASSWORD },
+      });
+    }
+
     if (req.user.role === 'hoadmin') {
       ngo_id = req.user.ngo_id;
     }
