@@ -991,18 +991,26 @@ export const distributeNewData = async (req, res) => {
       }
 
       // Step 3: Find unassigned donor profiles for this NGO
-      const { data: ngoProfiles } = await supabase
-        .from('donor_profiles')
-        .select('id')
-        .eq('ngo', ngoName);
-
-      const allIds = [...new Set([...newProfileIds, ...(ngoProfiles || []).map(p => p.id)])];
+      // Find profiles by mobile numbers (profiles are mobile-unique, not NGO-unique)
+      let existingProfileIds = [];
+      if (importedRows && importedRows.length > 0) {
+        const allMobiles = [...new Set(importedRows.map(r => r.mobile_number).filter(Boolean))];
+        if (allMobiles.length > 0) {
+          const { data: profiles } = await supabase
+            .from('donor_profiles')
+            .select('id')
+            .in('mobile_number', allMobiles);
+          existingProfileIds = (profiles || []).map(p => p.id);
+        }
+      }
+      const allIds = [...new Set([...newProfileIds, ...existingProfileIds])];
       if (allIds.length === 0) continue;
 
       const { data: froAsgn } = await supabase
         .from('fro_assignments')
         .select('donor_id')
         .in('donor_id', allIds)
+        .eq('ngo_id', ngoId)
         .not('status', 'eq', 'reassigned');
 
       const assignedSet = new Set(froAsgn ? froAsgn.map(a => a.donor_id) : []);
