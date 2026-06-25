@@ -61,12 +61,20 @@ export const createStation = async (ngo_id, station, assigned_by) => {
   return data;
 };
 
-export const getStationAssignmentsByNgo = async (ngoIds) => {
-  const { data, error } = await supabase
+export const getStationAssignmentsByNgo = async (ngoIds, includeNull = false) => {
+  let query = supabase
     .from('fro_station_assignments')
-    .select('*, workers!fro_station_assignments_fro_worker_id_fkey(id, name, login_id)')
-    .in('ngo_id', ngoIds)
-    .order('station', { ascending: true });
+    .select('*, workers!fro_station_assignments_fro_worker_id_fkey(id, name, login_id)');
+
+  if (includeNull && ngoIds.length > 0) {
+    query = query.or(`ngo_id.in.(${ngoIds.join(',')}),ngo_id.is.null`);
+  } else if (ngoIds.length > 0) {
+    query = query.in('ngo_id', ngoIds);
+  } else {
+    return [];
+  }
+
+  const { data, error } = await query.order('station', { ascending: true });
   if (error) throw error;
   return data || [];
 };

@@ -493,8 +493,8 @@ export const getStations = async (req, res) => {
 
     if (ngoIds.length === 0) return res.json([]);
 
-    // Get all station assignments
-    const assignments = await getStationAssignmentsByNgo(ngoIds);
+    // Get all station assignments (including unassigned)
+    const assignments = await getStationAssignmentsByNgo(ngoIds, true);
 
     // Get donor counts per station from donor_profiles
     const { data: donorData, error: dErr } = await supabase
@@ -639,14 +639,10 @@ export const removeStationAssignment = async (req, res) => {
 export const removeStationByName = async (req, res) => {
   try {
     const { station } = req.params;
-    const access = await getUserNgoAccess(req.user.id);
-    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
-
     const { error } = await supabase
       .from('fro_station_assignments')
       .delete()
-      .eq('station', station.trim())
-      .in('ngo_id', ngoIds);
+      .eq('station', station.trim());
     if (error) throw error;
 
     return res.json({ message: 'Station deleted' });
@@ -661,13 +657,23 @@ export const createStationHandler = async (req, res) => {
     if (!station) {
       return res.status(400).json({ message: 'station name is required' });
     }
-    const access = await getUserNgoAccess(req.user.id);
-    const ngoIds = access.map(a => a.ngo_id).filter(Boolean);
-    const ngoId = ngoIds[0] || req.user.ngo_id;
-    if (!ngoId) return res.status(400).json({ message: 'No NGO assigned' });
 
-    const result = await createStation(ngoId, station.trim(), req.user.id);
-    return res.json(result);
+    // Create station without NGO — assign NGOs later via the table
+    const { data: existing } = await supabase
+      .from('fro_station_assignments')
+      .select('id')
+      .eq('station', station.trim())
+      .is('ngo_id', null)
+      .maybeSingle();
+    if (existing) return res.json(existing);
+
+    const { data, error } = await supabase
+      .from('fro_station_assignments')
+      .insert([{ station: station.trim(), assigned_by: req.user.id }])
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json(data);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -677,7 +683,7 @@ export const updateStationNgos = async (req, res) => {
   try {
     const { station } = req.params;
     const { ngo_ids, fro_worker_id } = req.body;
-    if (!ngo_ids || !Array.isArray(ngo_ids) || ngo_ids.length === 0) {
+    if (!ngo_ids || !Array.isArray(ngo_ids)) {
       return res.status(400).json({ message: 'ngo_ids array is required' });
     }
 
@@ -686,17 +692,22 @@ export const updateStationNgos = async (req, res) => {
 
     // Only allow assigning NGOs the user has access to
     const validNgoIds = ngo_ids.filter(id => allowedNgoIds.has(id));
-    if (validNgoIds.length === 0) {
-      return res.status(400).json({ message: 'No valid NGOs selected' });
-    }
 
-    // Delete existing assignments for this station (only for user's accessible NGOs)
+    // Delete all existing rows for this station (including null-ngo)
     const { error: delErr } = await supabase
       .from('fro_station_assignments')
       .delete()
-      .eq('station', station.trim())
-      .in('ngo_id', Array.from(allowedNgoIds));
+      .eq('station', station.trim());
     if (delErr) throw delErr;
+
+    // If no NGOs selected, station becomes unassigned
+    if (validNgoIds.length === 0) {
+      const { error: insErr } = await supabase
+        .from('fro_station_assignments')
+        .insert([{ station: station.trim(), assigned_by: req.user.id, fro_worker_id: fro_worker_id || null }]);
+      if (insErr) throw insErr;
+      return res.json({ message: 'Station NGOs cleared' });
+    }
 
     // Insert new assignments for selected NGOs
     const rows = validNgoIds.map(ngo_id => ({
